@@ -1,0 +1,192 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-black text-white antialiased;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  
+  body.dark {
+    @apply bg-black text-white;
+  }
+  
+  body.light {
+    @apply bg-white text-black;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold tracking-tight;
+  }
+}
+
+@layer components {
+  .sidebar {
+    @apply w-64 h-screen flex flex-col fixed top-0 left-0 z-40 px-6 py-8 bg-neutral-900 text-white;
+  }
+  
+  .light .sidebar {
+    @apply bg-white text-neutral-800;
+  }
+  
+  .sidebar-link {
+    @apply block py-2 px-3 rounded-md text-base font-medium text-neutral-400 hover:text-white transition-all mb-1;
+  }
+  
+  .light .sidebar-link {
+    @apply text-neutral-600 hover:text-black;
+  }
+  
+  .sidebar-link-active {
+    @apply text-white bg-white/10;
+  }
+  
+  .light .sidebar-link-active {
+    @apply text-black bg-black/5;
+  }
+  
+  .topbar {
+    @apply w-full flex items-center justify-between px-8 py-4 bg-black sticky top-0 z-30;
+  }
+  
+  .light .topbar {
+    @apply bg-white border-b border-neutral-200;
+  }
+  
+  .floating-card {
+    @apply bg-dark-card rounded-lg border border-neutral-700 p-8 w-full shadow-md;
+  }
+  
+  .light .floating-card {
+    @apply bg-white border-neutral-200;
+  }
+  
+  .btn-primary {
+    @apply bg-button-dark text-white px-4 py-2 rounded-full hover:bg-button-dark-hover transition-all shadow-sm;
+  }
+  
+  .btn-secondary {
+    @apply bg-dark-card text-white border border-neutral-700 px-4 py-2 rounded-md hover:bg-dark-card-hover transition-all;
+  }
+  
+  .light .btn-secondary {
+    @apply bg-white text-neutral-900 border-neutral-300 hover:bg-neutral-50;
+  }
+  
+  .btn-outline {
+    @apply border border-neutral-700 text-white px-4 py-2 rounded-md hover:bg-white/5 transition-all;
+  }
+  
+  .light .btn-outline {
+    @apply border-neutral-300 text-neutral-900 hover:bg-black/5;
+  }
+  
+  .input-field {
+    @apply w-full px-3 py-2 border border-neutral-700 rounded-md bg-dark-card text-white focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 transition-all;
+  }
+  
+  .light .input-field {
+    @apply border-neutral-300 bg-white text-black;
+  }
+  
+  .textarea-field {
+    @apply w-full px-3 py-2 border border-neutral-700 rounded-md bg-dark-card text-white focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 transition-all;
+  }
+  
+  .light .textarea-field {
+    @apply border-neutral-300 bg-white text-black;
+  }
+  
+  .card {
+    @apply bg-dark-card text-white rounded-xl p-6 border border-neutral-700;
+  }
+  
+  .light .card {
+    @apply bg-white text-black border-neutral-200;
+  }
+  
+  .section-title {
+    @apply text-2xl font-semibold text-white mb-4;
+  }
+  
+  .light .section-title {
+    @apply text-black;
+  }
+  
+  .section-description {
+    @apply text-neutral-400 mb-6;
+  }
+  
+  .light .section-description {
+    @apply text-neutral-600;
+  }
+  
+  .feature-card {
+    @apply bg-dark-card text-white rounded-xl p-6 border border-neutral-700 hover:bg-dark-card-hover transition-all;
+  }
+  
+  .light .feature-card {
+    @apply bg-white text-black border-neutral-200 hover:shadow-lg;
+  }
+  
+  .hero-gradient {
+    @apply bg-gradient-to-r from-black to-neutral-800 text-white;
+  }
+  
+  .light .hero-gradient {
+    @apply from-white to-neutral-100 text-black;
+  }
+}
+
+.resume-preview {
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2);
+  @apply bg-white rounded-lg overflow-hidden border border-neutral-200;
+}
+
+.resume-preview img {
+  @apply w-full h-auto;
+}
+
+.gradient-text {
+  @apply text-white;
+}
+
+.light .gradient-text {
+  @apply text-black;
+}
+
+.content-container {
+  @apply w-full max-w-5xl mx-auto px-4 py-8;
+}
+
+/* Account section styles */
+.account-label {
+  @apply uppercase text-xs font-medium text-openai-gray/80 px-3 mb-2;
+}
+
+.main-label {
+  @apply uppercase text-xs font-medium text-openai-gray/80 px-3 mb-2;
+}
+
+/* Login button styles */
+.login-btn {
+  @apply bg-button-dark text-white px-4 py-1.5 rounded-full hover:bg-button-dark-hover transition-all;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.5s ease-out forwards;
+}
