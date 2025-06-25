@@ -3,6 +3,7 @@ from fastapi.responses import FileResponse
 from typing import List, Dict, Any
 import logging
 from pathlib import Path
+import os
 
 from routes.auth import get_current_user
 
@@ -17,72 +18,86 @@ async def get_available_templates():
     """
     try:
         templates_dir = Path(__file__).parent.parent / "templates"
-        templates = []
+        logger.info(f"🔍 Discovering templates in: {templates_dir}")
         
-        # Define template metadata for each available template
-        template_metadata = {
-            "professional_resume": {
-                "name": "Professional Resume",
-                "description": "Clean and professional resume template with excellent ATS optimization",
-                "category": "Professional", 
-                "features": [
-                    "ATS-optimized structure",
-                    "Clean professional layout",
-                    "Standard section organization",
-                    "Easy to customize",
-                    "Compatible with all industries",
-                    "Hyperlinked contact information"
-                ],
-                "commands": ["\\name", "\\address", "\\rSection", "\\rSubsection"]
-            },
-            "smooth_cv": {
-                "name": "Smooth CV",
-                "description": "Modern and elegant CV template with smooth design elements",
-                "category": "Modern",
-                "features": [
-                    "Modern typography with Gentium font",
-                    "Color-coded hyperlinks",
-                    "Professional header with page numbers",
-                    "Flexible list environments",
-                    "Academic and professional styling",
-                    "Elegant section formatting"
-                ],
-                "commands": ["\\resumeSubheading", "\\resumeItem", "\\section", "\\resumeSubHeadingListStart", "\\resumeSubHeadingListEnd", "\\resumeItemListStart", "\\resumeItemListEnd"]
-            }
-        }
+        templates = []
         
         if templates_dir.exists():
             for template_dir in templates_dir.iterdir():
-                if template_dir.is_dir() and template_dir.name in template_metadata:
+                if template_dir.is_dir():
                     template_id = template_dir.name
                     cls_file = template_dir / f"{template_id}.cls"
                     
                     if cls_file.exists():
-                        metadata = template_metadata[template_id]
-                        
-                        # Check if preview image exists
-                        preview_file = template_dir / "preview.png"
-                        has_preview = preview_file.exists()
-                        preview_url = f"/api/templates/{template_id}/preview-image" if has_preview else None
-                        
-                        templates.append({
-                            "id": template_id,
-                            "name": metadata["name"],
-                            "filename": cls_file.name,
-                            "type": "class",
-                            "category": metadata["category"],
-                            "description": metadata["description"],
-                            "features": metadata["features"],
-                            "commands": metadata["commands"],
-                            "has_preview": has_preview,
-                            "preview_url": preview_url
-                        })
+                        # Extract template info dynamically
+                        try:
+                            with open(cls_file, 'r', encoding='utf-8') as f:
+                                content = f.read()
+                            
+                            # Extract template name from comments or use directory name
+                            template_name = template_id.replace("_", " ").title()
+                            
+                            # Check if preview image exists
+                            preview_file = template_dir / "preview.png"
+                            has_preview = preview_file.exists()
+                            preview_url = f"/api/templates/{template_id}/preview-image" if has_preview else None
+                            
+                            # Determine category based on template analysis
+                            category = "Professional"  # Default
+                            features = ["LaTeX Template", "ATS-Friendly"]
+                            
+                            if template_id == "altacv":
+                                category = "Professional"
+                                features = [
+                                    "Modern",
+                                    "Professional Design",
+                                    "Clean Layout",
+                                    "Standard Sections",
+                                    "Corporate Style",
+                                    "Modern Professional"
+                                ]
+                            elif template_id == "professional_resume":
+                                category = "Professional"
+                                features = [
+                                    "Single Column",
+                                    "Clean Layout", 
+                                    "Standard Sections",
+                                    "Corporate Style",
+                                    "Modern Professional"
+                                ]
+                            elif "minipage" in content and "column" in content.lower():
+                                category = "Modern"
+                                features = ["Multi-Column", "Modern Design", "Elegant Typography"]
+                            
+                            # Create better description based on template
+                            description = f"LaTeX resume template: {template_name}"
+                            if template_id == "altacv":
+                                description = "A modern, professional resume template with clean design"
+                            elif template_id == "professional_resume":
+                                description = "Modern professional resume with clean single-column layout, ideal for corporate positions and standard business environments."
+                            
+                            templates.append({
+                                "id": template_id,
+                                "name": template_name,
+                                "filename": cls_file.name,
+                                "type": "class",
+                                "category": category,
+                                "description": description,
+                                "features": features,
+                                "commands": [],  # Could extract from template if needed
+                                "has_preview": has_preview,
+                                "preview_url": preview_url
+                            })
+                            
+                        except Exception as e:
+                            logger.warning(f"Failed to process template {template_id}: {str(e)}")
+                            continue
         
         if not templates:
             logger.warning("No templates found in templates directory")
             return []
         
-        logger.info(f"Found {len(templates)} templates with complete metadata")
+        logger.info(f"Found {len(templates)} templates dynamically")
         return templates
         
     except Exception as e:
@@ -228,28 +243,27 @@ async def get_template_stats():
     Get overview statistics about all available templates
     """
     try:
-        # Get templates using the same logic as get_available_templates
+        # Get templates dynamically
         templates_dir = Path(__file__).parent.parent / "templates"
         templates = []
         
-        template_metadata = {
-            "professional_resume": {"ats_score": 95, "features": ["ats_optimized", "professional_layout"]},
-            "smooth_cv": {"ats_score": 88, "features": ["modern_design", "elegant_typography"]}
-        }
-        
         if templates_dir.exists():
             for template_dir in templates_dir.iterdir():
-                if template_dir.is_dir() and template_dir.name in template_metadata:
-                    metadata = template_metadata[template_dir.name]
-                    templates.append({
-                        "id": template_dir.name,
-                        "name": template_dir.name.replace("_", " ").title(),
-                        "filename": f"{template_dir.name}.cls",
-                        "type": "LaTeX Class",
-                        "category": "Professional",
-                        "ats_score": metadata["ats_score"],
-                        "features": metadata["features"]
-                    })
+                if template_dir.is_dir():
+                    template_id = template_dir.name
+                    cls_file = template_dir / f"{template_id}.cls"
+                    
+                    if cls_file.exists():
+                        # Basic default scoring for all templates
+                        templates.append({
+                            "id": template_id,
+                            "name": template_id.replace("_", " ").title(),
+                            "filename": f"{template_id}.cls",
+                            "type": "LaTeX Class",
+                            "category": "Professional",
+                            "ats_score": 85,  # Default ATS score
+                            "features": ["LaTeX Template", "Customizable"]
+                        })
         
         if not templates:
             return {"message": "No templates found"}
@@ -296,36 +310,26 @@ async def get_template_stats():
 async def get_templates(current_user: dict = Depends(get_current_user)) -> List[Dict[str, Any]]:
     """Get all available templates with metadata"""
     try:
-        # Use same logic as get_available_templates but with authentication
+        # Use same dynamic logic as get_available_templates
         templates_dir = Path(__file__).parent.parent / "templates"
         templates = []
         
-        template_metadata = {
-            "professional_resume": {
-                "description": "Clean and professional resume template with excellent ATS optimization",
-                "ats_score": 95,
-                "category": "Professional"
-            },
-            "smooth_cv": {
-                "description": "Modern and elegant CV template with smooth design elements",
-                "ats_score": 88,
-                "category": "Modern"
-            }
-        }
-        
         if templates_dir.exists():
             for template_dir in templates_dir.iterdir():
-                if template_dir.is_dir() and template_dir.name in template_metadata:
-                    metadata = template_metadata[template_dir.name]
-                    templates.append({
-                        "id": template_dir.name,
-                        "name": template_dir.name.replace("_", " ").title(),
-                        "filename": f"{template_dir.name}.cls",
-                        "type": "LaTeX Class",
-                        "category": metadata["category"],
-                        "description": metadata["description"],
-                        "ats_score": metadata["ats_score"]
-                    })
+                if template_dir.is_dir():
+                    template_id = template_dir.name
+                    cls_file = template_dir / f"{template_id}.cls"
+                    
+                    if cls_file.exists():
+                        templates.append({
+                            "id": template_id,
+                            "name": template_id.replace("_", " ").title(),
+                            "filename": f"{template_id}.cls",
+                            "type": "LaTeX Class",
+                            "category": "Professional",
+                            "description": f"LaTeX resume template: {template_id.replace('_', ' ').title()}",
+                            "ats_score": 85  # Default score
+                        })
         
         return templates
     except Exception as e:
@@ -336,7 +340,7 @@ async def get_template_ats_analysis(
     template_id: str, 
     current_user: dict = Depends(get_current_user)
 ) -> Dict[str, Any]:
-    """Get basic ATS analysis for a specific template (simplified without template service)"""
+    """Get basic ATS analysis for a specific template"""
     try:
         templates_dir = Path(__file__).parent.parent / "templates"
         template_dir = templates_dir / template_id
@@ -345,47 +349,22 @@ async def get_template_ats_analysis(
         if not template_file.exists():
             raise HTTPException(status_code=404, detail=f"Template {template_id} not found")
         
-        # Template-specific analysis
-        template_analysis = {
-            "professional_resume": {
-                "ats_score": 95,
-                "overall_assessment": "Excellent professional template with outstanding ATS compatibility",
-                "strengths": [
-                    "ATS-optimized structure",
-                    "Clean and scannable layout",
-                    "Hyperlinked contact information",
-                    "Standard section organization"
-                ],
-                "improvements": [
-                    "Already highly optimized",
-                    "Consider adding skills section if needed"
-                ],
-                "compatibility_score": 95
-            },
-            "smooth_cv": {
-                "ats_score": 88,
-                "overall_assessment": "Modern template with good ATS compatibility and elegant design",
-                "strengths": [
-                    "Modern typography",
-                    "Professional header",
-                    "Flexible list environments",
-                    "Color-coded hyperlinks"
-                ],
-                "improvements": [
-                    "Simplify formatting for better ATS parsing",
-                    "Ensure all content is text-based"
-                ],
-                "compatibility_score": 88
-            }
+        # Generic analysis for any template
+        basic_analysis = {
+            "ats_score": 85,
+            "overall_assessment": f"Professional {template_id.replace('_', ' ').title()} template with good ATS compatibility",
+            "strengths": [
+                "LaTeX formatting ensures clean output",
+                "Professional structure",
+                "Customizable layout"
+            ],
+            "improvements": [
+                "Ensure all content is text-based",
+                "Use standard section headers",
+                "Optimize for keyword scanning"
+            ],
+            "compatibility_score": 85
         }
-        
-        basic_analysis = template_analysis.get(template_id, {
-            "ats_score": 80,
-            "overall_assessment": "Template with basic ATS compatibility",
-            "strengths": ["Standard formatting"],
-            "improvements": ["Optimize for ATS scanning"],
-            "compatibility_score": 80
-        })
         
         return {
             "template_id": template_id,
@@ -410,7 +389,7 @@ async def refresh_all_ats_scores(current_user: dict = Depends(get_current_user))
                     "name": template_id.replace("_", " ").title(),
                     "old_score": 85,
                     "new_score": 85,
-                    "analysis_summary": "Standard ATS-friendly template"
+                    "analysis_summary": "Professional ATS-friendly template optimized for applicant tracking systems"
                 }
         
         return {
@@ -420,4 +399,62 @@ async def refresh_all_ats_scores(current_user: dict = Depends(get_current_user))
         }
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error refreshing ATS scores: {str(e)}") 
+        raise HTTPException(status_code=500, detail=f"Error refreshing ATS scores: {str(e)}")
+
+@router.get("/templates/{template_id}/instructions")
+async def get_template_instructions(template_id: str):
+    """Get instructions for a specific template."""
+    template_dir = Path(__file__).parent.parent / "templates" / template_id
+    instructions_file = template_dir / "instructions.txt"
+    
+    if not instructions_file.exists():
+        raise HTTPException(status_code=404, detail="Template instructions not found")
+    
+    with open(instructions_file, 'r', encoding='utf-8') as f:
+        instructions = f.read()
+    
+    return {"instructions": instructions}
+
+@router.get("/templates/{template_id}/class")
+async def get_template_class(template_id: str):
+    """Get the LaTeX class file for a specific template."""
+    template_dir = Path(__file__).parent.parent / "templates" / template_id
+    
+    # Determine the class file name based on template_id
+    if template_id == "altacv":
+        class_file = template_dir / "altacv.cls"
+    elif template_id == "professional_resume":
+        class_file = template_dir / "professional_resume.cls"
+    else:
+        raise HTTPException(status_code=404, detail="Unknown template")
+    
+    if not class_file.exists():
+        raise HTTPException(status_code=404, detail="Template class file not found")
+    
+    with open(class_file, 'r', encoding='utf-8') as f:
+        class_content = f.read()
+    
+    return {"class_content": class_content}
+
+@router.get("/templates/{template_id}/setup")
+async def get_template_setup(template_id: str):
+    """Get the setup information for a template."""
+    template_dir = Path(__file__).parent.parent / "templates" / template_id
+    
+    # Determine the class file name based on template_id
+    if template_id == "altacv":
+        class_filename = "altacv.cls"
+    elif template_id == "professional_resume":
+        class_filename = "professional_resume.cls"
+    else:
+        raise HTTPException(status_code=404, detail="Unknown template")
+    
+    class_file = template_dir / class_filename
+    
+    if not class_file.exists():
+        raise HTTPException(status_code=404, detail="Template class file not found")
+    
+    with open(class_file, 'r', encoding='utf-8') as f:
+        class_content = f.read()
+    
+    return {"class_content": class_content} 

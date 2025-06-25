@@ -11,6 +11,10 @@ interface Message {
     type: string;
     name: string;
   };
+  pdf?: {
+    data: string;
+    name: string;
+  };
 }
 
 interface AIChatProps {
@@ -33,7 +37,7 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ currentLatex, onLatexChange
     {
       id: '1',
       type: 'assistant',
-      content: 'Hello! I can help you modify your resume. Just describe what changes you\'d like to make, such as:\n\n• "Make my name bigger and bold"\n• "Add a skills section with Python, React, and Node.js"\n• "Change the font size of experience section"\n• "Make the margins smaller"',
+      content: 'Good to see you. How can I help you with your resume today?',
       timestamp: new Date()
     }
   ]);
@@ -43,6 +47,10 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ currentLatex, onLatexChange
   const [templateName, setTemplateName] = useState<string>('resume');
   const [templateLoading, setTemplateLoading] = useState(false);
   const [selectedImage, setSelectedImage] = useState<{data: string, type: string, name: string} | null>(null);
+  const [selectedPdf, setSelectedPdf] = useState<{data: string, name: string} | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [sessionInitialized, setSessionInitialized] = useState(false);
+  const [formData, setFormData] = useState<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -58,8 +66,31 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ currentLatex, onLatexChange
   useEffect(() => {
     if (resumeId) {
       loadResumeTemplate();
+      loadFormData();
     }
   }, [resumeId]);
+
+  useEffect(() => {
+    if (resumeId && templateName && formData && !sessionInitialized) {
+      initializeSession();
+    }
+  }, [resumeId, templateName, formData, sessionInitialized]);
+
+  // Cleanup session on unmount
+  useEffect(() => {
+    return () => {
+      if (sessionId) {
+        endSession();
+      }
+    };
+  }, [sessionId]);
+
+  // Initialize textarea height
+  useEffect(() => {
+    if (inputRef.current) {
+      inputRef.current.style.height = '20px';
+    }
+  }, []);
 
   // Add clipboard paste support for images
   useEffect(() => {
@@ -96,6 +127,32 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ currentLatex, onLatexChange
     return () => document.removeEventListener('paste', handlePaste);
   }, []);
 
+  const loadFormData = async () => {
+    if (!resumeId) return;
+
+    try {
+      const token = localStorage.getItem('access_token');
+      const response = await fetch(`http://localhost:8000/api/resumes/${resumeId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const resume = await response.json();
+        setFormData(resume.resume_data);
+        console.log('✅ FRONTEND: Loaded form data for session:', {
+          resumeId,
+          hasPersonalInfo: !!resume.resume_data?.personalInfo,
+          hasExperience: !!resume.resume_data?.experience?.length,
+          hasEducation: !!resume.resume_data?.education?.length
+        });
+      }
+    } catch (error) {
+      console.error('❌ Error loading form data:', error);
+    }
+  };
+
   const loadResumeTemplate = async () => {
     if (!resumeId) return;
 
@@ -111,7 +168,7 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ currentLatex, onLatexChange
 
       if (resumeResponse.ok) {
         const resume = await resumeResponse.json();
-        const resumeTemplateName = resume.template_name || 'resume';
+        const resumeTemplateName = resume.template_name || 'professional_resume';
         setTemplateName(resumeTemplateName);
 
         const templateResponse = await fetch(`http://localhost:8000/api/templates/${resumeTemplateName}`, {
@@ -127,13 +184,6 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ currentLatex, onLatexChange
             templateName: resumeTemplateName,
             contentLength: templateData.content?.length || 0
           });
-          
-          setMessages(prev => prev.map(msg => 
-            msg.id === '1' ? {
-              ...msg,
-              content: `Hello! I can help you modify your **${templateData.name || resumeTemplateName}** resume. I understand the specific commands and structure of this template.\n\nJust describe what changes you'd like to make, such as:\n\n• "Make my name bigger and bold"\n• "Add a skills section with Python, React, and Node.js"\n• "Change the font size of experience section"\n• "Make the margins smaller"\n• "Reorganize the sections"`
-            } : msg
-          ));
         } else {
           console.error('❌ Failed to load template content');
         }
@@ -147,14 +197,123 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ currentLatex, onLatexChange
     }
   };
 
+  const initializeSession = async () => {
+    if (!resumeId || !formData || sessionInitialized) return;
+
+    // Immediately set flag to prevent duplicate calls
+    setSessionInitialized(true);
+    setTemplateLoading(true);
+    try {
+      const token = localStorage.getItem('access_token');
+      
+      const sessionRequest = {
+        resume_id: parseInt(resumeId),
+        form_data: formData,
+        template_name: templateName,
+        job_description: null // Add job description later if needed
+      };
+
+      console.log('🚀 FRONTEND: Starting AI session:', {
+        resumeId,
+        templateName,
+        hasFormData: !!formData,
+        formDataKeys: Object.keys(formData || {}),
+        // Detailed breakdown of all sections
+        personalInfo: !!formData?.personalInfo,
+        summary: !!formData?.summary,
+        experience: formData?.experience?.length || 0,
+        education: formData?.education?.length || 0,
+        skills: formData?.skills?.length || 0,
+        projects: formData?.projects?.length || 0,
+        awards: formData?.awards?.length || 0,
+        certifications: formData?.certifications?.length || 0,
+        languages: formData?.languages?.length || 0,
+        publications: formData?.publications?.length || 0,
+        volunteering: formData?.volunteering?.length || 0,
+        speaking: formData?.speaking?.length || 0,
+        military: formData?.military?.length || 0,
+        references: !!formData?.references,
+        hobbies: formData?.hobbies?.length || 0,
+        additional_sections: formData?.additional_sections?.length || 0
+      });
+
+      // Log the complete form data structure being sent
+      console.log('📊 FRONTEND: Complete form data being sent to AI:', JSON.stringify(formData, null, 2));
+
+      const response = await fetch('http://localhost:8000/api/ai/session/start', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(sessionRequest),
+      });
+
+      const result = await response.json();
+      
+      if (result.success && result.session_id) {
+        setSessionId(result.session_id);
+        
+        console.log('✅ FRONTEND: Session initialized:', {
+          sessionId: result.session_id,
+          model: result.model_info?.model,
+          contextCaching: result.model_info?.context_caching
+        });
+
+        // Session initialized successfully - no need to update the welcome message
+      } else {
+        console.error('❌ Failed to initialize session:', result);
+        // Don't reset sessionInitialized to prevent infinite loop!
+        // Keep it as true to prevent retries
+        setMessages(prev => prev.map(msg => 
+          msg.id === '1' ? {
+            ...msg,
+            content: `⚠️ Failed to start AI session (${response.status}). Using basic mode instead. Some features may be limited.`
+          } : msg
+        ));
+      }
+    } catch (error) {
+      console.error('❌ Error initializing session:', error);
+      // Don't reset sessionInitialized to prevent infinite loop!
+      // Keep it as true to prevent retries
+      setMessages(prev => prev.map(msg => 
+        msg.id === '1' ? {
+          ...msg,
+          content: `⚠️ Network error initializing AI session. Using basic mode instead.`
+        } : msg
+      ));
+    } finally {
+      setTemplateLoading(false);
+    }
+  };
+
+  const endSession = async () => {
+    if (!sessionId) return;
+
+    try {
+      const token = localStorage.getItem('access_token');
+      
+      await fetch(`http://localhost:8000/api/ai/session/${sessionId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      console.log('🔚 FRONTEND: Session ended:', sessionId);
+    } catch (error) {
+      console.error('❌ Error ending session:', error);
+    }
+  };
+
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // Validate file type
-    const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'application/pdf'];
+    // Validate file type (only images for image upload)
+    const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
     if (!validTypes.includes(file.type)) {
-      alert('Please upload a PNG, JPG, WEBP, or PDF file.');
+      alert('Please upload a PNG, JPG, or WEBP file.');
       return;
     }
 
@@ -184,6 +343,54 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ currentLatex, onLatexChange
     }
   };
 
+  const compileAndUploadCurrentPdf = async () => {
+    if (!currentLatex.trim()) {
+      alert('No LaTeX content to compile. Please write some LaTeX code first.');
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('access_token');
+      console.log('🔄 FRONTEND: Compiling LaTeX for AI analysis...', {
+        latexLength: currentLatex.length
+      });
+
+      const response = await fetch('http://localhost:8000/api/latex/compile-for-analysis', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          latex_content: currentLatex,
+          compiler: 'pdflatex'
+        }),
+      });
+
+      const result = await response.json();
+      
+      if (result.success && result.pdf_base64) {
+        console.log('✅ FRONTEND: LaTeX compiled successfully for analysis', {
+          pdfSize: result.pdf_base64.length,
+          filename: result.filename
+        });
+
+        setSelectedPdf({
+          data: result.pdf_base64,
+          name: result.filename || 'current_resume.pdf'
+        });
+        
+        console.log('📄 FRONTEND: PDF ready for AI analysis');
+      } else {
+        console.error('❌ FRONTEND: LaTeX compilation failed:', result.error);
+        alert(`PDF compilation failed: ${result.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('❌ FRONTEND: Error compiling LaTeX:', error);
+      alert('Error compiling LaTeX. Please try again.');
+    }
+  };
+
   const removeSelectedImage = () => {
     setSelectedImage(null);
     if (fileInputRef.current) {
@@ -191,68 +398,86 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ currentLatex, onLatexChange
     }
   };
 
+  const removeSelectedPdf = () => {
+    setSelectedPdf(null);
+    // No file input to clear since we compile directly
+  };
+
   const handleSendMessage = async () => {
     if (!inputValue.trim() || isProcessing) return;
+
+    // Check if session is initialized
+    if (!sessionId || !sessionInitialized) {
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        type: 'assistant',
+        content: '⚠️ AI session not ready yet. Please wait for initialization to complete.',
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, errorMessage]);
+      return;
+    }
 
     const userMessage: Message = {
       id: Date.now().toString(),
       type: 'user',
       content: inputValue.trim(),
       timestamp: new Date(),
-      image: selectedImage || undefined
+      image: selectedImage || undefined,
+      pdf: selectedPdf || undefined
     };
 
     setMessages(prev => [...prev, userMessage]);
     setInputValue('');
     setIsProcessing(true);
 
-    // Store image data for API call, then clear it
+    // Store attachment data for API call, then clear it
     const imageForAPI = selectedImage;
+    const pdfForAPI = selectedPdf;
     setSelectedImage(null);
+    setSelectedPdf(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
+    // No PDF file input to clear since we compile directly
 
     try {
       const token = localStorage.getItem('access_token');
       
-      const conversationHistory = messages.map(msg => ({
-        role: msg.type === 'user' ? 'user' : 'assistant',
-        content: msg.content
-      }));
-      
-      conversationHistory.push({
-        role: 'user',
-        content: userMessage.content
-      });
-
-      console.log('🔄 FRONTEND: Sending template-aware chat request:', {
+      console.log('💬 FRONTEND: Sending session-based chat message:', {
+        sessionId,
         message: userMessage.content,
-        historyLength: conversationHistory.length,
-        templateName,
-        hasTemplateContent: !!templateContent
+        hasImage: !!imageForAPI,
+        hasPdf: !!pdfForAPI,
+        currentLatexLength: currentLatex.length
       });
 
       const requestBody: any = {
+        session_id: sessionId,
         message: userMessage.content,
-        current_latex: currentLatex,
-        conversation_history: conversationHistory,
-        template_name: templateName,
-        template_content: templateContent
+        current_latex: currentLatex
       };
 
       // Add image data if present
       if (imageForAPI) {
         requestBody.image_data = imageForAPI.data;
-        requestBody.image_type = imageForAPI.type;
-        console.log('📸 FRONTEND: Sending image with chat request:', {
+        console.log('📸 FRONTEND: Sending image with session message:', {
           fileName: imageForAPI.name,
           fileType: imageForAPI.type,
           dataLength: imageForAPI.data.length
         });
       }
 
-      const response = await fetch('http://localhost:8000/api/ai/chat', {
+      // Add PDF data if present
+      if (pdfForAPI) {
+        requestBody.pdf_data = pdfForAPI.data;
+        console.log('📄 FRONTEND: Sending PDF with session message:', {
+          fileName: pdfForAPI.name,
+          dataLength: pdfForAPI.data.length
+        });
+      }
+
+      const response = await fetch('http://localhost:8000/api/ai/session/message', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -262,87 +487,39 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ currentLatex, onLatexChange
       });
 
       const result = await response.json();
-      console.log('📨 FRONTEND: Received response:', {
+      console.log('📨 FRONTEND: Received session response:', {
         success: result.success,
         hasResponse: !!result.response,
-        responseType: typeof result.response,
-        responseStart: typeof result.response === 'string' ? result.response.substring(0, 100) + '...' : result.response,
         hasModifiedLatex: !!result.modified_latex,
-        modifiedLatexLength: result.modified_latex ? result.modified_latex.length : 0
+        sessionInfo: result.session_info
       });
-
-      if (result.success) {
-        let responseText = '';
-        let modifiedLatex = '';
-
-        if (result.response && result.modified_latex) {
-          responseText = result.response;
-          modifiedLatex = result.modified_latex;
-          console.log('✅ FRONTEND: Using direct response structure');
-        } 
-        else if (typeof result.response === 'string') {
-          responseText = result.response;
           
-          const latexMatch = result.response.match(/"modified_latex":\s*"((?:\\.|[^"\\])*)"/) ||
-                            result.response.match(/'modified_latex':\s*'((?:\\.|[^'\\])*)'/) ||
-                            result.response.match(/modified_latex['":].*?['"]((?:\\.|[^"'\\])*)['"]/);
-          
-          if (latexMatch && latexMatch[1]) {
-            modifiedLatex = latexMatch[1]
-              .replace(/\\n/g, '\n')
-              .replace(/\\"/g, '"')
-              .replace(/\\'/g, "'")
-              .replace(/\\\\/g, '\\');
-            console.log('✅ FRONTEND: Extracted LaTeX using regex, length:', modifiedLatex.length);
-          }
-          
-          const responseMatch = result.response.match(/"response":\s*"([^"]*)"/) ||
-                               result.response.match(/'response':\s*'([^']*)'/) ||
-                               result.response.match(/response['":].*?['"](.*?)['"]/);
-          
-          if (responseMatch && responseMatch[1]) {
-            responseText = responseMatch[1];
-            console.log('✅ FRONTEND: Extracted clean response text');
-          }
-        } 
-        else if (result.data) {
-          responseText = result.data.response || result.data.message || '';
-          modifiedLatex = result.data.modified_latex || '';
-        } 
-        else {
-          responseText = result.message || 'I received your request but couldn\'t process it properly.';
-        }
-
-        console.log('📋 FRONTEND: Extracted data:', {
-          responseText: responseText.substring(0, 100) + '...',
-          hasModifiedLatex: !!modifiedLatex,
-          modifiedLatexLength: modifiedLatex.length
-        });
-
+      if (result.success && result.response) {
         const assistantMessage: Message = {
           id: (Date.now() + 1).toString(),
           type: 'assistant',
-          content: responseText,
+          content: result.response,
           timestamp: new Date()
         };
 
         setMessages(prev => [...prev, assistantMessage]);
 
-        if (modifiedLatex && modifiedLatex.trim() && modifiedLatex !== currentLatex) {
+        // Check for modified LaTeX
+        if (result.modified_latex && result.modified_latex.trim() && result.modified_latex !== currentLatex) {
           console.log('✅ FRONTEND: Updating LaTeX editor with modified content');
-          console.log('📄 FRONTEND: LaTeX comparison - Original length:', currentLatex.length, 'Modified length:', modifiedLatex.length);
-          onLatexChange(modifiedLatex);
-        } else if (modifiedLatex && modifiedLatex === currentLatex) {
+          console.log('📄 FRONTEND: LaTeX comparison - Original length:', currentLatex.length, 'Modified length:', result.modified_latex.length);
+          onLatexChange(result.modified_latex);
+        } else if (result.modified_latex && result.modified_latex === currentLatex) {
           console.log('ℹ️ FRONTEND: Modified LaTeX is same as current LaTeX');
         } else {
           console.log('ℹ️ FRONTEND: No modified LaTeX in response');
         }
       } else {
-        console.error('❌ FRONTEND: Chat request failed:', result);
+        console.error('❌ FRONTEND: Session chat request failed:', result);
         const errorMessage: Message = {
           id: (Date.now() + 1).toString(),
           type: 'assistant',
-          content: 'Sorry, I encountered an error processing your request. Please try again.',
+          content: result.error || 'Sorry, I encountered an error processing your request. Please try again.',
           timestamp: new Date()
         };
         setMessages(prev => [...prev, errorMessage]);
@@ -372,6 +549,16 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ currentLatex, onLatexChange
   useImperativeHandle(ref, () => ({
     populateInput: (message: string) => {
       setInputValue(message);
+      // Auto-resize after setting value
+      setTimeout(() => {
+        if (inputRef.current) {
+          inputRef.current.style.height = 'auto';
+          const scrollHeight = inputRef.current.scrollHeight;
+          const minHeight = 20; // Minimal height when empty
+          const maxHeight = 120; // ~5 rows maximum
+          inputRef.current.style.height = `${Math.min(Math.max(scrollHeight, minHeight), maxHeight)}px`;
+        }
+      }, 0);
     },
     focusInput: () => {
       inputRef.current?.focus();
@@ -383,26 +570,41 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ currentLatex, onLatexChange
 
   return (
     <div className="flex flex-col h-full" style={{ backgroundColor: '#0A0A0A' }}>
-      <div className="flex-shrink-0 p-4" style={{ backgroundColor: '#0A0A0A' }}>
-        <div className="flex items-center space-x-2">
-          <div className={`w-3 h-3 rounded-full animate-pulse ${templateLoading ? 'bg-yellow-500' : 'bg-green-500'}`}></div>
-          <h3 className="text-lg font-semibold text-white">AI Resume Assistant</h3>
-          {templateName && !templateLoading && (
-            <div className="text-xs text-gray-500 bg-gray-800/50 px-2 py-1 rounded-full">
+      <style dangerouslySetInnerHTML={{
+        __html: `
+          .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+          }
+          .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(55, 65, 81, 0.1);
+            border-radius: 3px;
+          }
+          .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(107, 114, 128, 0.3);
+            border-radius: 3px;
+          }
+          .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: rgba(107, 114, 128, 0.5);
+          }
+        `
+      }} />
+      <div className="flex-shrink-0 px-4 py-2" style={{ backgroundColor: '#0A0A0A' }}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <div className={`w-2 h-2 rounded-full ${
+              templateLoading ? 'bg-yellow-500' : 
+              sessionInitialized ? 'bg-green-500' : 
+              'bg-red-500'
+            }`}></div>
+            <h3 className="text-sm font-medium text-white">ResumeAI</h3>
+          </div>
+          {templateName && (
+            <span className="text-xs text-gray-400">
               {templateName}
-            </div>
+            </span>
           )}
         </div>
-        <p className="text-sm text-gray-400 mt-1">
-          {templateLoading 
-            ? 'Loading template context...' 
-            : templateContent 
-              ? `Template-aware AI ready • ${templateName} template loaded`
-              : 'Describe what you\'d like to change about your resume'
-          }
-        </p>
-        
-        <div className="border-b border-gray-600/20 mx-4 mt-4"></div>
+        <div className="border-b border-gray-600/20 mt-2"></div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -432,6 +634,21 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ currentLatex, onLatexChange
                       className="rounded-lg border border-gray-600/30 max-w-full h-auto"
                     />
                     <p className="text-xs text-gray-500 mt-1">{message.image.name}</p>
+                  </div>
+                )}
+
+                {/* Show PDF if present */}
+                {message.pdf && (
+                  <div className="mb-3 p-3 bg-red-900/20 border border-red-600/30 rounded-lg max-w-xs">
+                    <div className="flex items-center space-x-2">
+                      <svg className="w-8 h-8 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                      </svg>
+                      <div>
+                        <p className="text-sm text-white font-medium">{message.pdf.name}</p>
+                        <p className="text-xs text-gray-400">PDF Document for Analysis</p>
+                      </div>
+                    </div>
                   </div>
                 )}
                 
@@ -496,63 +713,119 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ currentLatex, onLatexChange
             </div>
           </div>
         )}
+
+        {/* PDF Upload Section */}
+        {selectedPdf && (
+          <div className="mb-4 p-3 bg-red-900/20 rounded-lg border border-red-600/30">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="w-12 h-12 flex items-center justify-center bg-red-800/30 rounded border border-red-600/30">
+                  <svg className="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-sm text-white font-medium">{selectedPdf.name}</p>
+                  <p className="text-xs text-gray-400">PDF ready for visual analysis</p>
+                </div>
+              </div>
+              <button
+                onClick={removeSelectedPdf}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        )}
         
-        <div className="relative">
-          <textarea
-            ref={inputRef}
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder={selectedImage ? "Describe how to use this image..." : "Describe what you'd like to change about your resume..."}
-            className="w-full resize-none border border-gray-600/30 rounded-3xl px-4 py-3 pr-20 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500/50 focus:border-gray-500/50 transition-all"
-            style={{ backgroundColor: '#151515' }}
-            rows={2}
-            disabled={isProcessing || templateLoading}
-          />
+        {/* Unified input container */}
+        <div className="border border-gray-600/30 rounded-3xl" style={{ backgroundColor: '#151515' }}>
+          {/* Top section - Expanding textarea */}
+          <div className="px-4 pt-3">
+            <textarea
+              ref={inputRef}
+              value={inputValue}
+              onChange={(e) => {
+                setInputValue(e.target.value);
+                // Auto-resize based on content
+                if (inputRef.current) {
+                  inputRef.current.style.height = 'auto';
+                  const scrollHeight = inputRef.current.scrollHeight;
+                  const minHeight = 20; // Minimal height when empty
+                  const maxHeight = 120; // ~5 rows maximum
+                  inputRef.current.style.height = `${Math.min(Math.max(scrollHeight, minHeight), maxHeight)}px`;
+                }
+              }}
+              onKeyPress={handleKeyPress}
+              placeholder={selectedImage || selectedPdf ? "Describe how to use this attachment..." : "Describe what you'd like to change about your resume..."}
+              className="w-full resize-none bg-transparent text-sm text-white placeholder-gray-500 focus:outline-none custom-scrollbar"
+              style={{ 
+                minHeight: '20px',
+                maxHeight: '120px'
+              }}
+              disabled={isProcessing || templateLoading}
+            />
+          </div>
           
-          {/* Image Upload Button */}
+          {/* Bottom section - Fixed footer with buttons */}
+          <div className="flex items-center justify-between px-2 pb-2">
+            {/* Left side buttons */}
+            <div className="flex items-center space-x-1">
+              {/* Compile Current PDF Button */}
+              <button
+                onClick={compileAndUploadCurrentPdf}
+                disabled={isProcessing || templateLoading || !currentLatex.trim()}
+                className="w-8 h-8 text-gray-400 hover:text-white hover:bg-gray-700/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center rounded-full"
+                title="Compile current LaTeX as PDF for AI analysis"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </button>
+              
+              {/* Image Upload Button */}
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isProcessing || templateLoading}
+                className="w-8 h-8 text-gray-400 hover:text-white hover:bg-gray-700/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center rounded-full"
+                title="Upload image"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Right side - Send button */}
+            <button
+              onClick={handleSendMessage}
+              disabled={!inputValue.trim() || isProcessing || templateLoading}
+              className="w-8 h-8 bg-white text-black rounded-full hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center"
+            >
+              {isProcessing ? (
+                <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
+              ) : (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                </svg>
+              )}
+            </button>
+          </div>
+
+          {/* Hidden file input */}
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/png,image/jpeg,image/jpg,image/webp,application/pdf"
+            accept="image/png,image/jpeg,image/jpg,image/webp"
             onChange={handleImageUpload}
             className="hidden"
           />
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isProcessing || templateLoading}
-            className="absolute right-12 top-1/2 transform -translate-y-1/2 w-8 h-8 text-gray-400 hover:text-white hover:bg-gray-700/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center rounded-full"
-            title="Upload image"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-          </button>
-          <button
-            onClick={handleSendMessage}
-            disabled={!inputValue.trim() || isProcessing || templateLoading}
-            className="absolute right-3 top-1/2 transform -translate-y-1/2 w-8 h-8 bg-white text-black rounded-full hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center"
-          >
-            {isProcessing ? (
-              <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
-            ) : (
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-              </svg>
-            )}
-          </button>
         </div>
-        <div className="flex items-center justify-between mt-3 text-xs text-gray-500">
-          <div className="flex items-center space-x-4">
-            <span>Press Enter to send, Shift+Enter for new line</span>
-            <span className="text-gray-600">📸 Upload or paste (Ctrl+V) images</span>
-          </div>
-          <span className="flex items-center space-x-1">
-            <div className={`w-2 h-2 rounded-full ${templateLoading ? 'bg-yellow-500' : templateContent ? 'bg-green-500' : 'bg-gray-500'}`}></div>
-            <span>
-              {templateLoading ? 'Loading...' : templateContent ? 'Template Ready' : 'AI Ready'}
-            </span>
-          </span>
+        <div className="flex justify-end">
+          <div className={`w-1 h-1 rounded-full ${templateLoading ? 'bg-yellow-500' : templateContent ? 'bg-green-500' : 'bg-gray-500'}`}></div>
         </div>
       </div>
     </div>

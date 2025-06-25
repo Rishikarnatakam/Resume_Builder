@@ -1,0 +1,96 @@
+TEMPLATE: Professional Resume (single-column)
+
+LAYOUT: Single column with margin-based sections
+STYLE: Clean, professional, structured, traditional
+ATS: Maximum compatibility - scannable formatting
+SPACING: Natural flow with proper professional spacing
+
+PRINCIPLES:
+• Content determines length - no artificial constraints
+• Clean, readable formatting for ATS systems
+• Structured organization with clear section hierarchy
+
+SPACING AND MARGIN REQUIREMENTS:
+• Use intelligent spacing for readability and visual hierarchy
+• Add small spacing after header for visual separation (\smallskip or \vspace{0.1in})
+• Use minimal spacing between major sections when it improves layout
+• Avoid excessive spacing but ensure good visual flow
+• Text must NEVER exceed page margins or overlap
+• Use template's section commands for proper spacing automatically
+• Balance clean layout with professional readability
+• NO page breaks after header - content must start on same page with appropriate spacing
+
+STRUCTURE REQUIREMENTS:
+• Start with: \documentclass{professional_resume}
+• Include: \begin{document}
+• Header with name, contact information
+• Use \rSection{} for all sections 
+• Use \rSubsection{} for subsections within main sections
+• Can leave parts of \rSection empty according to the respective section data
+• Maintain consistent formatting throughout
+• End with: \end{document}
+
+AI GENERATION RULES:
+🚨 CRITICAL SPACING AND LAYOUT RULES:
+• Use intelligent spacing for professional appearance
+• NO \newpage, \clearpage, or page breaks after header
+• Add small spacing after header and between sections for readability
+• Text must NEVER go outside margins or overlap
+• Use spacing commands judiciously - balance clean layout with visual hierarchy
+• Header and content MUST be on same page with appropriate spacing
+• Keep ALL text within line width to avoid overfull hbox warnings
+• Break long URLs or text that exceeds margins
+
+📄 SINGLE-COLUMN LAYOUT ENFORCEMENT:
+• Use traditional single-column layout with \rSection{} commands
+• Organize sections vertically: Header, Summary/Objective, Experience, Education, Skills, Projects
+• Use \rSubsection{} for individual experiences within sections
+• Maintain consistent indentation and spacing
+• Use bullet points for achievement descriptions
+• Include dates, locations, and titles in proper format
+
+🎯 PROFESSIONAL FORMATTING RULES:
+• Use consistent date formats (MM/YYYY or Season YYYY)
+• Include company/institution names prominently
+• Use action verbs for bullet points describing achievements
+• Quantify achievements with numbers when possible
+• Group related experiences logically
+• Include relevant keywords for ATS optimization
+• Ensure proper alignment and professional appearance
+
+💻 SKILLS FORMATTING RULES:
+• AUTOMATICALLY GROUP skills from user's flat list into logical categories
+• Format skills as grouped text with category labels
+• Example: "Programming Languages : Python, JavaScript, Java
+            Frameworks : React, Flask, Django
+            Tools : Git, Docker, AWS
+            Databases : MySQL, PostgreSQL" (groups as bullets while skills in groups being seperated by commas)
+• Intelligently categorize skills into logical groups (Programming Languages, Frameworks, Tools, Databases, Cloud Technologies, etc.)
+• Don't just list skills randomly - group similar technologies together
+• Use clear, professional category names that recruiters understand
+
+🏗️ SECTION CREATION GUIDELINES:
+• ANALYZE user data to identify needed sections (Experience, Education, Skills, Projects, etc.)
+• LEARN from template's existing section patterns using \rSection{}, \rSubsection{}
+• CREATE new sections using the same formatting style as existing sections
+• DON'T force data into wrong sections - make appropriate new ones instead
+• ENSURE all user data gets showcased in logical, recruiter-expected sections
+• MAINTAIN template's visual consistency while expanding functionality
+
+
+OUTPUT REQUIREMENTS:
+• Start document with: \documentclass{professional_resume}
+• Clean LaTeX code only - no comments
+• Professional spacing and formatting
+• ATS-friendly link handling with \href{url}{text}
+• Ensure compilation with pdflatex
+• Header and content must be on same page - no page breaks
+
+=== CRITICAL SKILLS FORMATTING RULE ===
+🚨 NEVER list skills as individual items - ALWAYS group them intelligently into categories
+✅ CORRECT:"Programming Languages : Python, JavaScript, Java
+            Frameworks : React, Flask, Django
+            Tools : Git, Docker, AWS
+            Databases : MySQL, PostgreSQL"(example only)
+❌ WRONG: Individual skill items or unorganized lists
+💡 AI MUST analyze the flat skills list and automatically create logical groupings 

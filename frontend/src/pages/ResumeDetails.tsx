@@ -170,8 +170,7 @@ const ResumeDetails: React.FC = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [extractedData, setExtractedData] = useState<boolean>(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [originalPdfData, setOriginalPdfData] = useState<string | null>(null);
+
   
   // Adaptive form state
   const [detectedSections, setDetectedSections] = useState<DetectedSections>({
@@ -323,7 +322,6 @@ const ResumeDetails: React.FC = () => {
         
         setResumeData(resumeData);
         setExtractedData(true);
-        setOriginalPdfData(data.original_pdf_data);
         
         console.log('✅ FRONTEND: Resume data state updated with:', {
           personalInfo: resumeData.personalInfo,
@@ -546,59 +544,18 @@ const ResumeDetails: React.FC = () => {
     }));
   };
 
-  const handleSubmit = async () => {
+  const handleContinueToTemplates = () => {
     if (!resumeData.personalInfo.name) {
       alert('Please fill in your name.');
       return;
     }
 
-    console.log('🚀 FRONTEND: Submitting resume data:', resumeData);
-    console.log('📊 FRONTEND: Data breakdown:');
-    console.log(`  - Awards: ${resumeData.awards.length} items`, resumeData.awards);
-    console.log(`  - Certifications: ${resumeData.certifications.length} items`, resumeData.certifications);
-    console.log(`  - Projects: ${resumeData.projects.length} items`, resumeData.projects);
-    console.log(`  - Experience: ${resumeData.experience.length} items`, resumeData.experience);
-    console.log(`  - Education: ${resumeData.education.length} items`, resumeData.education);
-
-    setIsSubmitting(true);
-    try {
-      const selectedTemplate = localStorage.getItem('selectedTemplate') || 'professional_resume';
-      
-      const payload = {
-        title: `${resumeData.personalInfo.name}'s Resume`,
-        template_name: selectedTemplate,
-        resume_data: resumeData,
-        job_description: jobDescription || undefined,
-        original_pdf_data: originalPdfData
-      };
-
-      console.log('📤 FRONTEND: Sending payload:', payload);
-
-      const token = localStorage.getItem('access_token');
-      const response = await fetch('http://localhost:8000/api/resumes/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(payload)
-      });
-
-      if (response.ok) {
-        const newResume = await response.json();
-        localStorage.removeItem('selectedTemplate');
-        navigate(`/editor/${newResume.id}`);
-      } else {
-        const errorData = await response.json();
-        console.error('Failed to create resume:', errorData);
-        alert('Failed to create resume. Please try again.');
-      }
-    } catch (error) {
-      console.error('Error creating resume:', error);
-      alert('Error creating resume. Please try again.');
-    } finally {
-      setIsSubmitting(false);
-    }
+    // Store resume data in localStorage to pass to template selection
+    localStorage.setItem('resumeData', JSON.stringify(resumeData));
+    localStorage.setItem('jobDescription', jobDescription || '');
+    
+    // Navigate to template selection
+    navigate('/create/templates');
   };
 
   return (
@@ -608,9 +565,9 @@ const ResumeDetails: React.FC = () => {
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <Link to="/create" className="flex items-center space-x-2 text-white hover:text-gray-300 transition-colors">
+              <Link to="/" className="flex items-center space-x-2 text-white hover:text-gray-300 transition-colors">
                 <ArrowLeftIcon className="w-5 h-5" />
-                <span>Back to Templates</span>
+                <span>Back to Home</span>
               </Link>
             </div>
             <div className="flex items-center space-x-4">
@@ -632,9 +589,9 @@ const ResumeDetails: React.FC = () => {
       <div className="max-w-4xl mx-auto px-6 py-8">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold mb-4">Resume Details</h1>
+          <h1 className="text-4xl font-bold mb-4">Tell Us About Yourself</h1>
           <p className="text-xl text-gray-400 max-w-2xl mx-auto">
-            Fill in your information to create a professional resume. You can upload an existing resume to auto-fill the form.
+            Fill in your information first, then choose the perfect template for your resume. You can upload an existing resume to auto-fill the form.
           </p>
           {isUploading && (
             <div className="flex items-center justify-center space-x-3 mt-4 p-3 rounded-3xl" style={{ backgroundColor: '#0A0A0A' }}>
@@ -1255,30 +1212,21 @@ const ResumeDetails: React.FC = () => {
         {/* Action Buttons */}
         <div className="flex items-center justify-between mt-12 pt-6 border-t border-gray-600/20">
           <Link
-            to="/create"
+            to="/dashboard"
             className="flex items-center space-x-2 text-gray-400 hover:text-white transition-colors"
           >
             <ArrowLeftIcon className="w-4 h-4" />
-            <span>Back to Templates</span>
+            <span>Back to Dashboard</span>
           </Link>
 
           <button
-            onClick={handleSubmit}
-            disabled={!resumeData.personalInfo.name || isSubmitting}
+            onClick={handleContinueToTemplates}
+            disabled={!resumeData.personalInfo.name}
             className="px-8 py-3 rounded-3xl font-medium transition-all flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed text-white hover:opacity-90"
             style={{ backgroundColor: '#2A2A2A' }}
           >
-            {isSubmitting ? (
-              <>
-                <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full"></div>
-                <span>Creating Resume...</span>
-              </>
-            ) : (
-              <>
-                <span>Generate Resume</span>
+            <span>Continue to Templates</span>
                 <ArrowRightIcon className="w-4 h-4" />
-              </>
-            )}
           </button>
         </div>
       </div>

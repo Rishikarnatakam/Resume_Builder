@@ -16,7 +16,6 @@ const LaTeXEditor: React.FC = () => {
   const [pdfUrl, setPdfUrl] = useState<string>('');
   const [isCompiling, setIsCompiling] = useState(false);
   const [compileLog, setCompileLog] = useState<string>('');
-  const [showLog, setShowLog] = useState(false);
   const [jobDescription, setJobDescription] = useState<string>('');
   const [showJobForm, setShowJobForm] = useState(false);
   const [resumeTitle, setResumeTitle] = useState<string>('Untitled Resume');
@@ -28,6 +27,7 @@ const LaTeXEditor: React.FC = () => {
   
   // Auto-save states
   const [isSaving, setIsSaving] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
@@ -199,7 +199,8 @@ Programming Languages, Frameworks, Tools, etc.
         },
         body: JSON.stringify({
           latex_content: contentToCompile,
-          compiler: 'pdflatex'
+          compiler: 'pdflatex',
+          resume_title: resumeTitle
         }),
       });
 
@@ -214,7 +215,16 @@ Programming Languages, Frameworks, Tools, etc.
         console.log('📄 Full PDF URL:', fullPdfUrl);
         
         setPdfUrl(fullPdfUrl);
-        setCompileLog(result.log_output);
+        setCompileLog(result.log_output || '');
+        
+        // Debug logging
+        console.log('📝 Compilation log details:', {
+          hasLogOutput: !!result.log_output,
+          logLength: result.log_output?.length || 0,
+          logPreview: result.log_output?.substring(0, 200) || 'No log'
+        });
+        
+        // Log will always be visible in dedicated section
         
         // Test if PDF is accessible
         try {
@@ -227,12 +237,10 @@ Programming Languages, Frameworks, Tools, etc.
       } else {
         console.error('❌ Compilation failed:', result);
         setCompileLog(result.log_output || result.errors || 'Compilation failed');
-        setShowLog(true);
       }
     } catch (error) {
       console.error('❌ Compile error:', error);
       setCompileLog(`Error: ${error}`);
-      setShowLog(true);
     } finally {
       setIsCompiling(false);
     }
@@ -247,15 +255,24 @@ Programming Languages, Frameworks, Tools, etc.
       return;
     }
 
-    // Natural, trusting AI prompt
-    const tailoringPrompt = `I'm applying for this position:
+    // Expert ATS-focused LaTeX generation prompt
+    const tailoringPrompt = `You are an expert LaTeX resume generator specializing in ATS-friendly, machine-readable resumes.
+
+TARGET POSITION:
 ${jobDescription}
 
-Can you help me improve my resume to be a better fit? Here's my current resume in LaTeX format.
+TASK: Generate a complete, ATS-optimized LaTeX resume using my existing template and data.
 
-Please keep the exact LaTeX template structure and commands - just improve the actual content to match this job.
+REQUIREMENTS:
+✅ ATS-FRIENDLY: Use clear section headers, standard fonts, proper spacing
+✅ MACHINE-READABLE: Avoid complex formatting, tables, or graphics that confuse ATS
+✅ KEYWORD-OPTIMIZED: Include relevant keywords from the job description naturally
+✅ QUANTIFIED IMPACT: Use specific numbers, percentages, and metrics
+✅ TEMPLATE-COMPLIANT: Keep exact same LaTeX structure and commands
 
-What would you change to give me the best shot at getting this job?`;
+OUTPUT: Return ONLY the complete LaTeX code from \\documentclass{} to \\end{document}. No explanations or commentary.
+
+Tailor the content to match this specific role while maintaining professional, scannable formatting.`;
 
     // Populate AI chat input, focus it, and auto-send
     aiChatRef.current?.populateInput(tailoringPrompt);
@@ -270,60 +287,66 @@ What would you change to give me the best shot at getting this job?`;
         setShowJobForm(false);
   };
 
-  const saveResume = async () => {
-    setIsSaving(true);
-    try {
-      const token = localStorage.getItem('access_token');
-      
-      if (resumeId) {
-        // Update existing resume
-        const response = await fetch(`${API_BASE}/resumes/${resumeId}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            title: resumeTitle,
-            latex_content: latexContent,
-            job_description: jobDescription
-          }),
-        });
+  const downloadPDF = async () => {
+    if (!pdfUrl) {
+      alert('Please compile the PDF first before downloading');
+      return;
+    }
 
-        if (response.ok) {
-          const savedResume = await response.json();
-          setCurrentResume(savedResume);
-          setLastSaved(new Date());
-          alert('Resume saved successfully!');
-        } else {
-          console.error('Failed to save resume:', response.status);
-          alert('Failed to save resume');
+    setIsDownloading(true);
+    try {
+      // Method 1: Try to find and click the PDF viewer's download button
+      const iframe = document.querySelector('iframe[title="PDF Preview"]') as HTMLIFrameElement;
+      if (iframe?.contentDocument) {
+        // Look for download button in PDF viewer
+        const downloadButton = iframe.contentDocument.querySelector('[title="Download"], [aria-label="Download"], button[download]');
+        if (downloadButton) {
+          (downloadButton as HTMLElement).click();
+          console.log('📥 Used PDF viewer download button');
+          return;
         }
-      } else {
-        alert('Cannot save new resume without creating it first');
       }
+      
+      // Method 2: Force download using fetch + blob (more reliable)
+      const response = await fetch(pdfUrl);
+      const blob = await response.blob();
+      
+      // Create filename from resume title
+      const filename = resumeTitle ? 
+        `${resumeTitle.replace(/[^\w\s-]/g, '').replace(/\s+/g, '_')}.pdf` : 
+        'resume.pdf';
+      
+      // Create download link
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = filename;
+      link.style.display = 'none';
+      
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Clean up
+      window.URL.revokeObjectURL(downloadUrl);
+      
+      console.log('📥 Download triggered using blob method:', filename);
     } catch (error) {
-      console.error('Failed to save resume:', error);
-      alert('Failed to save resume');
+      console.error('Failed to download PDF:', error);
+      alert('Failed to download PDF');
     } finally {
-      setIsSaving(false);
+      setIsDownloading(false);
     }
   };
 
   // Handle AI chat proposing new LaTeX code - now with inline editing
   const handleAILatexChange = (newLatex: string) => {
-    console.log('🔄 EDITOR: handleAILatexChange called with LaTeX length:', newLatex.length);
-    console.log('📄 EDITOR: Current LaTeX length:', latexContent.length);
-    console.log('🔍 EDITOR: Are they different?', newLatex !== latexContent);
-    
-        if (newLatex !== latexContent) {
+    if (newLatex !== latexContent) {
       setShowInlineChanges(true);
       // Store original content for reject functionality
       setProposedLatex(latexContent); // Store ORIGINAL, not new
       createInlineDecorations(latexContent, newLatex);
     }
-    
-    console.log('✅ EDITOR: Set up inline changes display');
   };
 
   // Create clean merged content with visual-only diff
@@ -348,10 +371,17 @@ What would you change to give me the best shot at getting this job?`;
         if (newLine.trim()) {
           mergedLines.push(newLine);
         }
+        // PRESERVE EMPTY LINES - check if newLine is empty but should be kept
+        if (newLine === '' && oldLine !== '') {
+          mergedLines.push(''); // Add empty line
+        }
       } else {
         // Unchanged line
         if (oldLine.trim() || newLine.trim()) {
           mergedLines.push(oldLine || newLine);
+        } else if (oldLine === '' || newLine === '') {
+          // Preserve empty lines even if they're "unchanged"
+          mergedLines.push('');
         }
       }
     }
@@ -368,7 +398,7 @@ What would you change to give me the best shot at getting this job?`;
       try {
         const cleanContent = mergedContent
           .split('\n')
-          .filter(line => line.trim() !== '' && !line.trim().startsWith('%%'))  // Remove red lines and empty lines
+          .filter(line => !line.trim().startsWith('%%'))  // Remove red lines but KEEP empty lines
           .join('\n');
         
         console.log('🔄 Auto-compiling cleaned content:', cleanContent.length, 'characters');
@@ -544,114 +574,158 @@ What would you change to give me the best shot at getting this job?`;
   // Create the LaTeX editor content
   const latexEditorContent = (
     <div className="h-full flex flex-col">
-      <div className="border-b border-gray-600/20 px-4 py-3" style={{ backgroundColor: '#0A0A0A' }}>
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-medium text-gray-300">LaTeX Code</h3>
-          <div className="flex items-center space-x-2">
-            {compileLog && (
-              <button
-                onClick={() => setShowLog(!showLog)}
-                className="text-xs text-gray-400 hover:text-white transition-colors"
-              >
-                {showLog ? 'Hide Log' : 'Show Log'}
-              </button>
+      {/* LaTeX Code Section - 75% height */}
+      <div className="flex-3" style={{ height: '75%' }}>
+        <div className="h-full flex flex-col">
+          <div className="border-b border-gray-600/20 px-4 py-3" style={{ backgroundColor: '#0A0A0A' }}>
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-medium text-gray-300">LaTeX Code</h3>
+            </div>
+          </div>
+          
+          <div className="flex-1 relative">
+            <Editor
+              height="100%"
+              defaultLanguage="latex"
+              value={latexContent}
+              onChange={(value) => setLatexContent(value || '')}
+              theme="vs-dark"
+              onMount={(editor) => {
+                editorRef.current = editor;
+                
+                // Add click handler for individual change acceptance/rejection
+                editor.onDidChangeModelContent(() => {
+                  // Detect if content changed due to our diff operations
+                  if (showInlineChanges) {
+                    setTimeout(() => applyDiffStyling(latexContent), 50);
+                  }
+                });
+                
+                // Use mouse up instead of mouse down for better click detection
+                editor.onMouseUp((e) => {
+                  if (showInlineChanges && e.target.position) {
+                    const lineNumber = e.target.position.lineNumber;
+                    const lines = latexContent.split('\n');
+                    const clickedLine = lines[lineNumber - 1];
+                    
+                    // Check if clicking on a diff line (red or green)
+                    if (clickedLine && (
+                      clickedLine.trim().startsWith('%%') || 
+                      isNewContentLine(clickedLine, lineNumber - 1, lines)
+                    )) {
+                      handleLineClick(lineNumber);
+                    }
+                  }
+                });
+              }}
+              options={{
+                minimap: { enabled: false },
+                fontSize: 14,
+                lineNumbers: 'on',
+                wordWrap: 'on',
+                automaticLayout: true,
+                scrollBeyondLastLine: false,
+                padding: { top: 16, bottom: 16 },
+                readOnly: showInlineChanges, // Make read-only when showing changes
+                selectOnLineNumbers: false, // Disable line number selection in diff mode
+                selectionHighlight: !showInlineChanges, // Disable selection highlight in diff mode
+              }}
+            />
+            
+            {/* Inline Accept/Reject Controls */}
+            {showInlineChanges && (
+              <div className="absolute top-4 right-4 flex flex-col items-end space-y-2 z-10">
+                <div className="text-xs text-gray-400 bg-black/50 px-2 py-1 rounded">
+                  💡 Click red lines to reject • Click green lines to accept
+                </div>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={handleRejectChanges}
+                    className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors"
+                  >
+                    Reject All
+                  </button>
+                  <button
+                    onClick={handleAcceptChanges}
+                    className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors"
+                  >
+                    Accept All
+                  </button>
+                </div>
+              </div>
             )}
           </div>
         </div>
       </div>
-      
-      <div className="flex-1 relative">
-        <Editor
-          height="100%"
-          defaultLanguage="latex"
-          value={latexContent}
-          onChange={(value) => setLatexContent(value || '')}
-          theme="vs-dark"
-          onMount={(editor) => {
-            editorRef.current = editor;
-            
-            // Add click handler for individual change acceptance/rejection
-            editor.onDidChangeModelContent(() => {
-              // Detect if content changed due to our diff operations
-              if (showInlineChanges) {
-                setTimeout(() => applyDiffStyling(latexContent), 50);
-              }
-            });
-            
-            // Use mouse up instead of mouse down for better click detection
-            editor.onMouseUp((e) => {
-              if (showInlineChanges && e.target.position) {
-                const lineNumber = e.target.position.lineNumber;
-                const lines = latexContent.split('\n');
-                const clickedLine = lines[lineNumber - 1];
-                
-                // Check if clicking on a diff line (red or green)
-                if (clickedLine && (
-                  clickedLine.trim().startsWith('%%') || 
-                  isNewContentLine(clickedLine, lineNumber - 1, lines)
-                )) {
-                  handleLineClick(lineNumber);
-                }
-              }
-            });
-          }}
-          options={{
-            minimap: { enabled: false },
-            fontSize: 14,
-            lineNumbers: 'on',
-            wordWrap: 'on',
-            automaticLayout: true,
-            scrollBeyondLastLine: false,
-            padding: { top: 16, bottom: 16 },
-              readOnly: showInlineChanges, // Make read-only when showing changes
-              selectOnLineNumbers: false, // Disable line number selection in diff mode
-              selectionHighlight: !showInlineChanges, // Disable selection highlight in diff mode
-            }}
-        />
-        
-        {/* Inline Accept/Reject Controls */}
-        {showInlineChanges && (
-          <div className="absolute top-4 right-4 flex flex-col items-end space-y-2 z-10">
-            <div className="text-xs text-gray-400 bg-black/50 px-2 py-1 rounded">
-              💡 Click red lines to reject • Click green lines to accept
-            </div>
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={handleRejectChanges}
-                className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors"
-              >
-                Reject All
-              </button>
-              <button
-                onClick={handleAcceptChanges}
-                className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors"
-              >
-                Accept All
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
 
-      {/* Compile Log */}
-      {showLog && compileLog && (
-        <div className="border-t border-gray-600/20 p-4 max-h-32 overflow-y-auto" style={{ backgroundColor: '#0A0A0A' }}>
-          <div className="flex items-center justify-between mb-2">
-            <h4 className="text-sm font-medium text-gray-300">Compile Log</h4>
-            <button
-              onClick={() => setShowLog(false)}
-              className="text-gray-400 hover:text-white transition-colors"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+      {/* Log Section - 25% height */}
+      <div className="flex-1 border-t border-gray-600/20" style={{ height: '25%', backgroundColor: '#0A0A0A' }}>
+        <div className="h-full flex flex-col">
+          <div className="border-b border-gray-600/20 px-4 py-2" style={{ backgroundColor: '#0A0A0A' }}>
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-medium text-gray-300">
+                Compilation Log
+                {compileLog && (
+                  compileLog.toLowerCase().includes('error') || 
+                  compileLog.toLowerCase().includes('warning') || 
+                  compileLog.toLowerCase().includes('failed')
+                ) && (
+                  <span className="ml-2 text-yellow-400 text-xs">⚠️</span>
+                )}
+              </h4>
+              {compileLog && (
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(compileLog);
+                      // Brief visual feedback
+                      const button = document.activeElement as HTMLButtonElement;
+                      if (button) {
+                        const originalText = button.textContent;
+                        button.textContent = 'Copied!';
+                        setTimeout(() => {
+                          button.textContent = originalText;
+                        }, 1000);
+                      }
+                    }}
+                    className="text-gray-400 hover:text-white transition-colors text-xs px-2 py-1 rounded border border-gray-600/30 hover:border-gray-500/50"
+                    title="Copy log to clipboard"
+                  >
+                    Copy
+                  </button>
+                  <button
+                    onClick={() => setCompileLog('')}
+                    className="text-gray-400 hover:text-white transition-colors text-xs"
+                    title="Clear log"
+                  >
+                    Clear
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
-          <pre className="text-xs text-gray-400 font-mono whitespace-pre-wrap">
-            {compileLog}
-          </pre>
+          
+          <div className="flex-1 overflow-y-auto p-4">
+            {compileLog ? (
+              <pre className="text-xs text-gray-400 font-mono whitespace-pre-wrap leading-relaxed">
+                {compileLog}
+              </pre>
+            ) : (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center">
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center mx-auto mb-2" style={{ backgroundColor: '#2A2A2A' }}>
+                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                  </div>
+                  <p className="text-xs text-gray-500">No compilation log yet</p>
+                  <p className="text-xs text-gray-600">Compile your LaTeX to see logs here</p>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
-      )}
+      </div>
     </div>
   );
 
@@ -777,19 +851,19 @@ What would you change to give me the best shot at getting this job?`;
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={saveResume}
-                disabled={isSaving}
+                onClick={downloadPDF}
+                disabled={isDownloading || !pdfUrl}
                 className="text-white px-4 py-2 rounded-3xl transition-all text-sm font-medium flex items-center space-x-2 hover:opacity-90 disabled:opacity-50"
                 style={{ backgroundColor: '#2A2A2A' }}
               >
-                {isSaving ? (
+                {isDownloading ? (
                   <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
                 ) : (
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2-7h3a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h3" />
                   </svg>
                 )}
-                <span>{isSaving ? 'Saving...' : 'Save'}</span>
+                <span>{isDownloading ? 'Downloading...' : 'Download'}</span>
               </motion.button>
             </div>
 
@@ -877,45 +951,39 @@ What would you change to give me the best shot at getting this job?`;
           leftContent={latexEditorContent}
           centerContent={aiChatContent}
           rightContent={
-          <div className="h-full flex flex-col">
-            <div className="border-b border-gray-600/20 px-4 py-3" style={{ backgroundColor: '#0A0A0A' }}>
-              <h3 className="text-sm font-medium text-gray-300">PDF Preview</h3>
-            </div>
-            
-            <div className="flex-1" style={{ backgroundColor: '#0A0A0A' }}>
-              {pdfUrl ? (
-                <iframe
-                  src={pdfUrl}
-                  className="w-full h-full"
-                  title="PDF Preview"
-                />
-              ) : (
-                <div className="flex items-center justify-center h-full">
-                  <div className="text-center">
-                    <div className="w-16 h-16 rounded-3xl flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: '#2A2A2A' }}>
-                      <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                    </div>
-                    <h3 className="text-lg font-medium text-gray-300 mb-2">No PDF Generated</h3>
-                    <p className="text-gray-500 mb-6">Compile your LaTeX code to see the PDF preview</p>
-                    <button
-                      onClick={compileLatex}
-                      disabled={isCompiling || !latexContent.trim()}
-                      className="text-white px-6 py-3 rounded-3xl hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium"
-                      style={{ backgroundColor: '#2A2A2A' }}
-                    >
-                      {isCompiling ? 'Compiling...' : 'Compile PDF'}
-                    </button>
+                    <div className="h-full" style={{ backgroundColor: '#0A0A0A' }}>
+            {pdfUrl ? (
+              <iframe
+                src={pdfUrl}
+                className="w-full h-full"
+                title="PDF Preview"
+              />
+            ) : (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center">
+                  <div className="w-16 h-16 rounded-3xl flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: '#2A2A2A' }}>
+                    <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
                   </div>
+                  <h3 className="text-lg font-medium text-gray-300 mb-2">No PDF Generated</h3>
+                  <p className="text-gray-500 mb-6">Compile your LaTeX code to see the PDF preview</p>
+                  <button
+                    onClick={compileLatex}
+                    disabled={isCompiling || !latexContent.trim()}
+                    className="text-white px-6 py-3 rounded-3xl hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium"
+                    style={{ backgroundColor: '#2A2A2A' }}
+                  >
+                    {isCompiling ? 'Compiling...' : 'Compile PDF'}
+                  </button>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
           }
-          initialLeftWidth={35}
-          initialCenterWidth={25}
-          initialRightWidth={40}
+          initialLeftWidth={30}
+          initialCenterWidth={33}
+          initialRightWidth={37}
           minLeftWidth={20}
           minCenterWidth={15}
           minRightWidth={20}

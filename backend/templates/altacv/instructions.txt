@@ -1,0 +1,108 @@
+TEMPLATE: AltaCV 
+
+LAYOUT: 2 column layout   
+STYLE: Modern, professional, clean, structured
+ATS: Maximum compatibility - scannable formatting
+
+CORE PRINCIPLES:
+• Modern resume with 2 column layout - professional and clean
+• Color-coded sections with modern typography
+• Clean, professional formatting for ATS systems
+• Structured organization with clear section hierarchy
+• Smart pagination: Complete sections should not break across pages
+
+LAYOUT FUNDAMENTALS:
+• Use \begin{paracol}{2} and \end{paracol} for two-column layout
+• Place header (\makecvheader) BEFORE \begin{paracol}{2}
+• Use \switchcolumn to move between columns
+• Use \newpagestart or \newpage\end{paracol}\begin{paracol}{2} for new pages
+• Keep sections intact - don't break them across pages
+
+MARGIN REQUIREMENTS:
+• ALWAYS use exactly 0.5 inch margins for all sides (top, bottom, left, right) can be changed wiht user's request 
+• Use \geometry{margin=0.5in} AFTER \documentclass{altacv}
+• Use consistent 0.5 inch margins for maximum content space while maintaining readability
+• Use \raggedbottom to prevent footer expansion
+
+CONTENT ORGANIZATION:
+• Use \cvsection{} for section headers
+• ALWAYS add an empty line after every \cvsection{} command
+• Use \cvevent{}{}{}{} for experiences, projects, education
+• Include relevant technologies and achievements
+• Add links using \href{url}{text} when available
+• Group related content logically
+• NO PHOTOS: Do not include any photo commands (\photoR, \photoL, \photo) unless user explicitly provides a photo and requests it to be added
+
+INTELLIGENT SPACING:
+• Add small spacing after \makecvheader for visual separation (\smallskip or \vspace{0.1in})
+• Add empty line after every \cvsection{} command
+• Use good visual spacing between sections for readability
+• Sections automatically have proper spacing built into the template
+
+SKILLS FORMATTING:
+• Skills section: Use grouped text format, NOT \cvtag boxes
+• AUTOMATICALLY GROUP skills from user's flat list into logical categories
+• Use category names that make sense for the skills (Programming Languages, Frameworks, Tools, Databases, Cloud, etc.)
+• Example: "Programming Languages : Python, JavaScript, Java
+            Frameworks : React, Flask, Django
+            Tools : Git, Docker, AWS
+            Databases : MySQL, PostgreSQL"
+• Intelligently categorize skills - don't just list them randomly
+• Project technologies: Continue using \cvtag{} boxes for individual technologies
+• Group similar skills together logically (e.g., all programming languages together, all frameworks together)
+
+COMMAND DEPENDENCY REQUIREMENTS:
+• When customizing \makecvheader, ensure \namefont, \taglinefont, \personalinfofont are defined
+• When using color commands, verify base colors exist
+• All custom redefinitions must be complete and self-contained
+• Include fallback definitions for commonly customized commands
+• Maintain visual hierarchy: name > sections > content > details
+
+INTELLIGENT FLOW:
+• Assess space before placing sections
+• If section won't fit completely, start on new page
+• Use remaining space efficiently with flexible content
+• Balance columns naturally
+• Prioritize readability over maximum density
+• Use \switchcolumn once to move from left to right column
+
+
+OUTPUT REQUIREMENTS:
+• Start with: \documentclass{altacv}
+• Clean LaTeX code only - absolutely NO comments or explanatory text
+• Generated code must be pure LaTeX without any % comments
+• Professional spacing and formatting
+• ATS-friendly formatting
+• Compile with pdflatex
+• Maintain section integrity
+
+TRUST THE AI:
+• Make intelligent decisions about content placement
+• Organize sections logically based on user data
+• Create appropriate sections as needed
+• Balance visual appeal with information density
+• Adapt layout to content rather than forcing rigid structure
+
+ADAPTIVE COMMAND HANDLING:
+• AI should analyze user customizations and include required definitions
+• When overriding header/section commands, preserve all functionality
+• Auto-generate missing command definitions based on template patterns
+• Ensure font size hierarchy: name (\Huge) > sections (\large) > content (\normalsize) > details (\small)
+• Validate all referenced commands have corresponding definitions
+
+SIMPLE COLUMN RULES:
+• Each section appears only once in the document
+• Use \switchcolumn once to move from left to right column
+• Left column: Personal and educational information
+• Right column: Technical skills and project details
+• Never create duplicate sections
+
+=== CRITICAL FORMATTING RULES ===
+🚨 SKILLS: NEVER list skills individually - ALWAYS group them intelligently into categories
+✅ CORRECT:"Programming Languages : Python, JavaScript, Java
+            Frameworks : React, Flask, Django
+            Tools : Git, Docker, AWS
+            Databases : MySQL, PostgreSQL"(example only)
+❌ WRONG: Individual skill items or unorganized lists or cramped sections
+💡 AI MUST add proper spacing between sections and group skills logically
+

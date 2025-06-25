@@ -1,9 +1,11 @@
-# LaTeX Resume AI - Git Ignore
+# LaTeX Resume AI - Git Ignore File
 
-# Environment variables
+# Environment variables and secrets
 .env
 .env.local
+.env.development
 .env.production
+.env.test
 
 # Python
 __pycache__/
@@ -34,7 +36,7 @@ env/
 ENV/
 .venv/
 
-# Database
+# Database files
 *.db
 *.sqlite
 *.sqlite3
@@ -52,11 +54,12 @@ package-lock.json
 frontend/dist/
 frontend/build/
 
-# Generated files
-backend/static/pdfs/
-backend/static/logs/
-backend/static/template-previews/
-frontend/public/static/template-previews/
+# Generated files and temporary content
+backend/static/logs/*
+backend/static/pdfs/*
+backend/static/temp/*
+backend/static/uploaded_pdfs/*
+backend/static/generated_pdfs/*
 *.pdf
 *.log
 
@@ -69,6 +72,7 @@ test_*.pdf
 *test*.py
 *test*.tex
 backend/cleanup_temp_files.py
+backend/reset_db.py
 
 # IDE and Editor
 .vscode/
@@ -91,4 +95,11 @@ Thumbs.db
 *.tmp
 *.temp
 .cache/
-*.pyc 
+*.pyc
+
+# Keep empty directories with .gitkeep
+!backend/static/logs/.gitkeep
+!backend/static/pdfs/.gitkeep
+!backend/static/temp/.gitkeep
+!backend/static/uploaded_pdfs/.gitkeep
+!backend/static/generated_pdfs/.gitkeep 

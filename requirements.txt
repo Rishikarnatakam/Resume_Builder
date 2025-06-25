@@ -1,5 +1,5 @@
-# LaTeX Resume AI - Clean Requirements
-# Core essentials only
+# LaTeX Resume AI v2.0 - Session-based AI with Context Caching
+# Updated requirements for enhanced functionality
 
 # FastAPI framework
 fastapi==0.104.1
@@ -16,7 +16,7 @@ passlib[bcrypt]==1.7.4
 python-multipart==0.0.6
 email-validator==2.1.0
 
-# Modern Google Generative AI SDK
+# Modern Google Generative AI SDK with Context Caching
 google-genai==1.16.1
 
 # PDF/Document processing (for CV parsing)
@@ -27,3 +27,6 @@ pdfplumber==0.10.3
 # Utilities
 python-dotenv==1.0.0
 aiofiles==23.2.1 
+
+# Additional for session management
+redis==5.0.1  # Optional: for production session storage 

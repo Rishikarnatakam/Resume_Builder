@@ -7,9 +7,6 @@ import {
   ArrowLeftIcon,
   CheckIcon,
   UserIcon,
-  ChevronUpIcon,
-  ChevronDownIcon,
-  DocumentArrowUpIcon,
   StarIcon
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../context/AuthContext';
@@ -30,13 +27,14 @@ const CreateResume: React.FC = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [selectedTemplate, setSelectedTemplate] = useState<string>('');
-  const [customTemplate, setCustomTemplate] = useState<File | null>(null);
-  const [showCustomUpload, setShowCustomUpload] = useState<boolean>(false);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>('');
+  const [isGenerating, setIsGenerating] = useState<boolean>(false);
+  const [resumeData, setResumeData] = useState<any>(null);
+  const [jobDescription, setJobDescription] = useState<string>('');
 
-  // Fetch templates from API
+  // Fetch templates and load resume data from previous step
   useEffect(() => {
     const fetchTemplates = async () => {
       try {
@@ -48,7 +46,21 @@ const CreateResume: React.FC = () => {
         const templateData = await response.json();
         setTemplates(templateData);
         
-        // No automatic selection - user must choose
+        // Load resume data from localStorage
+        const savedResumeData = localStorage.getItem('resumeData');
+        const savedJobDescription = localStorage.getItem('jobDescription');
+        
+        if (savedResumeData) {
+          setResumeData(JSON.parse(savedResumeData));
+        } else {
+          // Redirect back to data form if no data found
+          navigate('/create');
+          return;
+        }
+        
+        if (savedJobDescription) {
+          setJobDescription(savedJobDescription);
+        }
         
       } catch (err) {
         console.error('Error fetching templates:', err);
@@ -59,44 +71,60 @@ const CreateResume: React.FC = () => {
     };
 
     fetchTemplates();
-  }, []);
+  }, [navigate]);
 
   const handleTemplateSelect = (templateId: string) => {
     setSelectedTemplate(templateId);
-    if (templateId !== 'custom_upload') {
-      setCustomTemplate(null);
-      setShowCustomUpload(false);
-    }
   };
 
-  const handleCustomTemplateUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file && (file.name.endsWith('.cls') || file.name.endsWith('.tex'))) {
-      setCustomTemplate(file);
-      setSelectedTemplate('custom_upload');
-    } else {
-      alert('Please upload a valid .cls or .tex file');
-    }
-  };
-
-  const handleContinue = () => {
+  const handleGenerateResume = async () => {
     if (!selectedTemplate) {
       alert('Please select a template first');
       return;
     }
 
-    // Store selected template in localStorage temporarily
-    localStorage.setItem('selectedTemplate', selectedTemplate);
-    
-    // If custom template is selected, store it as well
-    if (customTemplate && selectedTemplate === 'custom_upload') {
-      // For now, we'll handle custom template upload in the next step
-      localStorage.setItem('hasCustomTemplate', 'true');
-    } else {
-      localStorage.removeItem('hasCustomTemplate');
+    if (!resumeData) {
+      alert('Resume data not found. Please go back and fill out your information.');
+      navigate('/create');
+      return;
     }
-    
-    navigate('/create/details');
+
+    setIsGenerating(true);
+    try {
+      const payload = {
+        title: `${resumeData.personalInfo.name}'s Resume`,
+        template_name: selectedTemplate,
+        resume_data: resumeData,
+        job_description: jobDescription || undefined,
+      };
+
+      const token = localStorage.getItem('access_token');
+      const response = await fetch('http://localhost:8000/api/resumes/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (response.ok) {
+        const newResume = await response.json();
+        // Clean up localStorage
+        localStorage.removeItem('resumeData');
+        localStorage.removeItem('jobDescription');
+        navigate(`/editor/${newResume.id}`);
+    } else {
+        const errorData = await response.json();
+        console.error('Failed to create resume:', errorData);
+        alert('Failed to create resume. Please try again.');
+    }
+    } catch (error) {
+      console.error('Error creating resume:', error);
+      alert('Error creating resume. Please try again.');
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   if (loading) {
@@ -134,9 +162,9 @@ const CreateResume: React.FC = () => {
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <Link to="/dashboard" className="flex items-center space-x-2 text-white hover:text-gray-300 transition-colors">
+              <Link to="/create" className="flex items-center space-x-2 text-white hover:text-gray-300 transition-colors">
                 <ArrowLeftIcon className="w-5 h-5" />
-                <span>Back to Dashboard</span>
+                <span>Back to Your Info</span>
               </Link>
             </div>
             <div className="flex items-center space-x-4">
@@ -164,8 +192,13 @@ const CreateResume: React.FC = () => {
             All templates are AI-powered and designed for maximum compatibility.
           </p>
           <div className="mt-4 text-sm text-gray-500">
-            {templates.length} templates available • Please select one to continue
+            {templates.length} templates available • Generate your resume with AI
           </div>
+          {resumeData && (
+            <div className="mt-3 text-sm text-green-400">
+              ✓ Ready to generate resume for {resumeData.personalInfo?.name}
+            </div>
+          )}
         </div>
 
         {/* Template Grid */}
@@ -272,90 +305,47 @@ const CreateResume: React.FC = () => {
           ))}
         </div>
 
-        {/* Custom Template Upload Section */}
-        <div className="border border-gray-600/20 rounded-3xl p-8 mb-8" style={{ backgroundColor: '#0A0A0A' }}>
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h3 className="text-xl font-semibold text-white mb-2">Upload Custom Template</h3>
-              <p className="text-gray-400">Have your own LaTeX template? Upload it here for analysis and use.</p>
-            </div>
-            <button
-              onClick={() => setShowCustomUpload(!showCustomUpload)}
-              className="flex items-center space-x-2 text-gray-400 hover:text-white transition-colors"
-            >
-              <span>{showCustomUpload ? 'Hide' : 'Show'}</span>
-              {showCustomUpload ? (
-                <ChevronUpIcon className="w-5 h-5" />
-              ) : (
-                <ChevronDownIcon className="w-5 h-5" />
-              )}
-            </button>
-          </div>
 
-          {showCustomUpload && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="border-t border-gray-600/20 pt-6"
-            >
-              <div className="flex items-center justify-center w-full">
-                <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-600/30 border-dashed rounded-3xl cursor-pointer hover:border-gray-500/40 transition-all">
-                  <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                    <DocumentArrowUpIcon className="w-8 h-8 mb-4 text-gray-400" />
-                    <p className="mb-2 text-sm text-gray-400">
-                      <span className="font-semibold">Click to upload</span> or drag and drop
-                    </p>
-                    <p className="text-xs text-gray-500">.cls or .tex files only</p>
-                  </div>
-                  <input
-                    type="file"
-                    className="hidden"
-                    accept=".cls,.tex"
-                    onChange={handleCustomTemplateUpload}
-                  />
-                </label>
-              </div>
-
-              {customTemplate && (
-                <div className="mt-4 p-4 rounded-3xl" style={{ backgroundColor: '#151515' }}>
-                  <div className="flex items-center space-x-3">
-                    <DocumentTextIcon className="w-5 h-5 text-green-400" />
-                    <div>
-                      <p className="text-sm font-medium text-white">{customTemplate.name}</p>
-                      <p className="text-xs text-gray-400">
-                        {(customTemplate.size / 1024).toFixed(1)} KB • Ready to use
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </motion.div>
-          )}
-        </div>
 
         {/* Action Button */}
-        <div className="flex justify-center">
+        <div className="flex items-center justify-between mt-12">
+          <Link
+            to="/create"
+            className="flex items-center space-x-2 text-gray-400 hover:text-white transition-colors"
+          >
+            <ArrowLeftIcon className="w-4 h-4" />
+            <span>Back to Your Info</span>
+          </Link>
+
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            onClick={handleContinue}
-            disabled={!selectedTemplate}
+            onClick={handleGenerateResume}
+            disabled={!selectedTemplate || isGenerating}
             className={`px-8 py-4 rounded-3xl font-semibold text-lg flex items-center space-x-3 transition-all ${
-              selectedTemplate
+              selectedTemplate && !isGenerating
                 ? 'text-white hover:opacity-90'
                 : 'text-gray-500 cursor-not-allowed opacity-50'
             }`}
-            style={{ backgroundColor: selectedTemplate ? '#2A2A2A' : '#151515' }}
+            style={{ backgroundColor: selectedTemplate && !isGenerating ? '#2A2A2A' : '#151515' }}
           >
-            <span>Continue to Details</span>
+            {isGenerating ? (
+              <>
+                <div className="animate-spin w-5 h-5 border-2 border-white border-t-transparent rounded-full"></div>
+                <span>Generating Resume...</span>
+              </>
+            ) : (
+              <>
+                <span>Generate Resume</span>
             <ArrowRightIcon className="w-5 h-5" />
+              </>
+            )}
           </motion.button>
         </div>
 
         {!selectedTemplate && (
           <p className="text-center text-gray-500 text-sm mt-4">
-            Please select a template to continue
+            Please select a template to generate your resume
           </p>
         )}
       </div>

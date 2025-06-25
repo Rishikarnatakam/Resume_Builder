@@ -1,22 +1,4 @@
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Medium Length Professional CV - RESUME CLASS FILE
-%
-% This template has been downloaded from:
-% http://www.LaTeXTemplates.com
-%
-% This class file defines the structure and design of the template. 
-%
-% Original header:
-% Copyright (C) 2010 by Trey Hunner
-%
-% Copying and distribution of this file, with or without modification,
-% are permitted in any medium without royalty provided the copyright
-% notice and this notice are preserved. This file is offered as-is,
-% without any warranty.
-%
-% Created by Trey Hunner and modified by www.LaTeXTemplates.com
-%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 
 \ProvidesClass{professional_resume}[2010/07/10 v0.9 Professional Resume class]
 
@@ -24,7 +6,8 @@
 
 \usepackage[parfill]{parskip} % Remove paragraph indentation
 \usepackage{array} % Required for boldface (\bf and \bfseries) tabular columns
-\usepackage[margin=0.75in]{geometry}
+\usepackage{geometry}
+\geometry{margin=0.75in} % Default margin - can be overridden
 \usepackage{ifthen} % Required for ifthenelse statements
 
 \usepackage{hyperref}
@@ -131,6 +114,38 @@
   \end{list}
   \vspace{0.5em} % Some space after the list of bullet points
 }
+
+%----------------------------------------------------------------------------------------
+%	AWARDS FORMATTING
+%----------------------------------------------------------------------------------------
+
+\newenvironment{rAward}[3]{ % 3 input arguments - award title, organization, and date
+ {\bf #1}, #2 \hfill {#3} % Bold award title, organization, and date on the right
+ \smallskip
+ \begin{list}{$\cdot$}{\leftmargin=0em} % \cdot used for bullets, no indentation
+  \itemsep -0.5em \vspace{-0.5em} % Compress items in list together for aesthetics
+ }{
+ \end{list}
+ \vspace{0.5em} % Some space after the list of bullet points
+}
+
+%----------------------------------------------------------------------------------------
+%	CERTIFICATIONS FORMATTING
+%----------------------------------------------------------------------------------------
+
+\newenvironment{rCertification}[3]{ % 3 input arguments - certification name, issuer, and date
+ {\bf #1}, #2 \hfill {#3} % Bold certification name, issuer, and date on the right
+ \smallskip
+ \begin{list}{$\cdot$}{\leftmargin=0em} % \cdot used for bullets, no indentation
+  \itemsep -0.5em \vspace{-0.5em} % Compress items in list together for aesthetics
+ }{
+ \end{list}
+ \vspace{0.5em} % Some space after the list of bullet points
+}
+
+%----------------------------------------------------------------------------------------
+%	WHITESPACE DEFINITIONS
+%----------------------------------------------------------------------------------------
 
 % The below commands define the whitespace after certain things in the document - they can be \smallskip, \medskip or \bigskip
 \def\namesize{\LARGE} % Size of the name at the top of the document

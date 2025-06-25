@@ -14,13 +14,14 @@ import logging
 
 load_dotenv()
 
+# Import config
+from utils.config import get_gemini_model, get_gemini_api_key
+
 logger = logging.getLogger(__name__)
 
 class CVParser:
     def __init__(self):
-        self.api_key = os.getenv("GEMINI_API_KEY")
-        if not self.api_key:
-            raise ValueError("GEMINI_API_KEY environment variable is required")
+        self.api_key = get_gemini_api_key()
         
         # Use modern google-genai client
         self.client = genai.Client(api_key=self.api_key)
@@ -294,7 +295,7 @@ CRITICAL INSTRUCTIONS:
 
         # Call Gemini with the most capable model for PDF processing
         response = parser.client.models.generate_content(
-            model='gemini-2.5-flash-preview-05-20',  # Use model that supports PDF processing
+            model=f'models/{get_gemini_model()}',  # Use environment model
             contents=contents,
             config=types.GenerateContentConfig(
                 temperature=0.0,  # Deterministic for consistent parsing
@@ -302,7 +303,7 @@ CRITICAL INSTRUCTIONS:
                 top_k=20,  # Limited vocabulary for JSON consistency
                 max_output_tokens=16384,  # Higher limit for comprehensive extraction
                 response_mime_type="application/json",  # Ensure JSON output
-                system_instruction="You are a comprehensive resume parser. Extract ALL information from PDFs with complete accuracy and intelligent categorization. Return only valid JSON."
+                system_instruction="You are a comprehensive ATS-friendly resume parser. Extract ALL information from PDFs with complete accuracy and intelligent categorization for optimal ATS compatibility. Return only valid JSON."
             )
         )
         
@@ -453,10 +454,17 @@ def parse_resume_text(text: str) -> Dict[str, Any]:
         parser = CVParser()
 
         # Create comprehensive AI prompt for direct extraction and form filling with intelligent mapping
-        prompt = f"""You are an expert resume parser with INTELLIGENT SECTION MAPPING capabilities. Extract ALL information from this resume and map it to standardized structure, regardless of how sections are named.
+        prompt = f"""You are an expert ATS-friendly resume parser with INTELLIGENT SECTION MAPPING capabilities. Extract ALL information from this resume and map it to standardized structure optimized for ATS compatibility, regardless of how sections are named.
 
 RESUME CONTENT:
         {text}
+
+ATS-FRIENDLY EXTRACTION PRINCIPLES:
+1. Parse content to maximize ATS compatibility and searchability
+2. Extract keywords and skills that ATS systems prioritize
+3. Maintain professional terminology and industry-standard language
+4. Preserve technical skills, certifications, and quantifiable achievements
+5. Structure data for optimal ATS parsing and keyword matching
 
 INTELLIGENT MAPPING RULES:
 1. Different resumes use different names for the same content. Map intelligently:
@@ -537,20 +545,22 @@ Return EXACTLY this JSON structure (fill all available fields, use empty string 
     "languages": ["Language1", "Language2"]
 }}
 
-CRITICAL INSTRUCTIONS:
+CRITICAL ATS-FRIENDLY INSTRUCTIONS:
 1. Extract EVERYTHING - don't miss any sections, skills, projects, awards, or certifications
 2. Map intelligently - understand context over labels (e.g., "Accomplishments" → "awards")
 3. Preserve actual text from resume - don't paraphrase or create content
 4. Be comprehensive - include ALL skills as a flat array: ["JavaScript", "Python", "React", "AWS"]
 5. Look for content in unexpected places - sometimes projects/awards are mixed in other sections
-6. Format dates consistently 
-7. Return ONLY valid JSON, no explanations or markdown
-8. If a field has no data, use empty string "" or empty array []
-9. Always prioritize content over section names"""
+6. Format dates consistently for ATS parsing
+7. Extract quantifiable achievements and metrics for ATS optimization
+8. Preserve technical terminology and industry keywords
+9. Return ONLY valid JSON, no explanations or markdown
+10. If a field has no data, use empty string "" or empty array []
+11. Always prioritize content over section names for maximum ATS compatibility"""
 
         # Use AI with optimal settings for comprehensive extraction
         response = parser.client.models.generate_content(
-            model='gemini-2.5-flash-preview-05-20',
+            model=f'models/{get_gemini_model()}',
             contents=prompt,
             config=types.GenerateContentConfig(
                 temperature=0.0,  # Deterministic for text parsing
@@ -558,7 +568,7 @@ CRITICAL INSTRUCTIONS:
                 top_k=20,  # Limited vocabulary for JSON consistency
                 max_output_tokens=12288,  # Higher limit for comprehensive data
                 response_mime_type="application/json",  # Ensure JSON output
-                system_instruction="You are a precise resume parser. Extract ALL information comprehensively and return only valid JSON for form auto-filling."
+                system_instruction="You are a precise ATS-friendly resume parser. Extract ALL information comprehensively with ATS optimization in mind and return only valid JSON for form auto-filling."
             )
         )
         
@@ -748,7 +758,7 @@ def extract_resume_data_from_pdf_ai(file_content: bytes, filename: str) -> dict:
 
         # Call Gemini (use a model that supports PDF input)
         response = parser.client.models.generate_content(
-            model='gemini-2.5-flash-preview-05-20',  # Use model that supports PDF processing
+            model=f'models/{get_gemini_model()}',  # Use environment model
             contents=contents,
             config=types.GenerateContentConfig(
                 temperature=0.0,  # Deterministic for PDF parsing

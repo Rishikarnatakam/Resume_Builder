@@ -36,15 +36,15 @@ function App() {
                 path="/create"
                 element={
                   <ProtectedRoute>
-                    <CreateResume />
+                    <ResumeDetails />
                   </ProtectedRoute>
                 }
               />
               <Route
-                path="/create/details"
+                path="/create/templates"
                 element={
                   <ProtectedRoute>
-                    <ResumeDetails />
+                    <CreateResume />
                   </ProtectedRoute>
                 }
               />

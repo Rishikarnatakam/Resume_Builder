@@ -4,13 +4,28 @@ from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 import uvicorn
 
+import sys
+import os
+from pathlib import Path
+
+# Add backend directory to path for proper imports
+backend_dir = Path(__file__).parent
+if str(backend_dir) not in sys.path:
+    sys.path.insert(0, str(backend_dir))
+
 from routes import auth, resumes, latex, users, templates, ai_chat
 from database import init_db
+from utils.config import config
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
     print("🚀 Starting LaTeX Resume AI...")
+    
+    # Validate configuration
+    config.validate_config()
+    print(f"✅ Configuration validated - Using model: {config.get_gemini_model()}")
+    
     await init_db()
     print("✅ Database initialized")
     yield
@@ -45,7 +60,7 @@ app.include_router(users.router, prefix="/api/users", tags=["Users"])
 app.include_router(resumes.router, prefix="/api/resumes", tags=["Resumes"])
 app.include_router(latex.router, prefix="/api/latex", tags=["LaTeX"])
 app.include_router(templates.router, prefix="/api/templates", tags=["Templates"])
-app.include_router(ai_chat.router, prefix="/api/ai", tags=["AI Chat"])
+app.include_router(ai_chat.router, prefix="/api/ai", tags=["AI Chat (Session-based)"])
 
 @app.get("/api/health")
 async def health_check():
@@ -53,7 +68,14 @@ async def health_check():
     return {
         "status": "healthy",
         "service": "LaTeX Resume AI",
-        "version": "1.0.0"
+        "version": "2.0.0",
+        "model": config.get_gemini_model(),
+        "features": {
+            "session_based_ai": True,
+            "context_caching": True,
+            "pdf_storage": True,
+            "environment_config": True
+        }
     }
 
 @app.get("/")

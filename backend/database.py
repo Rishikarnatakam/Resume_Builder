@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
-from sqlalchemy import String, DateTime, Text, Boolean
+from sqlalchemy import String, DateTime, Text, Boolean, Integer
 from datetime import datetime
 import os
 
@@ -37,6 +37,21 @@ class Resume(Base):
     resume_data: Mapped[str] = mapped_column(Text)  # JSON string
     pdf_path: Mapped[str] = mapped_column(String(500), nullable=True)
     is_public: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+class AIChatSession(Base):
+    __tablename__ = "ai_chat_sessions"
+    
+    id: Mapped[str] = mapped_column(String(100), primary_key=True, index=True)
+    resume_id: Mapped[int] = mapped_column(Integer, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, index=True)
+    cache_id: Mapped[str] = mapped_column(String(200), nullable=True)
+    cache_expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=True)
+    template_content: Mapped[str] = mapped_column(Text)
+    form_data: Mapped[str] = mapped_column(Text)  # JSON string
+    conversation_history: Mapped[str] = mapped_column(Text, default="[]")  # JSON string
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

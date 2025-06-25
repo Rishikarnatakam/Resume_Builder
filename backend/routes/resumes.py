@@ -79,13 +79,19 @@ class ResumeData(BaseModel):
     awards: List[Award]
     certifications: List[Certification]
     languages: List[str]
+    publications: List[dict] = []
+    volunteering: List[dict] = []
+    speaking: List[dict] = []
+    military: List[dict] = []
+    references: str = ""
+    hobbies: List[str] = []
+    additional_sections: List[dict] = []
 
 class ResumeCreateRequest(BaseModel):
     title: str
     template_name: str = "professional_resume"
     resume_data: ResumeData
     job_description: Optional[str] = None
-    original_pdf_data: Optional[str] = None  # Hex-encoded original PDF for context-aware generation
 
 class ResumeResponse(BaseModel):
     id: int
@@ -116,10 +122,15 @@ async def generate_ai_resume(
 ):
     """Generate LaTeX resume using AI based on resume data and job description"""
     try:
-        latex_content = await ai_latex_generator.generate_latex_from_template(
+        logger.info(f"📝 RESUMES: Generating LaTeX with AI for template: {request.template_name}")
+        
+        # Use simple AI generation
+        latex_content = ai_latex_generator.generate_latex(
             template_name=request.template_name,
-            user_data=request.resume_data.dict()
+            resume_data=request.resume_data.dict(),
+            job_description=request.job_description
         )
+        logger.info("🧠 Used AI LaTeX generation")
         
         return {
             "success": True,
@@ -391,7 +402,7 @@ async def extract_pdf_data(
                 "optional_sections": len([k for k, v in detected_sections.items() if v and k in ["publications", "volunteering", "speaking", "military", "references", "hobbies"]]),
                 "additional_sections": len(resume_data["additional_sections"])
             },
-            "original_pdf_data": content.hex()  # Store original PDF as hex for context-aware generation
+
         }
         
     except Exception as e:
@@ -410,55 +421,16 @@ async def create_resume(
     """Create a new resume using AI-generated LaTeX"""
     
     # Generate LaTeX content using AI
-    try:
-        # Check if we have original PDF data for context-aware generation
-        if request.original_pdf_data:
-            # Decode hex back to bytes
-            original_pdf_content = bytes.fromhex(request.original_pdf_data)
-            
-            # Use context-aware generation with original PDF
-            latex_content = await ai_latex_generator.generate_latex_with_context(
-                template_name=request.template_name,
-                user_data=request.resume_data.dict(),
-                original_pdf_content=original_pdf_content,
-                job_description=request.job_description
-            )
-            logger.info("🧠 Used context-aware LaTeX generation with original PDF")
-        else:
-            # Fallback to regular generation without PDF context
-            latex_content = await ai_latex_generator.generate_latex_from_template(
-                template_name=request.template_name,
-                user_data=request.resume_data.dict()
-            )
-            logger.info("📝 Used regular LaTeX generation without PDF context")
-    except Exception as e:
-        logger.error(f"Failed to generate LaTeX content with AI: {str(e)}")
-        # Create a minimal LaTeX template as absolute fallback
-        name = request.resume_data.personalInfo.name
-        email = request.resume_data.personalInfo.email
-        latex_content = f"""\\documentclass{{professional_resume}}
-\\begin{{document}}
+    logger.info(f"📝 RESUMES: Generating LaTeX for template: {request.template_name}")
+    
+    latex_content = ai_latex_generator.generate_latex(
+        template_name=request.template_name,
+        resume_data=request.resume_data.dict(),
+        job_description=request.job_description
+    )
+    logger.info("🧠 Used AI LaTeX generation")
+    
 
-\\name{{{name}}}
-\\address{{Email: {email} | Phone: | Location: }}
-
-\\begin{{rSection}}{{Professional Summary}}
-Professional summary goes here.
-\\end{{rSection}}
-
-\\begin{{rSection}}{{Experience}}
-Experience details go here.
-\\end{{rSection}}
-
-\\begin{{rSection}}{{Education}}
-Education details go here.
-\\end{{rSection}}
-
-\\begin{{rSection}}{{Skills}}
-Skills go here.
-\\end{{rSection}}
-
-\\end{{document}}"""
     
     # Create resume in database
     db_resume = Resume(
