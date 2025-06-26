@@ -1,11 +1,8 @@
 # LaTeX Resume AI - Git Ignore File
 
-# Environment variables and secrets
+# Environment variables
 .env
-.env.local
-.env.development
-.env.production
-.env.test
+.env.*
 
 # Python
 __pycache__/
@@ -25,6 +22,7 @@ parts/
 sdist/
 var/
 wheels/
+share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
@@ -32,55 +30,25 @@ MANIFEST
 
 # Virtual environments
 venv/
-env/
-ENV/
 .venv/
-
-# Database files
-*.db
-*.sqlite
-*.sqlite3
-latex_resume_ai.db
+env/
+.env/
 
 # Node.js
 node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-.pnpm-debug.log*
-package-lock.json
 
 # Frontend build
 frontend/dist/
 frontend/build/
 
-# Generated files and temporary content
-backend/static/logs/*
-backend/static/pdfs/*
-backend/static/temp/*
-backend/static/uploaded_pdfs/*
-backend/static/generated_pdfs/*
-*.pdf
-*.log
-
-# Test files and scripts
-test_*.py
-test_*.tex
-test_*.pdf
-*_test.py
-*_test.tex
-*test*.py
-*test*.tex
-backend/cleanup_temp_files.py
-backend/reset_db.py
-
-# IDE and Editor
+# IDE
 .vscode/
 .idea/
-.cursor/
 *.swp
 *.swo
-*~
 
 # OS
 .DS_Store
@@ -91,15 +59,41 @@ backend/reset_db.py
 ehthumbs.db
 Thumbs.db
 
-# Temporary files
-*.tmp
-*.temp
-.cache/
-*.pyc
+# Database
+*.db
+*.sqlite
+*.sqlite3
 
-# Keep empty directories with .gitkeep
-!backend/static/logs/.gitkeep
-!backend/static/pdfs/.gitkeep
-!backend/static/temp/.gitkeep
-!backend/static/uploaded_pdfs/.gitkeep
-!backend/static/generated_pdfs/.gitkeep 
+# Logs
+logs/
+*.log
+
+# Static files
+backend/static/uploaded_pdfs/
+backend/static/generated_pdfs/
+backend/static/temp/
+backend/static/logs/
+
+# SSL certificates
+nginx/ssl/
+*.pem
+*.key
+*.crt
+
+# Docker volumes data
+backend/data/
+
+# Backup files
+*.bak
+*.backup
+
+# Test files and scripts
+test_*.py
+test_*.tex
+test_*.pdf
+*_test.py
+*_test.tex
+*test*.py
+*test*.tex
+backend/cleanup_temp_files.py
+backend/reset_db.py 

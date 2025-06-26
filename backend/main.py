@@ -42,10 +42,26 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Configure CORS for modern frontend
+# Configure CORS for production and development
+allowed_origins = [
+    "http://localhost:5173",  # Vite dev server
+    "http://127.0.0.1:5173",  # Local dev
+    "http://localhost:3000",  # Production frontend container
+    "http://frontend:80",     # Docker internal
+]
+
+# Add environment-specific origins
+if os.getenv("ENVIRONMENT") == "production":
+    domain = os.getenv("DOMAIN")
+    if domain:
+        allowed_origins.extend([
+            f"http://{domain}",
+            f"https://{domain}",
+        ])
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -1,0 +1,8 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+Do not use terminal to run commands , all the commands which require terminal are run by user ,present the commands in  bash always , do not use curl by your own 
+Do not create fallback mechanisms or temporary workaround unless user asks for it 
+
