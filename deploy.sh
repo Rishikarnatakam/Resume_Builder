@@ -39,9 +39,9 @@ sudo apt update && sudo apt upgrade -y
 # Install system dependencies
 print_status "Installing system dependencies..."
 sudo apt install -y \
-    python3.11 \
-    python3.11-venv \
-    python3.11-dev \
+    python3 \
+    python3-venv \
+    python3-dev \
     python3-pip \
     nodejs \
     npm \
@@ -92,7 +92,7 @@ print_status "Setting up Python backend..."
 cd backend
 
 # Create virtual environment
-python3.11 -m venv venv
+python3 -m venv venv
 source venv/bin/activate
 
 # Install Python dependencies
