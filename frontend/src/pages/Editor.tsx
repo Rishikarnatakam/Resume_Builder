@@ -6,6 +6,7 @@ import { useResume } from '../context/ResumeContext';
 import { motion } from 'framer-motion';
 import AIChat, { AIChatRef } from '../components/AIChat';
 import ThreePanelSplitter from '../components/ThreePanelSplitter';
+import { apiConfig } from '../config/api';
 
 const LaTeXEditor: React.FC = () => {
   const { resumeId } = useParams<{ resumeId?: string }>();
@@ -33,7 +34,6 @@ const LaTeXEditor: React.FC = () => {
   
   const editorRef = useRef<any>(null);
   const aiChatRef = useRef<AIChatRef>(null);
-  const API_BASE = 'http://localhost:8000/api';
 
   // Utility function to format time since last save
   const formatTime = (date: Date) => {
@@ -122,7 +122,7 @@ Programming Languages, Frameworks, Tools, etc.
   const loadResume = async (id: number) => {
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_BASE}/resumes/${id}`, {
+      const response = await fetch(apiConfig.url(apiConfig.endpoints.resumes.get(id.toString())), {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -147,7 +147,7 @@ Programming Languages, Frameworks, Tools, etc.
     setIsSaving(true);
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_BASE}/resumes/${resumeId}`, {
+      const response = await fetch(apiConfig.url(apiConfig.endpoints.resumes.get(resumeId)), {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -191,7 +191,7 @@ Programming Languages, Frameworks, Tools, etc.
         isOverride: !!overrideContent
       });
       
-      const response = await fetch(`${API_BASE}/latex/compile`, {
+      const response = await fetch(apiConfig.url('/latex/compile'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -209,7 +209,7 @@ Programming Languages, Frameworks, Tools, etc.
       console.log('📊 Compile response data:', result);
 
       if (result.success && result.pdf_url) {
-        const fullPdfUrl = `http://localhost:8000${result.pdf_url}`;
+        const fullPdfUrl = apiConfig.hostUrl(result.pdf_url);
         console.log('✅ Compilation successful!');
         console.log('📄 PDF URL from server:', result.pdf_url);
         console.log('📄 Full PDF URL:', fullPdfUrl);

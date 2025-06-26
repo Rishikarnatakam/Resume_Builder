@@ -13,6 +13,7 @@ import {
   CheckIcon
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../context/AuthContext';
+import { apiConfig } from '../config/api';
 
 interface Resume {
   id: number;
@@ -38,7 +39,7 @@ const Dashboard: React.FC = () => {
 
   const fetchTemplates = async () => {
     try {
-      const response = await fetch('http://localhost:8000/api/templates/');
+      const response = await fetch(apiConfig.url(apiConfig.endpoints.templates.list));
       if (response.ok) {
         const templateData = await response.json();
         setTemplates(templateData);
@@ -56,7 +57,7 @@ const Dashboard: React.FC = () => {
   const fetchResumes = async () => {
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch('http://localhost:8000/api/resumes/', {
+      const response = await fetch(apiConfig.url(apiConfig.endpoints.resumes.list), {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -78,7 +79,7 @@ const Dashboard: React.FC = () => {
     
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`http://localhost:8000/api/resumes/${resumeId}`, {
+      const response = await fetch(apiConfig.url(apiConfig.endpoints.resumes.delete(resumeId.toString())), {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -108,7 +109,7 @@ const Dashboard: React.FC = () => {
     
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`http://localhost:8000/api/resumes/${resumeId}/title?new_title=${encodeURIComponent(editingTitle)}`, {
+      const response = await fetch(`${apiConfig.url(apiConfig.endpoints.resumes.updateTitle(resumeId.toString()))}?new_title=${encodeURIComponent(editingTitle)}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`

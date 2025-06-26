@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { motion } from "framer-motion";
 import { DocumentTextIcon, EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
+import { apiConfig } from '../config/api';
 
 const Login: React.FC = () => {
   const [username, setUsername] = useState('');
@@ -24,7 +25,7 @@ const Login: React.FC = () => {
       formData.append('username', username);
       formData.append('password', password);
 
-      const response = await fetch('http://localhost:8000/api/auth/login', {
+      const response = await fetch(apiConfig.url(apiConfig.endpoints.auth.login), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',

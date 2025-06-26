@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from "framer-motion";
 import { DocumentTextIcon, EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
+import { apiConfig } from '../config/api';
 
 const Register: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -43,7 +44,7 @@ const Register: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const response = await fetch('http://localhost:8000/api/auth/register', {
+      const response = await fetch(apiConfig.url(apiConfig.endpoints.auth.register), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

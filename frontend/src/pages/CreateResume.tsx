@@ -10,6 +10,7 @@ import {
   StarIcon
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../context/AuthContext';
+import { apiConfig } from '../config/api';
 
 interface Template {
   id: string;
@@ -39,7 +40,7 @@ const CreateResume: React.FC = () => {
     const fetchTemplates = async () => {
       try {
         setLoading(true);
-        const response = await fetch('http://localhost:8000/api/templates/');
+        const response = await fetch(apiConfig.url(apiConfig.endpoints.templates.list));
         if (!response.ok) {
           throw new Error('Failed to fetch templates');
         }
@@ -99,7 +100,7 @@ const CreateResume: React.FC = () => {
       };
 
       const token = localStorage.getItem('access_token');
-      const response = await fetch('http://localhost:8000/api/resumes/', {
+      const response = await fetch(apiConfig.url(apiConfig.endpoints.resumes.create), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -222,7 +223,7 @@ const CreateResume: React.FC = () => {
                   {template.has_preview ? (
                     /* Preview Image */
                     <img 
-                      src={`http://localhost:8000${template.preview_url}`}
+                                              src={apiConfig.hostUrl(template.preview_url || '')}
                       alt={`${template.name} Preview`}
                       className="w-full h-full object-cover"
                       onError={(e) => {

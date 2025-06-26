@@ -18,10 +18,13 @@ cd ..
 echo "Starting nginx..."
 sudo systemctl start nginx
 
-# Check if everything is running
-sleep 3
-echo "✅ Checking services..."
+# Start ngrok tunnel with static domain
+echo "Creating public tunnel with static domain..."
+nohup ngrok http --url=herring-meet-seasnail.ngrok-free.app 80 > ngrok.log 2>&1 &
 
+# Check if everything is running
+sleep 8
+echo "✅ Checking services..."
 # Check backend
 if curl -s http://localhost:8000/api/health > /dev/null; then
     echo "✅ Backend is running on port 8000"
@@ -36,5 +39,10 @@ else
     echo "❌ Nginx failed to start"
 fi
 
+# Show your static public URL
+echo ""
+echo "🌐 Your PERMANENT public URL:"
+echo "https://herring-meet-seasnail.ngrok-free.app"
+
 echo "🎉 Server startup complete!"
-echo "Access your app at: http://your-domain.com" 
+echo "📱 Share this URL with your friends - it never changes!"

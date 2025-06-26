@@ -13,6 +13,42 @@ pip install -r requirements.txt
 # Build frontend
 cd frontend
 npm install
+
+# Create frontend environment files
+echo "📝 Creating frontend environment files..."
+
+# Development environment
+cat > .env << 'EOF'
+# API Configuration
+VITE_API_BASE_URL=http://localhost:8000/api
+VITE_API_HOST=http://localhost:8000
+
+# Environment
+VITE_NODE_ENV=development
+EOF
+
+# Production environment (for nginx)
+cat > .env.production << 'EOF'
+# API Configuration for Production
+VITE_API_BASE_URL=/api
+VITE_API_HOST=
+
+# Environment
+VITE_NODE_ENV=production
+EOF
+
+# Static domain environment (for your ngrok domain)
+cat > .env.static << 'EOF'
+# API Configuration for Static Domain
+VITE_API_BASE_URL=https://herring-meet-seasnail.ngrok-free.app/api
+VITE_API_HOST=https://herring-meet-seasnail.ngrok-free.app
+
+# Environment
+VITE_NODE_ENV=production
+EOF
+
+echo "✅ Frontend environment files created"
+
 npm run build
 cd ..
 

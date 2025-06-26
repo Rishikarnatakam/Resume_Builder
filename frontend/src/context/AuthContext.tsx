@@ -1,4 +1,5 @@
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
+import { apiConfig, apiRequest } from '../config/api';
 
 interface User {
   id: number;
@@ -52,7 +53,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const fetchUserData = async (authToken: string) => {
     try {
-      const response = await fetch('http://localhost:8000/api/auth/me', {
+      const response = await fetch(apiConfig.url(apiConfig.endpoints.auth.me), {
         headers: {
           'Authorization': `Bearer ${authToken}`
         }
