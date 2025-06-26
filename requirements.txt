@@ -2,14 +2,14 @@
 # Optimized for compatibility and performance
 
 # Core Web Framework
-fastapi==0.115.6
-uvicorn[standard]==0.32.1
+fastapi==0.115.13
+uvicorn[standard]==0.34.3
 pydantic==2.10.3
 
 # Database & ORM
 sqlalchemy[asyncio]==2.0.36
-aiosqlite==0.20.0
-alembic==1.14.0
+aiosqlite==0.21.0
+alembic==1.16.2
 
 # Authentication & Security
 python-jose[cryptography]==3.3.0
@@ -31,10 +31,6 @@ httpx==0.28.1
 requests==2.32.3
 python-dotenv==1.0.1
 
-# Production Server
-gunicorn==23.0.0
-redis==5.2.0
-
 # Image Processing
 Pillow==11.0.0
 
@@ -42,4 +38,4 @@ Pillow==11.0.0
 structlog==24.4.0
 
 # Core async support
-anyio==4.6.2 
+anyio==4.9.0 

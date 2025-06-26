@@ -18,7 +18,6 @@ const ThreePanelSplitter: React.FC<ThreePanelSplitterProps> = ({
   rightContent,
   initialLeftWidth = 35,
   initialCenterWidth = 25,
-  initialRightWidth = 40,
   minLeftWidth = 20,
   minCenterWidth = 15,
   minRightWidth = 20,

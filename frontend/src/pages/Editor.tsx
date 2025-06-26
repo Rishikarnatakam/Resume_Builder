@@ -10,7 +10,7 @@ import ThreePanelSplitter from '../components/ThreePanelSplitter';
 const LaTeXEditor: React.FC = () => {
   const { resumeId } = useParams<{ resumeId?: string }>();
   const { user, logout } = useAuth();
-  const { currentResume, setCurrentResume } = useResume();
+  const { setCurrentResume } = useResume();
   
   const [latexContent, setLatexContent] = useState<string>('');
   const [pdfUrl, setPdfUrl] = useState<string>('');

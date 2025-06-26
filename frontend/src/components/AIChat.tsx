@@ -32,7 +32,7 @@ export interface AIChatRef {
   sendMessage: () => void;
 }
 
-const AIChat = forwardRef<AIChatRef, AIChatProps>(({ currentLatex, onLatexChange, isLoading = false, resumeId }, ref) => {
+const AIChat = forwardRef<AIChatRef, AIChatProps>(({ currentLatex, onLatexChange, resumeId }, ref) => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',

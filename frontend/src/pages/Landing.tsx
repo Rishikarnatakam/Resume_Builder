@@ -4,13 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { motion } from "framer-motion";
 import {
   DocumentTextIcon,
-  SparklesIcon,
-  UserGroupIcon,
-  ChartBarIcon,
-  ArrowRightIcon,
-  BoltIcon,
-  GlobeAltIcon,
-  CodeBracketIcon
+  ArrowRightIcon
 } from "@heroicons/react/24/outline";
 
 const Landing: React.FC = () => {
@@ -23,28 +17,7 @@ const Landing: React.FC = () => {
     }
   }, [user, navigate]);
 
-  const features = [
-    {
-      icon: SparklesIcon,
-      title: "AI-Powered Generation",
-      description: "Generate professional LaTeX resumes using advanced AI technology tailored to specific job descriptions."
-    },
-    {
-      icon: CodeBracketIcon,
-      title: "Live LaTeX Editor",
-      description: "Edit LaTeX code directly with Monaco Editor and see real-time PDF preview updates."
-    },
-    {
-      icon: BoltIcon,
-      title: "Instant Compilation",
-      description: "Fast local LaTeX compilation with detailed error reporting and logging."
-    },
-    {
-      icon: GlobeAltIcon,
-      title: "Modern Interface",
-      description: "Beautiful, responsive design with dark mode and intuitive user experience."
-    }
-  ];
+
 
   const stats = [
     { label: "AI Assistant", value: "Smart AI" },
