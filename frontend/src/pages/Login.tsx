@@ -29,6 +29,7 @@ const Login: React.FC = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
+          'ngrok-skip-browser-warning': 'true'
         },
         body: formData,
       });

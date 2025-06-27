@@ -1,6 +1,6 @@
 // API Configuration
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
-const API_HOST = import.meta.env.VITE_API_HOST || 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+const API_HOST = import.meta.env.VITE_API_HOST;
 
 export const apiConfig = {
   baseUrl: API_BASE_URL,
@@ -46,6 +46,7 @@ export const apiRequest = async (endpoint: string, options: RequestInit = {}) =>
   
   const defaultHeaders: HeadersInit = {
     'Content-Type': 'application/json',
+    'ngrok-skip-browser-warning': 'true',  // Skip ngrok browser warning
   };
   
   if (token) {

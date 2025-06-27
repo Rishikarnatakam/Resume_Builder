@@ -11,6 +11,7 @@ import {
   CheckCircleIcon
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../context/AuthContext';
+import { apiConfig } from '../config/api';
 
 interface PersonalInfo {
   name: string;
@@ -237,10 +238,11 @@ const ResumeDetails: React.FC = () => {
       formData.append('file', file);
 
       const token = localStorage.getItem('access_token');
-      const response = await fetch('http://localhost:8000/api/resumes/extract-pdf', {
+      const response = await fetch(apiConfig.url('/resumes/extract-pdf'), {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
+          'ngrok-skip-browser-warning': 'true'
         },
         body: formData
       });

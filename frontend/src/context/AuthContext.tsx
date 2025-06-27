@@ -53,14 +53,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const fetchUserData = async (authToken: string) => {
     try {
+      console.log('🔍 Fetching user data from:', apiConfig.url(apiConfig.endpoints.auth.me));
       const response = await fetch(apiConfig.url(apiConfig.endpoints.auth.me), {
         headers: {
-          'Authorization': `Bearer ${authToken}`
+          'Authorization': `Bearer ${authToken}`,
+          'ngrok-skip-browser-warning': 'true'
         }
       });
       
+      console.log('📡 User data response status:', response.status);
+      
       if (response.ok) {
         const userData = await response.json();
+        console.log('✅ User data fetched successfully:', userData);
         setUser(userData);
         setLoading(false);
       } else if (response.status === 401) {
@@ -70,6 +75,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       } else {
         // For other errors (500, network issues), don't logout - keep user logged in
         console.error('❌ Error fetching user data, but keeping user logged in:', response.status);
+        const errorText = await response.text();
+        console.error('❌ Error details:', errorText);
         setLoading(false);
       }
     } catch (error) {

@@ -1,10 +1,21 @@
-# LaTeX Resume AI - Git Ignore File
+# Resume Builder - Single Comprehensive .gitignore
+# This file handles ALL ignore patterns for the entire project
 
-# Environment variables
+# ================================
+# ENVIRONMENT & CONFIGURATION
+# ================================
 .env
 .env.*
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.static
+.env.backup
 
-# Python
+# ================================
+# PYTHON (Backend)
+# ================================
 __pycache__/
 *.py[cod]
 *$py.class
@@ -27,30 +38,209 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.nox/
+.coverage
+.pytest_cache/
+.hypothesis/
+pytestdebug.log
 
-# Virtual environments
+# ================================
+# VIRTUAL ENVIRONMENTS
+# ================================
 venv/
 .venv/
 env/
 .env/
+ENV/
+env.bak/
+venv.bak/
+pyvenv.cfg
 
-# Node.js
+# ================================
+# NODE.JS & FRONTEND
+# ================================
 node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+.npm
+.eslintcache
+.stylelintcache
+*.tgz
+.yarn-integrity
+.node_repl_history
+/.pnp
+.pnp.js
+jspm_packages/
 
-# Frontend build
+# ================================
+# BUILD & DISTRIBUTION
+# ================================
+# Frontend builds
 frontend/dist/
 frontend/build/
+frontend/.vite/
+frontend/coverage/
+frontend/.next/
+frontend/out/
 
-# IDE
+# Python builds
+backend/build/
+backend/dist/
+
+# ================================
+# DATABASES (STRICT!)
+# ================================
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.db-wal
+*.db-shm
+backend/latex_resume_ai.db
+backend/data/
+data/
+
+# ================================
+# STATIC FILES & UPLOADS (VERY STRICT!)
+# ================================
+# All uploaded files
+backend/static/uploaded_pdfs/*
+!backend/static/uploaded_pdfs/.gitkeep
+
+# All generated PDFs  
+backend/static/generated_pdfs/*
+!backend/static/generated_pdfs/.gitkeep
+
+# All PDF files in pdfs directory
+backend/static/pdfs/*
+!backend/static/pdfs/.gitkeep
+
+# All temporary files
+backend/static/temp/*
+!backend/static/temp/.gitkeep
+
+# All log files
+backend/static/logs/*
+!backend/static/logs/.gitkeep
+
+# Any PDFs anywhere (except templates)
+*.pdf
+!backend/templates/*/preview.png
+
+# ================================
+# DOCUMENTS & MEDIA (STRICT!)
+# ================================
+*.doc
+*.docx
+*.xls
+*.xlsx
+*.ppt
+*.pptx
+*.zip
+*.rar
+*.tar
+*.gz
+*.7z
+
+# Images (except specific UI assets)
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.bmp
+*.tiff
+*.ico
+*.svg
+# Keep only specific UI images
+!frontend/public/**/*.png
+!frontend/public/**/*.jpg
+!frontend/public/**/*.svg
+!frontend/src/assets/**/*.png
+!frontend/src/assets/**/*.jpg
+!frontend/src/assets/**/*.svg
+!backend/templates/*/preview.png
+
+# ================================
+# LATEX COMPILATION FILES
+# ================================
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.out
+*.synctex.gz
+*.toc
+*.lof
+*.lot
+*.nav
+*.snm
+*.vrb
+*.bcf
+*.run.xml
+*.figlist
+*.makefile
+*.figlist.makefile
+
+# ================================
+# LOGS & RUNTIME
+# ================================
+*.log
+logs/
+backend.log
+frontend.log
+ngrok.log
+proxy.log
+uvicorn.log
+fastapi.log
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# ================================
+# CACHE & TEMPORARY
+# ================================
+.cache/
+.parcel-cache/
+.swc/
+.turbo/
+.nyc_output
+*.tmp
+*.temp
+
+# ================================
+# TESTING & COVERAGE
+# ================================
+coverage/
+*.lcov
+.jest/
+.cypress/
+e2e/results/
+test-results/
+playwright-report/
+
+# ================================
+# IDE & EDITORS
+# ================================
 .vscode/
 .idea/
 *.swp
 *.swo
+*~
+.sublime-workspace
+.sublime-project
+*.code-workspace
 
-# OS
+# ================================
+# OS GENERATED FILES
+# ================================
 .DS_Store
 .DS_Store?
 ._*
@@ -58,36 +248,24 @@ frontend/build/
 .Trashes
 ehthumbs.db
 Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
 
-# Database
-*.db
-*.sqlite
-*.sqlite3
-
-# Logs
-logs/
-*.log
-
-# Static files
-backend/static/uploaded_pdfs/
-backend/static/generated_pdfs/
-backend/static/temp/
-backend/static/logs/
-
-# SSL certificates
-nginx/ssl/
-*.pem
-*.key
-*.crt
-
-# Docker volumes data
-backend/data/
-
-# Backup files
+# ================================
+# BACKUP & TEMPORARY FILES
+# ================================
 *.bak
 *.backup
+*~
+*.orig
+*.rej
+.#*
+#*#
+.*.sw[op]
 
-# Test files and scripts
+# ================================
+# TEST FILES & SCRIPTS
+# ================================
 test_*.py
 test_*.tex
 test_*.pdf
@@ -96,4 +274,51 @@ test_*.pdf
 *test*.py
 *test*.tex
 backend/cleanup_temp_files.py
-backend/reset_db.py 
+backend/reset_db.py
+backend/test_*.py
+frontend/test_*.js
+frontend/test_*.ts
+cleanup_*.py
+reset_*.py
+temp_*.py
+
+# ================================
+# SSL & SECURITY
+# ================================
+nginx/ssl/
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+secrets/
+.secrets/
+
+# ================================
+# DOCKER & DEPLOYMENT
+# ================================
+.dockerignore
+docker-compose.override.yml
+.docker/
+Dockerfile.local
+
+# ================================
+# NGROK & TUNNELING
+# ================================
+ngrok
+ngrok.exe
+tunnel.log
+
+# ================================
+# MISC
+# ================================
+.grunt
+bower_components
+.lock-wscript
+.wafpickle-*
+.fusebox/
+.dynamodb/
+.tern-port
+.vuepress/dist
+.serverless/
+.FuseBox/ 

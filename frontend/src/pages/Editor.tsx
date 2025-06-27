@@ -125,6 +125,7 @@ Programming Languages, Frameworks, Tools, etc.
       const response = await fetch(apiConfig.url(apiConfig.endpoints.resumes.get(id.toString())), {
         headers: {
           'Authorization': `Bearer ${token}`,
+          'ngrok-skip-browser-warning': 'true'
         },
       });
 
@@ -152,6 +153,7 @@ Programming Languages, Frameworks, Tools, etc.
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
+          'ngrok-skip-browser-warning': 'true'
         },
         body: JSON.stringify({
           title: resumeTitle,
@@ -196,6 +198,7 @@ Programming Languages, Frameworks, Tools, etc.
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
+          'ngrok-skip-browser-warning': 'true'
         },
         body: JSON.stringify({
           latex_content: contentToCompile,
@@ -228,7 +231,11 @@ Programming Languages, Frameworks, Tools, etc.
         
         // Test if PDF is accessible
         try {
-          const pdfTest = await fetch(fullPdfUrl);
+          const pdfTest = await fetch(fullPdfUrl, {
+            headers: {
+              'ngrok-skip-browser-warning': 'true'
+            }
+          });
           console.log('📊 PDF accessibility test:', pdfTest.status, pdfTest.statusText);
           console.log('📊 PDF content-type:', pdfTest.headers.get('content-type'));
         } catch (pdfError) {
@@ -308,7 +315,11 @@ Tailor the content to match this specific role while maintaining professional, s
       }
       
       // Method 2: Force download using fetch + blob (more reliable)
-      const response = await fetch(pdfUrl);
+      const response = await fetch(pdfUrl, {
+        headers: {
+          'ngrok-skip-browser-warning': 'true'
+        }
+      });
       const blob = await response.blob();
       
       // Create filename from resume title

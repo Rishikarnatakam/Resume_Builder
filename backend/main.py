@@ -43,25 +43,51 @@ app = FastAPI(
 )
 
 # Configure CORS for production and development
-allowed_origins = [
-    "http://localhost:5173",  # Vite dev server
-    "http://127.0.0.1:5173",  # Local dev
-    "http://localhost:3000",  # Production frontend container
-    "http://frontend:80",     # Docker internal
-]
-
-# Add environment-specific origins
-if os.getenv("ENVIRONMENT") == "production":
-    domain = os.getenv("DOMAIN")
-    if domain:
-        allowed_origins.extend([
-            f"http://{domain}",
-            f"https://{domain}",
-        ])
+def is_allowed_origin(origin: str) -> bool:
+    """Check if origin is allowed (includes ngrok domain checking)"""
+    allowed_origins = [
+        "http://localhost:5173",  # Vite dev server
+        "http://127.0.0.1:5173",  # Local dev
+        "http://localhost:3000",  # Production frontend container
+        "http://frontend:80",     # Docker internal
+    ]
+    
+    # Add environment-specific origins
+    if os.getenv("ENVIRONMENT") == "production":
+        domain = os.getenv("DOMAIN")
+        if domain:
+            allowed_origins.extend([
+                f"http://{domain}",
+                f"https://{domain}",
+            ])
+    
+    # Add specific ngrok URL from environment variable if provided
+    ngrok_url = os.getenv("NGROK_URL")
+    if ngrok_url:
+        allowed_origins.append(ngrok_url)
+    
+    # Add static ngrok domain for development
+    allowed_origins.append("https://herring-meet-seasnail.ngrok-free.app")
+    
+    # Check exact matches first
+    if origin in allowed_origins:
+        return True
+    
+    # For development, allow ngrok domains
+    if os.getenv("ENVIRONMENT") != "production":
+        ngrok_domains = [
+            ".ngrok-free.app",
+            ".ngrok.app", 
+            ".ngrok.io"
+        ]
+        if origin and any(domain in origin for domain in ngrok_domains):
+            return True
+    
+    return False
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins,
+    allow_origin_regex=r"https://.*\.ngrok-free\.app|https://.*\.ngrok\.app|https://.*\.ngrok\.io|http://localhost:.*|http://127\.0\.0\.1:.*",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

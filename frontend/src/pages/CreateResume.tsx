@@ -40,7 +40,11 @@ const CreateResume: React.FC = () => {
     const fetchTemplates = async () => {
       try {
         setLoading(true);
-        const response = await fetch(apiConfig.url(apiConfig.endpoints.templates.list));
+        const response = await fetch(apiConfig.url(apiConfig.endpoints.templates.list), {
+          headers: {
+            'ngrok-skip-browser-warning': 'true'
+          }
+        });
         if (!response.ok) {
           throw new Error('Failed to fetch templates');
         }
@@ -104,7 +108,8 @@ const CreateResume: React.FC = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
+          'ngrok-skip-browser-warning': 'true'
         },
         body: JSON.stringify(payload)
       });

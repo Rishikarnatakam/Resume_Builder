@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { apiConfig } from '../config/api';
 
 interface Message {
   id: string;
@@ -132,9 +133,10 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ currentLatex, onLatexChange
 
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`http://localhost:8000/api/resumes/${resumeId}`, {
+      const response = await fetch(apiConfig.url(`/resumes/${resumeId}`), {
         headers: {
           'Authorization': `Bearer ${token}`,
+          'ngrok-skip-browser-warning': 'true'
         },
       });
 
@@ -160,9 +162,10 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ currentLatex, onLatexChange
     try {
       const token = localStorage.getItem('access_token');
       
-      const resumeResponse = await fetch(`http://localhost:8000/api/resumes/${resumeId}`, {
+      const resumeResponse = await fetch(apiConfig.url(`/resumes/${resumeId}`), {
         headers: {
           'Authorization': `Bearer ${token}`,
+          'ngrok-skip-browser-warning': 'true'
         },
       });
 
@@ -171,9 +174,10 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ currentLatex, onLatexChange
         const resumeTemplateName = resume.template_name || 'professional_resume';
         setTemplateName(resumeTemplateName);
 
-        const templateResponse = await fetch(`http://localhost:8000/api/templates/${resumeTemplateName}`, {
+        const templateResponse = await fetch(apiConfig.url(`/templates/${resumeTemplateName}`), {
           headers: {
             'Authorization': `Bearer ${token}`,
+            'ngrok-skip-browser-warning': 'true'
           },
         });
 
@@ -240,11 +244,12 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ currentLatex, onLatexChange
       // Log the complete form data structure being sent
       console.log('📊 FRONTEND: Complete form data being sent to AI:', JSON.stringify(formData, null, 2));
 
-      const response = await fetch('http://localhost:8000/api/ai/session/start', {
+      const response = await fetch(apiConfig.url('/ai/session/start'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
+          'ngrok-skip-browser-warning': 'true'
         },
         body: JSON.stringify(sessionRequest),
       });
@@ -293,10 +298,11 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ currentLatex, onLatexChange
     try {
       const token = localStorage.getItem('access_token');
       
-      await fetch(`http://localhost:8000/api/ai/session/${sessionId}`, {
+      await fetch(apiConfig.url(`/ai/session/${sessionId}`), {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
+          'ngrok-skip-browser-warning': 'true'
         },
       });
 
@@ -355,11 +361,12 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ currentLatex, onLatexChange
         latexLength: currentLatex.length
       });
 
-      const response = await fetch('http://localhost:8000/api/latex/compile-for-analysis', {
+      const response = await fetch(apiConfig.url('/latex/compile-for-analysis'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
+          'ngrok-skip-browser-warning': 'true'
         },
         body: JSON.stringify({
           latex_content: currentLatex,
@@ -477,11 +484,12 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ currentLatex, onLatexChange
         });
       }
 
-      const response = await fetch('http://localhost:8000/api/ai/session/message', {
+      const response = await fetch(apiConfig.url('/ai/session/message'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
+          'ngrok-skip-browser-warning': 'true'
         },
         body: JSON.stringify(requestBody),
       });

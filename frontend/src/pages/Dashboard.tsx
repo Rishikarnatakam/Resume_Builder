@@ -39,7 +39,11 @@ const Dashboard: React.FC = () => {
 
   const fetchTemplates = async () => {
     try {
-      const response = await fetch(apiConfig.url(apiConfig.endpoints.templates.list));
+      const response = await fetch(apiConfig.url(apiConfig.endpoints.templates.list), {
+        headers: {
+          'ngrok-skip-browser-warning': 'true'
+        }
+      });
       if (response.ok) {
         const templateData = await response.json();
         setTemplates(templateData);
@@ -59,7 +63,8 @@ const Dashboard: React.FC = () => {
       const token = localStorage.getItem('access_token');
       const response = await fetch(apiConfig.url(apiConfig.endpoints.resumes.list), {
         headers: {
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
+          'ngrok-skip-browser-warning': 'true'
         }
       });
       
@@ -82,7 +87,8 @@ const Dashboard: React.FC = () => {
       const response = await fetch(apiConfig.url(apiConfig.endpoints.resumes.delete(resumeId.toString())), {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
+          'ngrok-skip-browser-warning': 'true'
         }
       });
       
@@ -112,7 +118,8 @@ const Dashboard: React.FC = () => {
       const response = await fetch(`${apiConfig.url(apiConfig.endpoints.resumes.updateTitle(resumeId.toString()))}?new_title=${encodeURIComponent(editingTitle)}`, {
         method: 'PUT',
         headers: {
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
+          'ngrok-skip-browser-warning': 'true'
         }
       });
       
@@ -187,50 +194,19 @@ const Dashboard: React.FC = () => {
             </p>
           </div>
           
-          <Link
-            to="/create"
-            className="text-white px-6 py-3 rounded-3xl font-medium hover:opacity-90 transition-all flex items-center space-x-2"
-            style={{ backgroundColor: '#2F2F2F' }}
-          >
-            <PlusIcon className="w-5 h-5" />
-            <span>New Resume</span>
-          </Link>
-        </div>
-
-        {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="border border-gray-600/30 rounded-3xl p-6" style={{ backgroundColor: '#212121' }}>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-400 text-sm">Total Resumes</p>
-                <p className="text-2xl font-bold">{resumes.length}</p>
-              </div>
-              <DocumentTextIcon className="w-8 h-8 text-gray-400" />
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2 text-gray-400 bg-gray-800/30 px-6 py-3 rounded-3xl">
+              <DocumentTextIcon className="w-5 h-5" />
+              <span className="font-medium">{resumes.length} resume{resumes.length !== 1 ? 's' : ''}</span>
             </div>
-          </div>
-          
-          <div className="border border-gray-600/30 rounded-3xl p-6" style={{ backgroundColor: '#212121' }}>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-400 text-sm">Last Updated</p>
-                <p className="text-2xl font-bold">
-                  {resumes.length > 0 ? formatDate(resumes[0].updated_at) : 'N/A'}
-                </p>
-              </div>
-              <CalendarIcon className="w-8 h-8 text-gray-400" />
-            </div>
-          </div>
-          
-          <div className="border border-gray-600/30 rounded-3xl p-6" style={{ backgroundColor: '#212121' }}>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-400 text-sm">Templates Used</p>
-                <p className="text-2xl font-bold">
-                  {new Set(resumes.map(r => r.template_name)).size}
-                </p>
-              </div>
-              <PlusIcon className="w-8 h-8 text-gray-400" />
-            </div>
+            <Link
+              to="/create"
+              className="text-white px-6 py-3 rounded-3xl font-medium hover:opacity-90 transition-all flex items-center space-x-2"
+              style={{ backgroundColor: '#2F2F2F' }}
+            >
+              <PlusIcon className="w-5 h-5" />
+              <span>New Resume</span>
+            </Link>
           </div>
         </div>
 
@@ -267,61 +243,48 @@ const Dashboard: React.FC = () => {
                 className="group border border-gray-600/30 rounded-3xl p-6 hover:border-gray-500/50 transition-all"
                 style={{ backgroundColor: '#212121' }}
               >
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex-1">
-                    {editingId === resume.id ? (
-                      <div className="flex items-center space-x-2 mb-1">
-                        <input
-                          type="text"
-                          value={editingTitle}
-                          onChange={(e) => setEditingTitle(e.target.value)}
-                          className="border border-gray-600/50 rounded-3xl px-3 py-2 text-white text-lg font-semibold flex-1 focus:border-gray-500/50 focus:outline-none transition-all"
-                          style={{ backgroundColor: '#2F2F2F' }}
-                          onKeyPress={(e) => e.key === 'Enter' && saveTitle(resume.id)}
-                          autoFocus
-                        />
-                        <button
-                          onClick={() => saveTitle(resume.id)}
-                          className="p-2 text-green-400 hover:text-green-300 rounded-3xl hover:bg-gray-600/20 transition-all"
-                        >
-                          <CheckIcon className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={cancelEditing}
-                          className="p-2 text-red-400 hover:text-red-300 rounded-3xl hover:bg-gray-600/20 transition-all"
-                        >
-                          <XMarkIcon className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center space-x-2 mb-1">
-                        <h3 className="font-semibold text-lg truncate flex-1">
-                          {resume.title}
-                        </h3>
-                        <button
-                          onClick={() => startEditing(resume)}
-                          className="p-2 text-gray-400 hover:text-white rounded-3xl transition-all opacity-0 group-hover:opacity-100"
-                          style={{ backgroundColor: 'rgba(47, 47, 47, 0.5)' }}
-                          title="Edit name"
-                        >
-                          <PencilIcon className="w-4 h-4" />
-                        </button>
-                      </div>
-                    )}
-                    <p className="text-sm text-gray-400">
-                      {getTemplateName(resume.template_name)}
-                    </p>
-                  </div>
-                  <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity ml-2">
-                    <button
-                      onClick={() => deleteResume(resume.id)}
-                      className="p-2 text-gray-400 hover:text-red-400 rounded-3xl transition-all"
-                      style={{ backgroundColor: 'rgba(47, 47, 47, 0.5)' }}
-                      title="Delete"
-                    >
-                      <TrashIcon className="w-4 h-4" />
-                    </button>
-                  </div>
+                <div className="mb-4">
+                  {editingId === resume.id ? (
+                    <div className="flex items-center space-x-2 mb-2">
+                      <input
+                        type="text"
+                        value={editingTitle}
+                        onChange={(e) => setEditingTitle(e.target.value)}
+                        className="border border-gray-600/50 rounded-3xl px-3 py-2 text-white text-lg font-semibold flex-1 focus:border-gray-500/50 focus:outline-none transition-all"
+                        style={{ backgroundColor: '#2F2F2F' }}
+                        onKeyPress={(e) => e.key === 'Enter' && saveTitle(resume.id)}
+                        autoFocus
+                      />
+                      <button
+                        onClick={() => saveTitle(resume.id)}
+                        className="p-2 text-green-400 hover:text-green-300 rounded-full hover:bg-gray-600/20 transition-all"
+                        title="Save"
+                      >
+                        <CheckIcon className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={cancelEditing}
+                        className="p-2 text-red-400 hover:text-red-300 rounded-full hover:bg-gray-600/20 transition-all"
+                        title="Cancel"
+                      >
+                        <XMarkIcon className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="mb-2">
+                      <h3 className="font-semibold text-lg mb-1 leading-tight overflow-hidden" style={{ 
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        wordBreak: 'break-word'
+                      }}>
+                        {resume.title}
+                      </h3>
+                    </div>
+                  )}
+                  <p className="text-sm text-gray-400">
+                    {getTemplateName(resume.template_name)}
+                  </p>
                 </div>
                 
                 <div className="space-y-2 mb-4">
@@ -335,14 +298,30 @@ const Dashboard: React.FC = () => {
                   </div>
                 </div>
                 
-                <div className="flex items-center space-x-3">
+                <div className="flex items-center space-x-2">
                   <Link
                     to={`/editor/${resume.id}`}
-                    className="w-full text-white px-4 py-3 rounded-3xl text-sm font-medium hover:opacity-90 transition-all text-center"
+                    className="flex-1 text-white px-3 py-2 rounded-3xl text-sm font-medium hover:opacity-90 transition-all text-center"
                     style={{ backgroundColor: '#2F2F2F' }}
                   >
                     Edit Resume
                   </Link>
+                  <button
+                    onClick={() => startEditing(resume)}
+                    className="p-2 text-gray-400 hover:text-white rounded-full transition-all"
+                    style={{ backgroundColor: 'rgba(47, 47, 47, 0.8)' }}
+                    title="Edit name"
+                  >
+                    <PencilIcon className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => deleteResume(resume.id)}
+                    className="p-2 text-gray-400 hover:text-red-400 rounded-full transition-all"
+                    style={{ backgroundColor: 'rgba(47, 47, 47, 0.8)' }}
+                    title="Delete"
+                  >
+                    <TrashIcon className="w-4 h-4" />
+                  </button>
                 </div>
               </motion.div>
             ))}
