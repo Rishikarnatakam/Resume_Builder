@@ -1,0 +1,76 @@
+# Backend - Comprehensive .gitignore
+
+# ================================
+# PYTHON SPECIFIC
+# ================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# ================================
+# DATABASES (STRICT!)
+# ================================
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.db-wal
+*.db-shm
+latex_resume_ai.db
+data/
+
+# ================================
+# STATIC FILES (VERY STRICT!)
+# ================================
+# All uploaded files
+static/uploaded_pdfs/*
+!static/uploaded_pdfs/.gitkeep
+
+# All generated PDFs
+static/generated_pdfs/*
+!static/generated_pdfs/.gitkeep
+
+# All PDF files in pdfs directory
+static/pdfs/*
+!static/pdfs/.gitkeep
+
+# All temporary files
+static/temp/*
+!static/temp/.gitkeep
+
+# All log files
+static/logs/*
+!static/logs/.gitkeep
+
+# ================================
+# LOGS & DEBUGGING
+# ================================
+*.log
+backend.log
+uvicorn.log
+fastapi.log
+
+# ================================
+# ENVIRONMENT & CONFIG
+# ================================
+.env
+.env.*
+config.local.py
+settings.local.py
+
+# ================================
+# TEST & TEMPORARY FILES
+# ================================
+test_*.py
+*_test.py
+cleanup_*.py
+reset_*.py
+temp_*.py
+
+# ================================
+# BACKUP FILES
+# ================================
+*.bak
+*.backup
+*.sql.bak 
