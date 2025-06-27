@@ -281,12 +281,19 @@ OUTPUT: Return ONLY the complete LaTeX code from \\documentclass{} to \\end{docu
 
 Tailor the content to match this specific role while maintaining professional, scannable formatting.`;
 
-    // Populate AI chat input, focus it, and auto-send
-    aiChatRef.current?.populateInput(tailoringPrompt);
+    // Show clean message to user instead of technical prompt
+    const userFriendlyMessage = `✨ Tailoring your resume for: ${jobDescription}`;
+    aiChatRef.current?.populateInput(userFriendlyMessage);
     aiChatRef.current?.focusInput();
     
-    // Auto-send the message after a brief delay to ensure input is populated
-    setTimeout(() => {
+    // Send the actual technical prompt behind the scenes
+    setTimeout(async () => {
+      // Replace user message with technical prompt before sending
+      const chatInput = document.querySelector('textarea[placeholder*="message"]') as HTMLTextAreaElement;
+      if (chatInput) {
+        chatInput.value = tailoringPrompt;
+        chatInput.dispatchEvent(new Event('input', { bubbles: true }));
+      }
       aiChatRef.current?.sendMessage();
     }, 100);
     

@@ -179,14 +179,32 @@ class ChatSessionManager:
             json.dumps(form_data, indent=2),
             "",
             "=== CONVERSATION GUIDELINES ===",
-            "- Be friendly and conversational",
-            "- Implement user requests exactly as asked", 
+            "- You are a friendly, expert AI resume builder - not a LaTeX teacher",
+            "- Be warm, helpful, and conversational while getting things done",
+            "- Just DO what the user asks - don't explain HOW LaTeX works unless specifically asked", 
+            "- When user asks for changes: Make them right away with a friendly confirmation",
+            "- Use natural language like 'Perfect!', 'Got it!', 'There you go!', 'All set!'",
+            "",
+            "🚨 FORBIDDEN PHRASES - NEVER SAY THESE:",
+            "- 'Here's your updated LaTeX code'",
+            "- 'Here's the corrected code'", 
+            "- 'Updated LaTeX resume'",
+            "- 'The code is now'",
+            "- 'Here's your LaTeX'",
+            "- ANY mention of 'LaTeX' or 'code' in responses",
+            "",
+            "✅ REQUIRED RESPONSE EXAMPLES:",
+            "- Instead of 'Here's your updated code with smaller name' → Say 'Done! Your name is now the perfect size.'",
+            "- Instead of 'Here's the corrected code for your header' → Say 'Fixed! Your contact info now spans two lines.'",
+            "- Instead of 'Updated LaTeX resume' → Say 'Perfect! Made that change for you.'",
+            "- Focus on WHAT you changed, not HOW you changed it",
             "- When user asks to tailor: Apply professional resume writing principles",
             "- Write naturally flowing content, not keyword-stuffed text",
             "- Focus on showcasing relevant qualifications in a compelling way",
             "- Provide clean LaTeX code without comments",
             "- Remember user customizations throughout our conversation",
             "- Put LaTeX code in ```latex code blocks",
+            "- Be encouraging and supportive - you're helping them build something important",
             "",
             "🚨 CRITICAL: CODE vs EXPLANATION RULES 🚨",
             "- ONLY provide LaTeX code when the user asks to CHANGE/ADD/MODIFY their resume content",
@@ -230,19 +248,22 @@ class ChatSessionManager:
     def _build_simple_prompt(self, current_latex: str, user_message: str) -> str:
         """Build simple prompt with just the essentials - AI remembers the context!"""
         
-        # Detect if this is an explanation request vs code change request
-        explanation_keywords = ['why', 'what', 'how', 'explain', 'because', 'cause', 'reason', 'big', 'small', 'spacing']
-        change_keywords = ['add', 'remove', 'change', 'modify', 'update', 'fix my resume', 'make it', 'create']
+        # Detect type of request
+        explanation_keywords = ['why', 'what causes', 'how does', 'explain why', 'tell me why', 'what makes']
+        change_keywords = ['make', 'change', 'add', 'remove', 'modify', 'update', 'fix', 'create', 'bigger', 'smaller', 'larger', 'move', 'put']
         
         user_lower = user_message.lower()
-        is_explanation = any(word in user_lower for word in explanation_keywords)
+        is_explanation = any(phrase in user_lower for phrase in explanation_keywords)
         is_change = any(word in user_lower for word in change_keywords)
+        is_tailoring = 'ats-friendly' in user_lower and 'target position' in user_lower
         
         instruction = ""
-        if is_explanation and not is_change:
+        if is_tailoring:
+            instruction = "\n🚨 TAILORING REQUEST: Generate complete tailored resume AND provide a summary of key changes made. Format response as: 'I've tailored your resume for [position]! Here are the key improvements I made: • [change 1] • [change 2] • [change 3]'"
+        elif is_explanation and not is_change:
             instruction = "\n🚨 EXPLANATION REQUEST: Provide text explanation ONLY. Do NOT include any code examples."
         elif is_change:
-            instruction = "\n🚨 CHANGE REQUEST: Provide updated LaTeX code for the user's resume."
+            instruction = "\n🚨 CHANGE REQUEST: Make the change with a friendly, natural response. Be warm but efficient. No LaTeX tutorials."
         
         return f"""Current LaTeX code:
 ```latex
@@ -378,7 +399,21 @@ Please help with this request, referring to the template and data we discussed a
         
         # Clean up extra whitespace
         lines = [line.strip() for line in response.split('\n') if line.strip()]
-        return '\n'.join(lines)
+        cleaned_response = '\n'.join(lines)
+        
+        # If response is empty or very short after cleaning, provide a friendly response
+        if latex_code and (not cleaned_response or len(cleaned_response.strip()) < 10):
+            friendly_responses = [
+                "Perfect! I've made that change for you.",
+                "Got it! Your resume has been updated.",
+                "There you go! All set with that change.",
+                "Done! That looks much better now.",
+                "All updated! How does that look?"
+            ]
+            import random
+            return random.choice(friendly_responses)
+        
+        return cleaned_response
 
     async def get_session_info(self, db: AsyncSession, session_id: str) -> Optional[Dict[str, Any]]:
         """Get session information"""
