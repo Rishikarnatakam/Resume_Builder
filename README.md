@@ -40,8 +40,8 @@ cd resume-builder
 
 2. **Set up environment**:
 ```bash
-cp env.example .env
-nano .env  # Edit with your configuration
+cp env.example backend/.env
+nano backend/.env  # Edit with your configuration
 ```
 
 3. **Run deployment script**:
@@ -64,7 +64,7 @@ The script will:
 
 ### Environment Variables
 
-Copy `env.example` to `.env` and configure:
+Copy `env.example` to `backend/.env` and configure:
 
 ```bash
 # Required
@@ -80,7 +80,7 @@ DATABASE_URL=sqlite+aiosqlite:///./data/latex_resume_ai.db
 
 1. Visit [Google AI Studio](https://aistudio.google.com/app/apikey)
 2. Create a new API key
-3. Add it to your `.env` file
+3. Add it to your `backend/.env` file
 
 ## 🌐 Access Points
 
@@ -183,7 +183,7 @@ To update the application:
 
 ### Common Issues
 
-1. **API Key Error**: Ensure `GEMINI_API_KEY` is set in `.env`
+1. **API Key Error**: Ensure `GEMINI_API_KEY` is set in `backend/.env`
 2. **Permission Denied**: Check file permissions for static directories
 3. **Port Conflicts**: Ensure ports 80, 443, 8000 are available
 4. **Build Failures**: Check Docker logs and ensure sufficient disk space

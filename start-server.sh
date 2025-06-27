@@ -8,7 +8,7 @@ cd /var/www/resume-builder
 # Activate Python virtual environment
 source venv/bin/activate
 
-# Start backend in background
+# Start backend in background (FROM BACKEND DIRECTORY where .env file is)
 echo "Starting backend API..."
 cd backend
 nohup uvicorn main:app --host 0.0.0.0 --port 8000 > ../backend.log 2>&1 &

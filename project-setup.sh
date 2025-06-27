@@ -14,7 +14,7 @@ pip install -r requirements.txt
 cd frontend
 npm install
 
-# Create frontend environment files
+# Create frontend environment files (IN FRONTEND DIRECTORY)
 echo "📝 Creating frontend environment files..."
 
 # Development environment
@@ -56,8 +56,10 @@ cd ..
 mkdir -p backend/static/uploaded_pdfs
 mkdir -p data
 
-# Copy environment file
-cp env.example .env
+# Copy environment file TO BACKEND DIRECTORY (where it's expected)
+cp env.example backend/.env
+
+echo "📝 Backend environment file created at backend/.env"
 
 # Set permissions
 sudo chown -R $USER:$USER .
@@ -98,5 +100,5 @@ sudo nginx -t
 
 echo "✅ Project setup complete!"
 echo ""
-echo "⚠️  IMPORTANT: Edit .env file and add your GEMINI_API_KEY"
+echo "⚠️  IMPORTANT: Edit backend/.env file and add your GEMINI_API_KEY"
 echo "Then run: ./start-server.sh" 
