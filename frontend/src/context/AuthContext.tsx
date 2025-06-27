@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
-import { apiConfig, apiRequest } from '../config/api';
+import { apiConfig } from '../config/api';
 
 interface User {
   id: number;
