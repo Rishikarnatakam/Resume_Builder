@@ -3,9 +3,9 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { motion } from "framer-motion";
 import {
-  DocumentTextIcon,
   ArrowRightIcon
 } from "@heroicons/react/24/outline";
+import Logo from '../components/Logo';
 
 const Landing: React.FC = () => {
   const { user } = useAuth();
@@ -36,10 +36,7 @@ const Landing: React.FC = () => {
             animate={{ opacity: 1, x: 0 }}
             className="flex items-center space-x-3"
           >
-            <div className="w-8 h-8 rounded-3xl flex items-center justify-center" style={{ backgroundColor: '#2F2F2F' }}>
-              <DocumentTextIcon className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-xl font-semibold">LaTeX Resume AI</span>
+            <Logo size="lg" className="text-white" />
           </motion.div>
 
           <motion.div
@@ -75,14 +72,14 @@ const Landing: React.FC = () => {
               className="space-y-4"
             >
               <h1 className="text-5xl lg:text-7xl font-bold tracking-tight">
-                AI-Powered
+                Craft Your
                 <span className="block text-gray-300">
-                  Resumes
+                  Perfect Resume
                 </span>
               </h1>
               <p className="text-lg lg:text-xl text-gray-400 max-w-3xl mx-auto leading-relaxed">
-                Generate professional resumes using AI and LaTeX. Edit code directly, 
-                see live previews, and create resumes that stand out.
+                Build professional resumes with AI assistance and LaTeX precision. 
+                Edit code directly, see live previews, and create resumes that get you hired.
               </p>
             </motion.div>
 

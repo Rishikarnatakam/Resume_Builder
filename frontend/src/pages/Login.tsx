@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { motion } from "framer-motion";
 import { DocumentTextIcon, EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
 import { apiConfig } from '../config/api';
+import Logo from '../components/Logo';
 
 const Login: React.FC = () => {
   const [username, setUsername] = useState('');
@@ -62,10 +63,7 @@ const Login: React.FC = () => {
           className="text-center"
         >
           <Link to="/" className="inline-flex items-center space-x-3 mb-8">
-            <div className="w-10 h-10 rounded-3xl flex items-center justify-center" style={{ backgroundColor: '#2F2F2F' }}>
-              <DocumentTextIcon className="w-6 h-6 text-white" />
-            </div>
-            <span className="text-2xl font-bold text-white">LaTeX Resume AI</span>
+            <Logo size="lg" />
           </Link>
           <h2 className="text-3xl font-bold text-white">Welcome back</h2>
           <p className="mt-2 text-gray-400">Sign in to your account</p>

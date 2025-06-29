@@ -7,6 +7,7 @@ import { motion } from 'framer-motion';
 import AIChat, { AIChatRef } from '../components/AIChat';
 import ThreePanelSplitter from '../components/ThreePanelSplitter';
 import { apiConfig } from '../config/api';
+import Logo from '../components/Logo';
 
 const LaTeXEditor: React.FC = () => {
   const { resumeId } = useParams<{ resumeId?: string }>();
@@ -794,12 +795,7 @@ Tailor the content to match this specific role while maintaining professional, s
             {/* Left side */}
             <div className="flex items-center space-x-6">
               <Link to="/dashboard" className="flex items-center space-x-3 hover:opacity-80 transition-opacity">
-                <div className="w-8 h-8 rounded-3xl flex items-center justify-center" style={{ backgroundColor: '#2A2A2A' }}>
-                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                </div>
-                <span className="text-xl font-semibold">LaTeX Resume AI</span>
+                <Logo size="md" />
               </Link>
               
               <div className="flex items-center space-x-4">
@@ -969,39 +965,38 @@ Tailor the content to match this specific role while maintaining professional, s
           leftContent={latexEditorContent}
           centerContent={aiChatContent}
           rightContent={
-                    <div className="h-full" style={{ backgroundColor: '#0A0A0A' }}>
-            {pdfUrl ? (
-              <iframe
-                src={pdfUrl}
-                className="w-full h-full"
-                title="PDF Preview"
-              />
-            ) : (
-              <div className="flex items-center justify-center h-full">
-                <div className="text-center">
-                  <div className="w-16 h-16 rounded-3xl flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: '#2A2A2A' }}>
-                    <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
+            <div className="h-full" style={{ backgroundColor: '#0A0A0A' }}>
+              {pdfUrl ? (
+                <iframe
+                  src={pdfUrl}
+                  className="w-full h-full"
+                  title="PDF Preview"
+                />
+              ) : (
+                <div className="flex items-center justify-center h-full">
+                  <div className="text-center">
+                    <div className="w-16 h-16 rounded-3xl flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: '#2A2A2A' }}>
+                      <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                    </div>
+                    <h3 className="text-lg font-medium text-gray-300 mb-2">No PDF Generated</h3>
+                    <p className="text-gray-500 mb-6">Compile your LaTeX code to see the PDF preview</p>
+                    <button
+                      onClick={compileLatex}
+                      disabled={isCompiling || !latexContent.trim()}
+                      className="text-white px-6 py-3 rounded-3xl hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium"
+                      style={{ backgroundColor: '#2A2A2A' }}
+                    >
+                      {isCompiling ? 'Compiling...' : 'Compile PDF'}
+                    </button>
                   </div>
-                  <h3 className="text-lg font-medium text-gray-300 mb-2">No PDF Generated</h3>
-                  <p className="text-gray-500 mb-6">Compile your LaTeX code to see the PDF preview</p>
-                  <button
-                    onClick={compileLatex}
-                    disabled={isCompiling || !latexContent.trim()}
-                    className="text-white px-6 py-3 rounded-3xl hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium"
-                    style={{ backgroundColor: '#2A2A2A' }}
-                  >
-                    {isCompiling ? 'Compiling...' : 'Compile PDF'}
-                  </button>
                 </div>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
           }
           initialLeftWidth={30}
           initialCenterWidth={33}
-          initialRightWidth={37}
           minLeftWidth={20}
           minCenterWidth={15}
           minRightWidth={20}

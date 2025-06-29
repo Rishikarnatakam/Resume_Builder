@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useRef, useEffect } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { 
   ArrowRightIcon,
   ArrowLeftIcon,
@@ -12,6 +12,8 @@ import {
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../context/AuthContext';
 import { apiConfig } from '../config/api';
+import Logo from '../components/Logo';
+import { motion } from 'framer-motion';
 
 interface PersonalInfo {
   name: string;
@@ -161,10 +163,76 @@ interface DetectedSections {
   additional_sections: boolean;
 }
 
+interface Resume {
+  id: string;
+  title: string;
+  template_name: string;
+  resume_data: ResumeData;
+  created_at: string;
+  updated_at: string;
+}
+
+const defaultPersonalInfo: PersonalInfo = {
+  name: '',
+  email: '',
+  phone: '',
+  address: '',
+  linkedin: '',
+  website: '',
+  github: '',
+  portfolio: '',
+  title: ''
+};
+
+const defaultResumeData: ResumeData = {
+  personalInfo: defaultPersonalInfo,
+  summary: '',
+  experience: [],
+  education: [],
+  skills: [],
+  projects: [],
+  awards: [],
+  certifications: [],
+  publications: [],
+  volunteering: [],
+  speaking: [],
+  military: [],
+  references: '',
+  hobbies: [],
+  languages: [],
+  additional_sections: []
+};
+
 const ResumeDetails: React.FC = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>();
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Auto-resize function for textareas - optimized for responsiveness
+  const adjustTextareaHeight = (element: HTMLTextAreaElement) => {
+    // Use requestAnimationFrame for smoother updates
+    requestAnimationFrame(() => {
+      element.style.height = 'auto';
+      const scrollHeight = element.scrollHeight;
+      const minHeight = 60; // Minimum height for better UX
+      const maxHeight = 300; // Maximum height before scrolling
+      const newHeight = Math.min(Math.max(scrollHeight, minHeight), maxHeight);
+      element.style.height = `${newHeight}px`;
+    });
+  };
+
+  // Auto-resize handler for onChange events - immediate response
+  const handleTextareaChange = (
+    e: React.ChangeEvent<HTMLTextAreaElement>,
+    updateFunction: (value: string) => void
+  ) => {
+    const value = e.target.value;
+    // Update the value immediately
+    updateFunction(value);
+    // Adjust height immediately without delay
+    adjustTextareaHeight(e.target);
+  };
   
   const [isUploading, setIsUploading] = useState(false);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
@@ -187,39 +255,41 @@ const ResumeDetails: React.FC = () => {
     additional_sections: false
   });
   const [visibleSections, setVisibleSections] = useState<string[]>([
-    'personalInfo', 'summary', 'skills', 'experience', 'education', 'projects', 'awards', 'certifications', 'languages'
+    'personalInfo', 'summary', 'skills', 'experience', 'education', 'projects', 'awards', 'certifications', 'languages', 'additional'
   ]);
   
-  const [resumeData, setResumeData] = useState<ResumeData>({
-    personalInfo: {
-      name: '',
-      email: '',
-      phone: '',
-      address: '',
-      linkedin: '',
-      website: '',
-      github: '',
-      portfolio: '',
-      title: ''
-    },
-    summary: '',
-    experience: [],
-    education: [],
-    skills: [],
-    projects: [],
-    awards: [],
-    certifications: [],
-    publications: [],
-    volunteering: [],
-    speaking: [],
-    military: [],
-    references: '',
-    hobbies: [],
-    languages: [],
-    additional_sections: []
-  });
+  const [resumeData, setResumeData] = useState<ResumeData>(defaultResumeData);
 
   const [jobDescription, setJobDescription] = useState<string>('');
+
+  // Store raw input values for better typing experience
+  const [skillsRawInput, setSkillsRawInput] = useState<string>('');
+  const [languagesRawInput, setLanguagesRawInput] = useState<string>('');
+  const [projectTechInputs, setProjectTechInputs] = useState<{[key: string]: string}>({});
+
+  // Initialize raw input values when resumeData changes
+  useEffect(() => {
+    setSkillsRawInput(resumeData.skills.join(', '));
+    setLanguagesRawInput(resumeData.languages.join(', '));
+    
+    // Initialize project technology inputs
+    const techInputs: {[key: string]: string} = {};
+    resumeData.projects.forEach(project => {
+      techInputs[project.id] = project.technologies.join(', ');
+    });
+    setProjectTechInputs(techInputs);
+  }, [resumeData.skills, resumeData.languages, resumeData.projects]);
+
+  // Auto-resize all textareas on mount and when data changes
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const textareas = document.querySelectorAll('textarea');
+      textareas.forEach((textarea) => {
+        adjustTextareaHeight(textarea as HTMLTextAreaElement);
+      });
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [resumeData]);
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -426,6 +496,11 @@ const ResumeDetails: React.FC = () => {
       ...prev,
       projects: [...prev.projects, newProject]
     }));
+    // Initialize empty tech input for new project
+    setProjectTechInputs(prev => ({
+      ...prev,
+      [newProject.id]: ''
+    }));
   };
 
   const removeProject = (id: string) => {
@@ -433,6 +508,12 @@ const ResumeDetails: React.FC = () => {
       ...prev,
       projects: prev.projects.filter(proj => proj.id !== id)
     }));
+    // Clean up the tech input for removed project
+    setProjectTechInputs(prev => {
+      const newInputs = { ...prev };
+      delete newInputs[id];
+      return newInputs;
+    });
   };
 
   const updateProject = (id: string, field: keyof Project, value: any) => {
@@ -445,8 +526,15 @@ const ResumeDetails: React.FC = () => {
   };
 
   const handleSkillsChange = (value: string) => {
-    const skills = value.split(',').map(skill => skill.trim()).filter(skill => skill);
+    // Store the raw input value for natural typing
+    setSkillsRawInput(value);
+  };
+
+  const handleSkillsBlur = () => {
+    // Process skills when user finishes typing
+    const skills = skillsRawInput.split(',').map(skill => skill.trim()).filter(skill => skill);
     setResumeData(prev => ({ ...prev, skills }));
+    setSkillsRawInput(skills.join(', '));
   };
 
   const addAward = () => {
@@ -510,9 +598,28 @@ const ResumeDetails: React.FC = () => {
     }));
   };
 
-  const handleArrayFieldChange = (field: 'languages', value: string) => {
-    const items = value.split(',').map(item => item.trim()).filter(item => item);
-    setResumeData(prev => ({ ...prev, [field]: items }));
+  const handleLanguagesChange = (value: string) => {
+    // Store the raw input value for natural typing
+    setLanguagesRawInput(value);
+  };
+
+  const handleLanguagesBlur = () => {
+    // Process languages when user finishes typing
+    const items = languagesRawInput.split(',').map(item => item.trim()).filter(item => item);
+    setResumeData(prev => ({ ...prev, languages: items }));
+    setLanguagesRawInput(items.join(', '));
+  };
+
+  const handleProjectTechChange = (projectId: string, value: string) => {
+    setProjectTechInputs(prev => ({
+      ...prev,
+      [projectId]: value
+    }));
+  };
+
+  const handleProjectTechBlur = (projectId: string) => {
+    const techArray = projectTechInputs[projectId]?.split(',').map(tech => tech.trim()).filter(tech => tech.length > 0) || [];
+    updateProject(projectId, 'technologies', techArray);
   };
 
   const addAdditionalSection = () => {
@@ -560,14 +667,80 @@ const ResumeDetails: React.FC = () => {
 
   return (
     <div className="min-h-screen text-white" style={{ backgroundColor: '#000000' }}>
+      {/* Add custom styles for better input appearance */}
+      <style dangerouslySetInnerHTML={{
+        __html: `
+          /* Hide date input spinners and scrollbars */
+          input[type="date"]::-webkit-calendar-picker-indicator {
+            background: transparent;
+            color: #9CA3AF;
+            cursor: pointer;
+          }
+          
+          input[type="date"]::-webkit-inner-spin-button,
+          input[type="date"]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+          }
+          
+          input[type="number"]::-webkit-inner-spin-button,
+          input[type="number"]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+          }
+          
+          input[type="number"] {
+            -moz-appearance: textfield;
+          }
+          
+          /* Better date input styling */
+          input[type="date"] {
+            color-scheme: dark;
+          }
+          
+          /* Hide all scrollbars completely for textareas */
+          textarea {
+            scrollbar-width: none; /* Firefox */
+            -ms-overflow-style: none; /* Internet Explorer 10+ */
+          }
+          
+          textarea::-webkit-scrollbar {
+            width: 0;
+            height: 0;
+            display: none; /* Chrome, Safari, Edge */
+          }
+          
+          /* Ensure textareas are still scrollable but without visible scrollbars */
+          textarea {
+            overflow-y: auto;
+            overflow-x: hidden;
+            resize: none;
+            border-radius: 1.5rem;
+            transition: border-color 0.2s ease;
+          }
+          
+          /* Auto-resize behavior */
+          textarea.auto-resize {
+            min-height: 60px;
+            max-height: 300px;
+          }
+          
+          /* Remove wrapper styling since we're not using wrappers anymore */
+          .textarea-wrapper {
+            display: none;
+          }
+        `
+      }} />
+
       {/* Header */}
       <header className="border-b border-gray-600/20">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <Link to="/" className="flex items-center space-x-2 text-white hover:text-gray-300 transition-colors">
+            <div className="flex items-center space-x-6">
+              <Logo size="md" />
+              <Link to="/dashboard" className="flex items-center space-x-2 text-white hover:text-gray-300 transition-colors">
                 <ArrowLeftIcon className="w-5 h-5" />
-                <span>Back to Home</span>
+                <span>Back to Dashboard</span>
               </Link>
             </div>
             <div className="flex items-center space-x-4">
@@ -780,9 +953,8 @@ const ResumeDetails: React.FC = () => {
             <textarea
               placeholder="Write a professional summary highlighting your key achievements and career goals..."
               value={resumeData.summary}
-              onChange={(e) => setResumeData(prev => ({ ...prev, summary: e.target.value }))}
-              rows={4}
-              className="w-full border border-gray-600/30 rounded-3xl px-4 py-3 text-white placeholder-gray-500 focus:border-gray-500/50 focus:outline-none resize-none transition-all"
+              onChange={(e) => handleTextareaChange(e, (value) => setResumeData(prev => ({ ...prev, summary: value })))}
+              className="auto-resize w-full px-4 py-3 text-white placeholder-gray-500 transition-all border border-gray-600/30 focus:border-gray-500/50 focus:outline-none"
               style={{ backgroundColor: '#151515' }}
             />
           </div>
@@ -792,10 +964,13 @@ const ResumeDetails: React.FC = () => {
             <h2 className="text-xl font-medium mb-6 pb-2 border-b border-gray-600/20">Skills</h2>
             <textarea
               placeholder="JavaScript, Python, React, Node.js, AWS, Docker, etc. (comma-separated)"
-              value={resumeData.skills.join(', ')}
-              onChange={(e) => handleSkillsChange(e.target.value)}
-              rows={3}
-              className="w-full border border-gray-600/30 rounded-3xl px-4 py-3 text-white placeholder-gray-500 focus:border-gray-500/50 focus:outline-none resize-none transition-all"
+              value={skillsRawInput}
+              onChange={(e) => {
+                handleSkillsChange(e.target.value);
+                adjustTextareaHeight(e.target);
+              }}
+              onBlur={handleSkillsBlur}
+              className="auto-resize w-full px-4 py-3 text-white placeholder-gray-500 transition-all border border-gray-600/30 focus:border-gray-500/50 focus:outline-none"
               style={{ backgroundColor: '#151515' }}
             />
           </div>
@@ -849,9 +1024,8 @@ const ResumeDetails: React.FC = () => {
                     <textarea
                       placeholder="Describe your key achievements and responsibilities..."
                       value={exp.description}
-                      onChange={(e) => updateExperience(exp.id, 'description', e.target.value)}
-                      rows={3}
-                      className="w-full border border-gray-600/30 rounded-3xl px-3 py-2 text-white placeholder-gray-500 text-sm focus:border-gray-500/50 focus:outline-none resize-none transition-all"
+                      onChange={(e) => handleTextareaChange(e, (value) => updateExperience(exp.id, 'description', value))}
+                      className="auto-resize w-full border border-gray-600/30 rounded-3xl px-3 py-2 text-white placeholder-gray-500 text-sm focus:border-gray-500/50 focus:outline-none resize-none transition-all"
                       style={{ backgroundColor: '#151515' }}
                     />
                   </div>
@@ -965,17 +1139,17 @@ const ResumeDetails: React.FC = () => {
                     <input
                       type="text"
                       placeholder="Technologies Used (comma-separated)"
-                      value={project.technologies.join(', ')}
-                      onChange={(e) => updateProject(project.id, 'technologies', e.target.value.split(',').map(t => t.trim()))}
+                      value={projectTechInputs[project.id] || ''}
+                      onChange={(e) => handleProjectTechChange(project.id, e.target.value)}
+                      onBlur={() => handleProjectTechBlur(project.id)}
                       className="w-full border border-gray-600/30 rounded-3xl px-3 py-2 text-white placeholder-gray-500 text-sm focus:border-gray-500/50 focus:outline-none transition-all"
                       style={{ backgroundColor: '#151515' }}
                     />
                     <textarea
                       placeholder="Project description and key achievements..."
                       value={project.description}
-                      onChange={(e) => updateProject(project.id, 'description', e.target.value)}
-                      rows={3}
-                      className="w-full border border-gray-600/30 rounded-3xl px-3 py-2 text-white placeholder-gray-500 text-sm focus:border-gray-500/50 focus:outline-none resize-none transition-all"
+                      onChange={(e) => handleTextareaChange(e, (value) => updateProject(project.id, 'description', value))}
+                      className="auto-resize w-full border border-gray-600/30 rounded-3xl px-3 py-2 text-white placeholder-gray-500 text-sm focus:border-gray-500/50 focus:outline-none resize-none transition-all"
                       style={{ backgroundColor: '#151515' }}
                     />
                   </div>
@@ -1029,9 +1203,8 @@ const ResumeDetails: React.FC = () => {
                         <textarea
                           placeholder="Award description or achievement details..."
                           value={award.description}
-                          onChange={(e) => updateAward(award.id, 'description', e.target.value)}
-                          rows={2}
-                          className="border border-gray-600/30 rounded-3xl px-3 py-2 text-white placeholder-gray-500 text-sm focus:border-gray-500/50 focus:outline-none resize-none transition-all"
+                          onChange={(e) => handleTextareaChange(e, (value) => updateAward(award.id, 'description', value))}
+                          className="auto-resize border border-gray-600/30 rounded-3xl px-3 py-2 text-white placeholder-gray-500 text-sm focus:border-gray-500/50 focus:outline-none resize-none transition-all"
                           style={{ backgroundColor: '#151515' }}
                         />
                         <input
@@ -1121,68 +1294,68 @@ const ResumeDetails: React.FC = () => {
             <h2 className="text-xl font-medium mb-6 pb-2 border-b border-gray-600/20">Languages</h2>
             <textarea
               placeholder="Languages and proficiency levels (comma-separated) - e.g., English (Fluent), Hindi (Native), Spanish (Intermediate)"
-              value={resumeData.languages.join(', ')}
-              onChange={(e) => handleArrayFieldChange('languages', e.target.value)}
-              rows={3}
-              className="w-full border border-gray-600/30 rounded-3xl px-4 py-3 text-white placeholder-gray-500 focus:border-gray-500/50 focus:outline-none resize-none transition-all"
+              value={languagesRawInput}
+              onChange={(e) => {
+                handleLanguagesChange(e.target.value);
+                adjustTextareaHeight(e.target);
+              }}
+              onBlur={handleLanguagesBlur}
+              className="auto-resize w-full px-4 py-3 text-white placeholder-gray-500 transition-all border border-gray-600/30 focus:border-gray-500/50 focus:outline-none"
               style={{ backgroundColor: '#151515' }}
             />
           </div>
 
-          {/* Additional Sections */}
-          {visibleSections.includes('additional') && (
-            <div>
-              <div className="flex items-center justify-between mb-6 pb-2 border-b border-gray-600/20">
-                <h2 className="text-xl font-medium">Additional Information</h2>
-                <button
-                  onClick={addAdditionalSection}
-                  className="text-white px-4 py-2 rounded-3xl transition-all hover:opacity-90 flex items-center space-x-2 text-sm"
-                  style={{ backgroundColor: '#2A2A2A' }}
-                >
-                  <PlusIcon className="w-4 h-4" />
-                  <span>Add Additional Section</span>
-                </button>
-              </div>
-              
-              <div className="space-y-6">
-                {resumeData.additional_sections.map((section, index) => (
-                  <div key={section.id} className="border border-gray-600/20 rounded-3xl p-4" style={{ backgroundColor: '#0A0A0A' }}>
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="font-medium text-gray-300 text-sm">Section {index + 1}</h3>
-                      <button
-                        onClick={() => removeAdditionalSection(section.id)}
-                        className="text-gray-400 hover:text-red-400 p-1"
-                      >
-                        <TrashIcon className="w-4 h-4" />
-                      </button>
-                    </div>
-                    
-                    <div className="space-y-3">
-                      <input
-                        type="text"
-                        placeholder="Section Name"
-                        value={section.section_name}
-                        onChange={(e) => updateAdditionalSection(section.id, 'section_name', e.target.value)}
-                        className="w-full border border-gray-600/30 rounded-3xl px-3 py-2 text-white placeholder-gray-500 text-sm focus:border-gray-500/50 focus:outline-none transition-all"
-                        style={{ backgroundColor: '#151515' }}
-                      />
-                      <textarea
-                        placeholder="Section content..."
-                        value={section.content}
-                        onChange={(e) => updateAdditionalSection(section.id, 'content', e.target.value)}
-                        rows={3}
-                        className="w-full border border-gray-600/30 rounded-3xl px-3 py-2 text-white placeholder-gray-500 text-sm focus:border-gray-500/50 focus:outline-none resize-none transition-all"
-                        style={{ backgroundColor: '#151515' }}
-                      />
-                    </div>
-                  </div>
-                ))}
-                {resumeData.additional_sections.length === 0 && (
-                  <p className="text-gray-500 text-center py-6 italic">No additional sections added yet</p>
-                )}
-              </div>
+          {/* Additional Sections - Always visible now */}
+          <div>
+            <div className="flex items-center justify-between mb-6 pb-2 border-b border-gray-600/20">
+              <h2 className="text-xl font-medium">Additional Information</h2>
+              <button
+                onClick={addAdditionalSection}
+                className="text-white px-4 py-2 rounded-3xl transition-all hover:opacity-90 flex items-center space-x-2 text-sm"
+                style={{ backgroundColor: '#2A2A2A' }}
+              >
+                <PlusIcon className="w-4 h-4" />
+                <span>Add Additional Section</span>
+              </button>
             </div>
-          )}
+            
+            <div className="space-y-6">
+              {resumeData.additional_sections.map((section, index) => (
+                <div key={section.id} className="border border-gray-600/20 rounded-3xl p-4" style={{ backgroundColor: '#0A0A0A' }}>
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-medium text-gray-300 text-sm">Section {index + 1}</h3>
+                    <button
+                      onClick={() => removeAdditionalSection(section.id)}
+                      className="text-gray-400 hover:text-red-400 p-1"
+                    >
+                      <TrashIcon className="w-4 h-4" />
+                    </button>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <input
+                      type="text"
+                      placeholder="Section Name"
+                      value={section.section_name}
+                      onChange={(e) => updateAdditionalSection(section.id, 'section_name', e.target.value)}
+                      className="w-full border border-gray-600/30 rounded-3xl px-3 py-2 text-white placeholder-gray-500 text-sm focus:border-gray-500/50 focus:outline-none transition-all"
+                      style={{ backgroundColor: '#151515' }}
+                    />
+                    <textarea
+                      placeholder="Section content..."
+                      value={section.content}
+                      onChange={(e) => handleTextareaChange(e, (value) => updateAdditionalSection(section.id, 'content', value))}
+                      className="auto-resize w-full border border-gray-600/30 rounded-3xl px-3 py-2 text-white placeholder-gray-500 text-sm focus:border-gray-500/50 focus:outline-none resize-none transition-all"
+                      style={{ backgroundColor: '#151515' }}
+                    />
+                  </div>
+                </div>
+              ))}
+              {resumeData.additional_sections.length === 0 && (
+                <p className="text-gray-500 text-center py-6 italic">No additional sections added yet. Click "Add Additional Section" to create custom sections like Hobbies, Volunteer Work, etc.</p>
+              )}
+            </div>
+          </div>
 
           {/* Job Description */}
           <div>
@@ -1193,9 +1366,8 @@ const ResumeDetails: React.FC = () => {
             <textarea
               placeholder="Paste the job description here and our AI will tailor your resume content to match the requirements..."
               value={jobDescription}
-              onChange={(e) => setJobDescription(e.target.value)}
-              rows={6}
-              className="w-full border border-gray-600/30 rounded-3xl px-4 py-3 text-white placeholder-gray-500 focus:border-gray-500/50 focus:outline-none resize-none transition-all"
+              onChange={(e) => handleTextareaChange(e, setJobDescription)}
+              className="auto-resize w-full border border-gray-600/30 rounded-3xl px-4 py-3 text-white placeholder-gray-500 focus:border-gray-500/50 focus:outline-none resize-none transition-all"
               style={{ backgroundColor: '#151515' }}
             />
             {jobDescription && (

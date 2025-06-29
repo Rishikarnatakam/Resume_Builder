@@ -14,6 +14,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../context/AuthContext';
 import { apiConfig } from '../config/api';
+import Logo from '../components/Logo';
 
 interface Resume {
   id: number;
@@ -162,10 +163,7 @@ const Dashboard: React.FC = () => {
       <nav className="border-b border-gray-600/30 px-6 py-4" style={{ backgroundColor: '#000000' }}>
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 rounded-3xl flex items-center justify-center" style={{ backgroundColor: '#2F2F2F' }}>
-              <DocumentTextIcon className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-xl font-semibold">LaTeX Resume AI</span>
+            <Logo size="md" className="text-white" />
           </div>
 
           <div className="flex items-center space-x-6">

@@ -604,7 +604,7 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ currentLatex, onLatexChange
               sessionInitialized ? 'bg-green-500' : 
               'bg-red-500'
             }`}></div>
-            <h3 className="text-sm font-medium text-white">ResumeAI</h3>
+            <h3 className="text-sm font-medium text-white">ResumeCraft AI</h3>
           </div>
           {templateName && (
             <span className="text-xs text-gray-400">
