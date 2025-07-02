@@ -3,9 +3,10 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy import String, DateTime, Text, Boolean, Integer
 from datetime import datetime
 import os
+from utils.config import config
 
-# Database URL - use SQLite for simplicity
-DATABASE_URL = "sqlite+aiosqlite:///./latex_resume_ai.db"
+# Database URL - read from environment
+DATABASE_URL = config.DATABASE_URL
 
 # Create async engine
 engine = create_async_engine(DATABASE_URL, echo=True)

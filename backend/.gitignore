@@ -17,7 +17,7 @@ __pycache__/
 *.db-journal
 *.db-wal
 *.db-shm
-latex_resume_ai.db
+# Removed: latex_resume_ai.db (legacy SQLite - now using Supabase)
 data/
 
 # ================================
@@ -73,4 +73,51 @@ temp_*.py
 # ================================
 *.bak
 *.backup
-*.sql.bak 
+*.sql.bak
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+
+# Environment variables
+.env.local
+.env.production
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Python virtual environment
+venv/
+env/
+.venv/
+
+# pytest
+.pytest_cache/
+.coverage
+htmlcov/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Database files (legacy SQLite references - now using Supabase PostgreSQL)
+*.db-journal
+*.db-wal
+*.db-shm 

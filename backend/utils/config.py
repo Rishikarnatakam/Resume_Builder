@@ -19,8 +19,8 @@ class Config:
     # Model Configuration
     DEFAULT_GEMINI_MODEL: str = os.getenv("DEFAULT_GEMINI_MODEL", "gemini-2.5-flash")
     
-    # Database
-    DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./latex_resume_ai.db")
+    # Database - Now using PostgreSQL/Supabase only
+    DATABASE_URL: str = os.getenv("DATABASE_URL", "")
     
     # Context Caching
     DEFAULT_CACHE_TTL_HOURS: int = int(os.getenv("DEFAULT_CACHE_TTL_HOURS", "24"))
@@ -44,6 +44,10 @@ class Config:
         """Validate that required configuration is present"""
         if not cls.GEMINI_API_KEY:
             raise ValueError("GEMINI_API_KEY environment variable is required")
+        if not cls.DATABASE_URL:
+            raise ValueError("DATABASE_URL environment variable is required - please configure Supabase connection")
+        if "sqlite" in cls.DATABASE_URL.lower():
+            raise ValueError("SQLite is no longer supported - please use Supabase PostgreSQL")
         return True
 
 # Global config instance

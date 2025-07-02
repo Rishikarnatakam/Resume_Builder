@@ -6,9 +6,9 @@ fastapi==0.115.13
 uvicorn[standard]==0.34.3
 pydantic==2.10.3
 
-# Database & ORM
+# Database & ORM - PostgreSQL/Supabase
 sqlalchemy[asyncio]==2.0.36
-aiosqlite==0.21.0
+asyncpg==0.30.0
 alembic==1.16.2
 
 # Authentication & Security
