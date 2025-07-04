@@ -1,13 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import text
 from pydantic import BaseModel
 from typing import List, Optional
 import json
 import logging
 from datetime import datetime
+import uuid
 
-from database import get_db, User, Resume
+from database import get_db
 from routes.auth import get_current_user
 from services.cv_parser import extract_resume_data
 from services.ai_latex_generator import ai_latex_generator
@@ -94,7 +95,7 @@ class ResumeCreateRequest(BaseModel):
     job_description: Optional[str] = None
 
 class ResumeResponse(BaseModel):
-    id: int
+    id: str
     title: str
     template_name: str
     latex_content: str
@@ -104,6 +105,7 @@ class ResumeResponse(BaseModel):
     is_public: bool
     created_at: datetime
     updated_at: datetime
+    ai_chat_session_id: Optional[str] = None
 
 class AIGenerateRequest(BaseModel):
     resume_data: ResumeData
@@ -118,7 +120,7 @@ class ResumeUpdateRequest(BaseModel):
 @router.post("/generate-ai", response_model=dict)
 async def generate_ai_resume(
     request: AIGenerateRequest,
-    current_user: User = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user)
 ):
     """Generate LaTeX resume using AI based on resume data and job description"""
     try:
@@ -146,7 +148,7 @@ async def generate_ai_resume(
 @router.post("/parse-upload")
 async def parse_uploaded_resume(
     file: UploadFile = File(...),
-    current_user: User = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user)
 ):
     """Parse uploaded resume (PDF/DOCX) and extract data"""
     try:
@@ -195,7 +197,7 @@ def analyze_detected_sections(raw_data: dict) -> dict:
 @router.post("/extract-pdf")
 async def extract_pdf_data(
     file: UploadFile = File(...),
-    current_user: User = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user)
 ):
     """Extract resume data from uploaded PDF"""
     try:
@@ -415,90 +417,114 @@ async def extract_pdf_data(
 @router.post("/", response_model=ResumeResponse, status_code=status.HTTP_201_CREATED)
 async def create_resume(
     request: ResumeCreateRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """Create a new resume using AI-generated LaTeX"""
     
-    # Generate LaTeX content using AI
+    # Step 1: Long-running AI task (no db connection)
     logger.info(f"📝 RESUMES: Generating LaTeX for template: {request.template_name}")
-    
-    latex_content = ai_latex_generator.generate_latex(
-        template_name=request.template_name,
-        resume_data=request.resume_data.dict(),
-        job_description=request.job_description
-    )
+    try:
+        latex_content = ai_latex_generator.generate_latex(
+            template_name=request.template_name,
+            resume_data=request.resume_data.dict(),
+            job_description=request.job_description
+        )
+    except Exception as e:
+        logger.error(f"AI LaTeX generation failed: {e}")
+        raise HTTPException(status_code=500, detail="Failed to generate resume content from AI.")
+
     logger.info("🧠 Used AI LaTeX generation")
     
+    resume_id = str(uuid.uuid4())
+    user_id = current_user['id']
+    ai_chat_session_id = str(uuid.uuid4()) # Create a new chat session id
 
-    
-    # Create resume in database
-    db_resume = Resume(
-        user_id=current_user.id,
-        title=request.title,
-        template_name=request.template_name,
-        latex_content=latex_content,
-        job_description=request.job_description,
-        resume_data=json.dumps(request.resume_data.dict())
-    )
-    
-    db.add(db_resume)
-    await db.commit()
-    await db.refresh(db_resume)
-    
-    logger.info(f"💾 Saved AI-generated resume to database with {len(latex_content)} characters")
-    
-    return ResumeResponse(
-        id=db_resume.id,
-        title=db_resume.title,
-        template_name=db_resume.template_name,
-        latex_content=db_resume.latex_content,
-        job_description=db_resume.job_description,
-        resume_data=json.loads(db_resume.resume_data),
-        pdf_path=db_resume.pdf_path,
-        is_public=db_resume.is_public,
-        created_at=db_resume.created_at,
-        updated_at=db_resume.updated_at
-    )
+    # Step 2: Acquire session, do DB work, and close session
+    try:
+        async with db:
+            query = text("""
+                INSERT INTO resumes (id, user_id, title, template_name, latex_content, job_description, resume_data, ai_chat_session_id)
+                VALUES (:id, :user_id, :title, :template_name, :latex_content, :job_description, :resume_data, :ai_chat_session_id)
+                RETURNING id, title, template_name, latex_content, job_description, resume_data, pdf_path, is_public, created_at, updated_at, ai_chat_session_id;
+            """)
+            
+            result = await db.execute(query, {
+                "id": resume_id,
+                "user_id": user_id,
+                "title": request.title,
+                "template_name": request.template_name,
+                "latex_content": latex_content,
+                "job_description": request.job_description,
+                "resume_data": json.dumps(request.resume_data.dict()),
+                "ai_chat_session_id": ai_chat_session_id,
+            })
+            
+            db_resume = result.fetchone()
+            await db.commit()
+
+        logger.info(f"💾 Saved AI-generated resume to database with id {db_resume.id}")
+        
+        return ResumeResponse(
+            id=db_resume.id,
+            title=db_resume.title,
+            template_name=db_resume.template_name,
+            latex_content=db_resume.latex_content,
+            job_description=db_resume.job_description,
+            resume_data=json.loads(db_resume.resume_data),
+            pdf_path=db_resume.pdf_path,
+            is_public=db_resume.is_public,
+            created_at=db_resume.created_at,
+            updated_at=db_resume.updated_at,
+            ai_chat_session_id=getattr(db_resume, 'ai_chat_session_id', None)
+        )
+    except Exception as e:
+        logger.error(f"Error creating resume in DB: {e}")
+        raise HTTPException(status_code=500, detail="Failed to save resume to database.")
 
 @router.get("/", response_model=List[ResumeResponse])
 async def get_user_resumes(
-    current_user: User = Depends(get_current_user),
+    current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """Get all resumes for current user"""
-    result = await db.execute(
-        select(Resume).where(Resume.user_id == current_user.id).order_by(Resume.updated_at.desc())
-    )
-    resumes = result.scalars().all()
+    query = text("""
+        SELECT id, title, template_name, latex_content, job_description, resume_data, pdf_path, is_public, created_at, updated_at, ai_chat_session_id 
+        FROM resumes WHERE user_id = :user_id ORDER BY updated_at DESC
+    """)
+    result = await db.execute(query, {"user_id": current_user['id']})
+    resumes = result.fetchall()
     
     return [
         ResumeResponse(
-            id=resume.id,
-            title=resume.title,
-            template_name=resume.template_name,
-            latex_content=resume.latex_content,
-            job_description=resume.job_description,
-            resume_data=json.loads(resume.resume_data),
-            pdf_path=resume.pdf_path,
-            is_public=resume.is_public,
-            created_at=resume.created_at,
-            updated_at=resume.updated_at
+            id=r.id,
+            title=r.title,
+            template_name=r.template_name,
+            latex_content=r.latex_content,
+            job_description=r.job_description,
+            resume_data=json.loads(r.resume_data),
+            pdf_path=r.pdf_path,
+            is_public=r.is_public,
+            created_at=r.created_at,
+            updated_at=r.updated_at,
+            ai_chat_session_id=getattr(r, 'ai_chat_session_id', None)
         )
-        for resume in resumes
+        for r in resumes
     ]
 
 @router.get("/{resume_id}", response_model=ResumeResponse)
 async def get_resume(
-    resume_id: int,
-    current_user: User = Depends(get_current_user),
+    resume_id: str,
+    current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """Get specific resume"""
-    result = await db.execute(
-        select(Resume).where(Resume.id == resume_id, Resume.user_id == current_user.id)
-    )
-    resume = result.scalar_one_or_none()
+    query = text("""
+        SELECT id, title, template_name, latex_content, job_description, resume_data, pdf_path, is_public, created_at, updated_at, ai_chat_session_id 
+        FROM resumes WHERE id = :resume_id AND user_id = :user_id
+    """)
+    result = await db.execute(query, {"resume_id": resume_id, "user_id": current_user['id']})
+    resume = result.fetchone()
     
     if not resume:
         raise HTTPException(status_code=404, detail="Resume not found")
@@ -513,88 +539,111 @@ async def get_resume(
         pdf_path=resume.pdf_path,
         is_public=resume.is_public,
         created_at=resume.created_at,
-        updated_at=resume.updated_at
+        updated_at=resume.updated_at,
+        ai_chat_session_id=getattr(resume, 'ai_chat_session_id', None)
     )
 
 @router.put("/{resume_id}", response_model=ResumeResponse)
 async def update_resume(
-    resume_id: int,
+    resume_id: str,
     request: ResumeUpdateRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """Update resume content"""
-    result = await db.execute(
-        select(Resume).where(Resume.id == resume_id, Resume.user_id == current_user.id)
-    )
-    resume = result.scalar_one_or_none()
-    
-    if not resume:
+    # First, verify the resume exists and belongs to the user
+    get_query = text("SELECT id FROM resumes WHERE id = :resume_id AND user_id = :user_id")
+    result = await db.execute(get_query, {"resume_id": resume_id, "user_id": current_user['id']})
+    if result.fetchone() is None:
         raise HTTPException(status_code=404, detail="Resume not found")
-    
-    # Update fields if provided
+
+    # Build the update query dynamically
+    update_fields = {}
     if request.title is not None:
-        resume.title = request.title
+        update_fields["title"] = request.title
     if request.latex_content is not None:
-        resume.latex_content = request.latex_content
+        update_fields["latex_content"] = request.latex_content
     if request.job_description is not None:
-        resume.job_description = request.job_description
+        update_fields["job_description"] = request.job_description
     
-    resume.updated_at = datetime.utcnow()
+    if not update_fields:
+        raise HTTPException(status_code=400, detail="No update fields provided")
+
+    update_fields["updated_at"] = datetime.utcnow()
     
+    set_clause = ", ".join([f"{key} = :{key}" for key in update_fields.keys()])
+    
+    update_query = text(f"""
+        UPDATE resumes
+        SET {set_clause}
+        WHERE id = :resume_id AND user_id = :user_id
+        RETURNING id, title, template_name, latex_content, job_description, resume_data, pdf_path, is_public, created_at, updated_at, ai_chat_session_id;
+    """)
+
+    update_params = {"resume_id": resume_id, "user_id": current_user['id'], **update_fields}
+    
+    result = await db.execute(update_query, update_params)
+    updated_resume = result.fetchone()
     await db.commit()
-    await db.refresh(resume)
-    
-    logger.info(f"💾 Updated resume {resume_id} - Title: {resume.title}, LaTeX length: {len(resume.latex_content) if resume.latex_content else 0}")
+
+    logger.info(f"💾 Updated resume {resume_id} - Title: {updated_resume.title}")
     
     return ResumeResponse(
-        id=resume.id,
-        title=resume.title,
-        template_name=resume.template_name,
-        latex_content=resume.latex_content,
-        job_description=resume.job_description,
-        resume_data=json.loads(resume.resume_data),
-        pdf_path=resume.pdf_path,
-        is_public=resume.is_public,
-        created_at=resume.created_at,
-        updated_at=resume.updated_at
+        id=updated_resume.id,
+        title=updated_resume.title,
+        template_name=updated_resume.template_name,
+        latex_content=updated_resume.latex_content,
+        job_description=updated_resume.job_description,
+        resume_data=json.loads(updated_resume.resume_data),
+        pdf_path=updated_resume.pdf_path,
+        is_public=updated_resume.is_public,
+        created_at=updated_resume.created_at,
+        updated_at=updated_resume.updated_at,
+        ai_chat_session_id=getattr(updated_resume, 'ai_chat_session_id', None)
     )
 
 @router.put("/{resume_id}/title")
 async def update_resume_title(
-    resume_id: int,
+    resume_id: str,
     new_title: str,
-    current_user: User = Depends(get_current_user),
+    current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """Update resume title"""
-    result = await db.execute(
-        select(Resume).where(Resume.id == resume_id, Resume.user_id == current_user.id)
-    )
-    resume = result.scalar_one_or_none()
+    query = text("""
+        UPDATE resumes 
+        SET title = :new_title, updated_at = :now
+        WHERE id = :resume_id AND user_id = :user_id
+        RETURNING title;
+    """)
+    result = await db.execute(query, {
+        "new_title": new_title,
+        "now": datetime.utcnow(),
+        "resume_id": resume_id,
+        "user_id": current_user['id']
+    })
     
-    if not resume:
+    updated_resume = result.fetchone()
+    if not updated_resume:
         raise HTTPException(status_code=404, detail="Resume not found")
-    
-    resume.title = new_title
-    resume.updated_at = datetime.utcnow()
-    
+        
     await db.commit()
-    await db.refresh(resume)
     
-    return {"message": "Resume title updated successfully", "title": resume.title}
+    return {"message": "Resume title updated successfully", "title": updated_resume.title}
 
 @router.get("/{resume_id}/preview")
 async def get_resume_preview(
-    resume_id: int,
-    current_user: User = Depends(get_current_user),
+    resume_id: str,
+    current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """Get resume preview (LaTeX content for viewing)"""
-    result = await db.execute(
-        select(Resume).where(Resume.id == resume_id, Resume.user_id == current_user.id)
-    )
-    resume = result.scalar_one_or_none()
+    query = text("""
+        SELECT id, title, template_name, latex_content, created_at, updated_at
+        FROM resumes WHERE id = :resume_id AND user_id = :user_id
+    """)
+    result = await db.execute(query, {"resume_id": resume_id, "user_id": current_user['id']})
+    resume = result.fetchone()
     
     if not resume:
         raise HTTPException(status_code=404, detail="Resume not found")
@@ -610,20 +659,20 @@ async def get_resume_preview(
 
 @router.delete("/{resume_id}")
 async def delete_resume(
-    resume_id: int,
-    current_user: User = Depends(get_current_user),
+    resume_id: str,
+    current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """Delete resume"""
-    result = await db.execute(
-        select(Resume).where(Resume.id == resume_id, Resume.user_id == current_user.id)
-    )
-    resume = result.scalar_one_or_none()
+    query = text("""
+        DELETE FROM resumes WHERE id = :resume_id AND user_id = :user_id
+        RETURNING id;
+    """)
+    result = await db.execute(query, {"resume_id": resume_id, "user_id": current_user['id']})
     
-    if not resume:
+    if result.fetchone() is None:
         raise HTTPException(status_code=404, detail="Resume not found")
-    
-    await db.delete(resume)
+
     await db.commit()
     
     return {"message": "Resume deleted successfully"} 

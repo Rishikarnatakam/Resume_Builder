@@ -16,6 +16,12 @@ class Config:
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
     SECRET_KEY: str = os.getenv("SECRET_KEY", "your-secret-key-here")
     
+    # Supabase Configuration
+    SUPABASE_URL: str = os.getenv("SUPABASE_URL", "")
+    SUPABASE_ANON_KEY: str = os.getenv("SUPABASE_ANON_KEY", "")
+    SUPABASE_SERVICE_KEY: str = os.getenv("SUPABASE_SERVICE_KEY", "")
+    SUPABASE_JWT_SECRET: str = os.getenv("SUPABASE_JWT_SECRET", "")  # JWT secret for token verification
+    
     # Model Configuration
     DEFAULT_GEMINI_MODEL: str = os.getenv("DEFAULT_GEMINI_MODEL", "gemini-2.5-flash")
     
@@ -48,6 +54,10 @@ class Config:
             raise ValueError("DATABASE_URL environment variable is required - please configure Supabase connection")
         if "sqlite" in cls.DATABASE_URL.lower():
             raise ValueError("SQLite is no longer supported - please use Supabase PostgreSQL")
+        if not cls.SUPABASE_URL:
+            raise ValueError("SUPABASE_URL environment variable is required")
+        if not cls.SUPABASE_JWT_SECRET:
+            raise ValueError("SUPABASE_JWT_SECRET environment variable is required")
         return True
 
 # Global config instance

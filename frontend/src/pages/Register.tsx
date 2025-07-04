@@ -3,14 +3,13 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { motion } from "framer-motion";
 import { DocumentTextIcon, EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
-import { apiConfig } from '../config/api';
+import { supabase } from '../config/api';
 import Logo from '../components/Logo';
 
 const Register: React.FC = () => {
   const [formData, setFormData] = useState({
     username: '',
     email: '',
-    full_name: '',
     password: '',
     confirmPassword: ''
   });
@@ -46,27 +45,26 @@ const Register: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const response = await fetch(apiConfig.url(apiConfig.endpoints.auth.register), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'ngrok-skip-browser-warning': 'true'
-        },
-        body: JSON.stringify({
-          username: formData.username,
+      const { data, error } = await supabase.auth.signUp({
           email: formData.email,
-          full_name: formData.full_name,
-          password: formData.password
-        }),
+        password: formData.password,
+        options: {
+          data: {
+            username: formData.username
+          }
+        }
       });
 
-      if (response.ok) {
-        navigate('/login', { 
-          state: { message: 'Account created successfully! Please sign in.' }
-        });
+      if (error) {
+        setError(error.message || 'Registration failed. Please try again.');
+      } else if (data.session) {
+        // User is automatically logged in
+        navigate('/dashboard');
       } else {
-        const errorData = await response.json();
-        setError(errorData.detail || 'Registration failed. Please try again.');
+        // Email confirmation required
+        navigate('/login', { 
+          state: { message: 'Account created successfully! Please check your email to verify your account.' }
+        });
       }
     } catch (err) {
       setError('Network error. Please try again.');
@@ -113,23 +111,6 @@ const Register: React.FC = () => {
             )}
 
             <div className="grid grid-cols-1 gap-6">
-              <div>
-                <label htmlFor="full_name" className="block text-sm font-medium text-gray-300 mb-2">
-                  Full Name
-                </label>
-                <input
-                  id="full_name"
-                  name="full_name"
-                  type="text"
-                  required
-                  value={formData.full_name}
-                  onChange={handleChange}
-                  className="w-full px-4 py-3 border border-gray-600/50 rounded-3xl text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500/50 focus:border-gray-500/50 transition-all"
-                  style={{ backgroundColor: '#2F2F2F' }}
-                  placeholder="Enter your full name"
-                />
-              </div>
-
               <div>
                 <label htmlFor="username" className="block text-sm font-medium text-gray-300 mb-2">
                   Username

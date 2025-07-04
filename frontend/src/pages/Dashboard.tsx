@@ -13,14 +13,13 @@ import {
   CheckIcon
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../context/AuthContext';
-import { apiConfig } from '../config/api';
+import { apiConfig, apiRequest } from '../config/api';
 import Logo from '../components/Logo';
 
 interface Resume {
-  id: number;
+  id: string;
   title: string;
   template_name: string;
-  content: string;
   created_at: string;
   updated_at: string;
 }
@@ -29,7 +28,7 @@ const Dashboard: React.FC = () => {
   const { user, logout } = useAuth();
   const [resumes, setResumes] = useState<Resume[]>([]);
   const [loading, setLoading] = useState(true);
-  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState('');
   const [templates, setTemplates] = useState<any[]>([]);
 
@@ -61,13 +60,7 @@ const Dashboard: React.FC = () => {
 
   const fetchResumes = async () => {
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(apiConfig.url(apiConfig.endpoints.resumes.list), {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'ngrok-skip-browser-warning': 'true'
-        }
-      });
+      const response = await apiRequest(apiConfig.endpoints.resumes.list);
       
       if (response.ok) {
         const data = await response.json();
@@ -80,17 +73,12 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  const deleteResume = async (resumeId: number) => {
+  const deleteResume = async (resumeId: string) => {
     if (!confirm('Are you sure you want to delete this resume?')) return;
     
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(apiConfig.url(apiConfig.endpoints.resumes.delete(resumeId.toString())), {
+      const response = await apiRequest(apiConfig.endpoints.resumes.delete(resumeId), {
         method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'ngrok-skip-browser-warning': 'true'
-        }
       });
       
       if (response.ok) {
@@ -111,17 +99,12 @@ const Dashboard: React.FC = () => {
     setEditingTitle('');
   };
 
-  const saveTitle = async (resumeId: number) => {
+  const saveTitle = async (resumeId: string) => {
     if (!editingTitle.trim()) return;
     
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${apiConfig.url(apiConfig.endpoints.resumes.updateTitle(resumeId.toString()))}?new_title=${encodeURIComponent(editingTitle)}`, {
+      const response = await apiRequest(`${apiConfig.endpoints.resumes.updateTitle(resumeId)}?new_title=${encodeURIComponent(editingTitle)}`, {
         method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'ngrok-skip-browser-warning': 'true'
-        }
       });
       
       if (response.ok) {
@@ -169,7 +152,7 @@ const Dashboard: React.FC = () => {
           <div className="flex items-center space-x-6">
             <div className="flex items-center space-x-2 text-sm text-gray-400">
               <UserIcon className="w-4 h-4" />
-              <span>{user?.full_name || user?.username}</span>
+              <span>{user?.username}</span>
             </div>
             <button
               onClick={logout}

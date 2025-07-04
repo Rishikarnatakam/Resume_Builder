@@ -29,8 +29,8 @@ class ChatSessionManager:
     async def create_session(
         self, 
         db: AsyncSession,
-        resume_id: int, 
-        user_id: int,
+        resume_id: str, 
+        user_id: str,
         form_data: Dict[str, Any],
         template_content: str,
         template_instructions: str = "",

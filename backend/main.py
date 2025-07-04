@@ -3,6 +3,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 import uvicorn
+from dotenv import load_dotenv  # Import the library
+
+load_dotenv()  # Load environment variables from .env file
 
 import sys
 import os
@@ -26,7 +29,7 @@ async def lifespan(app: FastAPI):
     config.validate_config()
     print(f"✅ Configuration validated - Using model: {config.get_gemini_model()}")
     
-    await init_db()
+    # await init_db()  # Disabled for production safety
     print("✅ Database initialized")
     yield
     # Shutdown

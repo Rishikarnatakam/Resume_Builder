@@ -29,8 +29,9 @@ interface ResumeData {
 }
 
 interface Resume {
-  id: number;
+  id: string;
   title: string;
+  template_name: string;
   latex_content: string;
   job_description?: string;
   resume_data: ResumeData;

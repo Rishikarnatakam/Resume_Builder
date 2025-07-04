@@ -5,13 +5,17 @@ Provides ChatGPT-style conversational AI for resume editing
 
 import logging
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, and_, text
 from pydantic import BaseModel
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, AsyncGenerator
 import json
+import uuid
+import asyncio
+from datetime import datetime, timedelta
 
-from database import get_db, User, Resume
+from database import get_db
 from routes.auth import get_current_user
 from services.session_manager import session_manager
 from utils.config import get_gemini_model
@@ -21,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 # Pydantic models
 class SessionStartRequest(BaseModel):
-    resume_id: int
+    resume_id: str
     form_data: Dict[str, Any]  # Current form data (source of truth)
     template_name: str
     job_description: Optional[str] = None
@@ -64,7 +68,7 @@ class LegacyChatRequest(BaseModel):
 @router.post("/chat")
 async def legacy_chat_redirect(
     request: LegacyChatRequest,
-    current_user: User = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Legacy chat endpoint - redirects to session-based approach
@@ -84,7 +88,7 @@ async def legacy_chat_redirect(
 async def start_chat_session(
     request: SessionStartRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Start a new AI chat session with context caching
@@ -123,13 +127,9 @@ async def start_chat_session(
                 logger.info(f"    Section {i+1}: {section.get('title', 'No title')} - {len(section.get('content', ''))} chars")
         
         # Get resume and validate ownership
-        resume_result = await db.execute(
-            select(Resume).where(
-                Resume.id == request.resume_id,
-                Resume.user_id == current_user.id
-            )
-        )
-        resume = resume_result.scalar_one_or_none()
+        query = text("SELECT id FROM resumes WHERE id = :resume_id AND user_id = :user_id")
+        resume_result = await db.execute(query, {"resume_id": request.resume_id, "user_id": current_user['id']})
+        resume = resume_result.fetchone()
         
         if not resume:
             raise HTTPException(
@@ -145,7 +145,7 @@ async def start_chat_session(
         session_id = await session_manager.create_session(
             db=db,
             resume_id=request.resume_id,
-            user_id=current_user.id,
+            user_id=current_user['id'],
             form_data=request.form_data,
             template_content=template_content,
             template_instructions=template_instructions,
@@ -176,7 +176,7 @@ async def start_chat_session(
 async def send_chat_message(
     request: ChatMessageRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Send a message in an existing chat session
@@ -213,13 +213,9 @@ async def send_chat_message(
             )
         
         # Verify session belongs to user's resume
-        resume_result = await db.execute(
-            select(Resume).where(
-                Resume.id == session_info["resume_id"],
-                Resume.user_id == current_user.id
-            )
-        )
-        if not resume_result.scalar_one_or_none():
+        query = text("SELECT id FROM resumes WHERE id = :resume_id AND user_id = :user_id")
+        resume_result = await db.execute(query, {"resume_id": session_info["resume_id"], "user_id": current_user['id']})
+        if not resume_result.fetchone():
                 raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Access denied to this chat session"
@@ -259,7 +255,7 @@ async def send_chat_message(
 async def get_session_info(
     session_id: str,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user)
 ):
     """Get information about a chat session"""
     try:
@@ -272,13 +268,9 @@ async def get_session_info(
             )
         
         # Verify session belongs to user
-        resume_result = await db.execute(
-            select(Resume).where(
-                Resume.id == session_info["resume_id"],
-                Resume.user_id == current_user.id
-            )
-        )
-        if not resume_result.scalar_one_or_none():
+        query = text("SELECT id FROM resumes WHERE id = :resume_id AND user_id = :user_id")
+        resume_result = await db.execute(query, {"resume_id": session_info["resume_id"], "user_id": current_user['id']})
+        if not resume_result.fetchone():
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Access denied"
@@ -301,20 +293,16 @@ async def get_session_info(
 async def end_chat_session(
     session_id: str,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user)
 ):
     """End a chat session and cleanup resources"""
     try:
         # Verify session belongs to user
         session_info = await session_manager.get_session_info(db, session_id)
         if session_info:
-            resume_result = await db.execute(
-                select(Resume).where(
-                    Resume.id == session_info["resume_id"],
-                    Resume.user_id == current_user.id
-                )
-            )
-            if not resume_result.scalar_one_or_none():
+            query = text("SELECT id FROM resumes WHERE id = :resume_id AND user_id = :user_id")
+            resume_result = await db.execute(query, {"resume_id": session_info["resume_id"], "user_id": current_user['id']})
+            if not resume_result.fetchone():
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="Access denied"

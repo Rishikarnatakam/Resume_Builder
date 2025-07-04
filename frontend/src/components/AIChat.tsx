@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { apiConfig } from '../config/api';
+import { apiConfig, supabase } from '../config/api';
 
 interface Message {
   id: string;
@@ -132,7 +132,10 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ currentLatex, onLatexChange
     if (!resumeId) return;
 
     try {
-      const token = localStorage.getItem('access_token');
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("User not authenticated");
+      const token = session.access_token;
+
       const response = await fetch(apiConfig.url(`/resumes/${resumeId}`), {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -160,7 +163,9 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ currentLatex, onLatexChange
 
     setTemplateLoading(true);
     try {
-      const token = localStorage.getItem('access_token');
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("User not authenticated");
+      const token = session.access_token;
       
       const resumeResponse = await fetch(apiConfig.url(`/resumes/${resumeId}`), {
         headers: {
@@ -208,10 +213,12 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ currentLatex, onLatexChange
     setSessionInitialized(true);
     setTemplateLoading(true);
     try {
-      const token = localStorage.getItem('access_token');
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("User not authenticated");
+      const token = session.access_token;
       
       const sessionRequest = {
-        resume_id: parseInt(resumeId),
+        resume_id: resumeId,
         form_data: formData,
         template_name: templateName,
         job_description: null // Add job description later if needed
@@ -296,7 +303,9 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ currentLatex, onLatexChange
     if (!sessionId) return;
 
     try {
-      const token = localStorage.getItem('access_token');
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return; // Can't end session if not logged in
+      const token = session.access_token;
       
       await fetch(apiConfig.url(`/ai/session/${sessionId}`), {
         method: 'DELETE',
@@ -330,10 +339,14 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ currentLatex, onLatexChange
     }
 
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("User not authenticated");
+      const token = session.access_token;
+
       const reader = new FileReader();
       reader.onload = () => {
         const base64Data = reader.result as string;
-        const base64String = base64Data.split(',')[1]; // Remove data URL prefix
+        const base64String = base64Data.split(',')[1];
         
         const fileExtension = file.type.split('/')[1];
         setSelectedImage({
@@ -356,7 +369,9 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ currentLatex, onLatexChange
     }
 
     try {
-      const token = localStorage.getItem('access_token');
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("User not authenticated");
+      const token = session.access_token;
       console.log('🔄 FRONTEND: Compiling LaTeX for AI analysis...', {
         latexLength: currentLatex.length
       });
@@ -425,6 +440,10 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ currentLatex, onLatexChange
       return;
     }
 
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) throw new Error("User not authenticated");
+    const token = session.access_token;
+
     const userMessage: Message = {
       id: Date.now().toString(),
       type: 'user',
@@ -449,16 +468,6 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ currentLatex, onLatexChange
     // No PDF file input to clear since we compile directly
 
     try {
-      const token = localStorage.getItem('access_token');
-      
-      console.log('💬 FRONTEND: Sending session-based chat message:', {
-        sessionId,
-        message: userMessage.content,
-        hasImage: !!imageForAPI,
-        hasPdf: !!pdfForAPI,
-        currentLatexLength: currentLatex.length
-      });
-
       const requestBody: any = {
         session_id: sessionId,
         message: userMessage.content,

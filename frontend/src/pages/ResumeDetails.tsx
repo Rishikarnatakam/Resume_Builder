@@ -14,6 +14,7 @@ import { useAuth } from '../context/AuthContext';
 import { apiConfig } from '../config/api';
 import Logo from '../components/Logo';
 import { motion } from 'framer-motion';
+import { supabase } from '../lib/supabase';
 
 interface PersonalInfo {
   name: string;
@@ -237,6 +238,7 @@ const ResumeDetails: React.FC = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [extractedData, setExtractedData] = useState<boolean>(false);
+  const [extractionError, setExtractionError] = useState<string>('');
 
   
   // Adaptive form state
@@ -295,116 +297,39 @@ const ResumeDetails: React.FC = () => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    if (file.type !== 'application/pdf') {
-      alert('Please upload a PDF file');
-      return;
-    }
-
     setUploadedFile(file);
     setIsUploading(true);
+    setExtractionError('');
 
-    try {
       const formData = new FormData();
       formData.append('file', file);
 
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(apiConfig.url('/resumes/extract-pdf'), {
+    try {
+      const session = await supabase.auth.getSession();
+      if (!session.data.session) {
+        throw new Error("User not authenticated");
+      }
+      const token = session.data.session.access_token;
+
+      const response = await fetch(`${apiConfig.baseUrl}/resumes/extract-pdf`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
-          'ngrok-skip-browser-warning': 'true'
         },
-        body: formData
+        body: formData,
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        console.log('✅ FRONTEND: Full response from backend:', data);
-        
-        // Handle new response structure with nested resume_data
-        const resumeData = data.resume_data || data; // Fallback for backward compatibility
-        const detectedSections = data.detected_sections || {};
-        const extractionSummary = data.extraction_summary || {};
-        
-        console.log('📊 FRONTEND: PDF extraction breakdown:');
-        console.log(`  - Personal Info: ${resumeData.personalInfo?.name ? 'Found' : 'Missing'}`);
-        console.log(`  - Experience: ${resumeData.experience?.length || 0} items`);
-        console.log(`  - Education: ${resumeData.education?.length || 0} items`);
-        console.log(`  - Skills: ${resumeData.skills?.length || 0} items`);
-        console.log(`  - Projects: ${resumeData.projects?.length || 0} items`);
-        console.log(`  - Awards: ${resumeData.awards?.length || 0} items`);
-        console.log(`  - Certifications: ${resumeData.certifications?.length || 0} items`);
-        console.log(`  - Additional Sections: ${resumeData.additional_sections?.length || 0} items`);
-        
-        // Log detected sections for adaptive form
-        console.log('🧠 FRONTEND: Detected sections:', detectedSections);
-        console.log(`📈 FRONTEND: Extraction summary:`, extractionSummary);
-        
-        // Log additional sections details
-        if (resumeData.additional_sections && resumeData.additional_sections.length > 0) {
-          console.log('📝 FRONTEND: Additional sections found:');
-          resumeData.additional_sections.forEach((section: AdditionalSection, index: number) => {
-            console.log(`   ${index + 1}. ${section.section_name}: ${section.content.substring(0, 50)}...`);
-          });
-        }
-        
-        // Update detected sections state
-        setDetectedSections(detectedSections);
-        
-        // Auto-show detected sections (adaptive form logic)
-        const newVisibleSections = ['personal', 'summary', 'experience', 'education', 'skills'];
-        
-        // Add detected sections to visible sections
-        if (detectedSections.projects || (resumeData.projects && resumeData.projects.length > 0)) {
-          newVisibleSections.push('projects');
-        }
-        if (detectedSections.awards || (resumeData.awards && resumeData.awards.length > 0)) {
-          newVisibleSections.push('awards');
-        }
-        if (detectedSections.certifications || (resumeData.certifications && resumeData.certifications.length > 0)) {
-          newVisibleSections.push('certifications');
-        }
-        if (detectedSections.publications || (resumeData.publications && resumeData.publications.length > 0)) {
-          newVisibleSections.push('publications');
-        }
-        if (detectedSections.volunteering || (resumeData.volunteering && resumeData.volunteering.length > 0)) {
-          newVisibleSections.push('volunteering');
-        }
-        if (detectedSections.speaking || (resumeData.speaking && resumeData.speaking.length > 0)) {
-          newVisibleSections.push('speaking');
-        }
-        if (detectedSections.military || (resumeData.military && resumeData.military.length > 0)) {
-          newVisibleSections.push('military');
-        }
-        if (detectedSections.references || resumeData.references) {
-          newVisibleSections.push('references');
-        }
-        if (detectedSections.hobbies || (resumeData.hobbies && resumeData.hobbies.length > 0)) {
-          newVisibleSections.push('hobbies');
-        }
-        if (detectedSections.additional_sections || (resumeData.additional_sections && resumeData.additional_sections.length > 0)) {
-          newVisibleSections.push('additional');
-        }
-        
-        setVisibleSections(newVisibleSections);
-        
-        console.log('🎯 FRONTEND: Auto-showing sections:', newVisibleSections);
-        
-        setResumeData(resumeData);
-        setExtractedData(true);
-        
-        console.log('✅ FRONTEND: Resume data state updated with:', {
-          personalInfo: resumeData.personalInfo,
-          sections: Object.keys(resumeData).length
-        });
-      } else {
+      if (!response.ok) {
         const errorData = await response.json();
-        console.error('Extraction failed:', errorData);
-        alert('Failed to extract data from PDF. Please fill the form manually.');
+        throw new Error(errorData.detail || 'Failed to extract data');
       }
-    } catch (error) {
-      console.error('Error uploading file:', error);
-      alert('Error uploading file. Please fill the form manually.');
+
+      const data = await response.json();
+      setResumeData(prev => ({ ...prev, ...data.resume_data }));
+        setExtractedData(true);
+    } catch (error: any) {
+      setExtractionError(`Extraction failed: ${error.message}`);
+      console.error('Extraction failed:', error);
     } finally {
       setIsUploading(false);
     }

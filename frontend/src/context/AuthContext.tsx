@@ -1,11 +1,11 @@
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
-import { apiConfig } from '../config/api';
+import { supabase } from '../config/api';
+import type { User as SupabaseUser, Session } from '@supabase/supabase-js';
 
 interface User {
-  id: number;
+  id: string; // Changed from number to string for UUID
   username: string;
   email: string;
-  full_name: string;
   is_active: boolean;
   created_at: string;
 }
@@ -14,7 +14,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   token: string | null;
   user: User | null;
-  login: (token: string) => void;
+  login: (token: string) => void; // Keep same interface for compatibility
   logout: () => void;
   loading: boolean;
 }
@@ -39,66 +39,66 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Initialize auth state from localStorage
+  // Initialize auth state from Supabase session
   useEffect(() => {
-    const storedToken = localStorage.getItem('access_token');
-    if (storedToken) {
-      setToken(storedToken);
-      setIsAuthenticated(true);
-      fetchUserData(storedToken);
-    } else {
-      setLoading(false);
-    }
-  }, []);
-
-  const fetchUserData = async (authToken: string) => {
-    try {
-      console.log('🔍 Fetching user data from:', apiConfig.url(apiConfig.endpoints.auth.me));
-      const response = await fetch(apiConfig.url(apiConfig.endpoints.auth.me), {
-        headers: {
-          'Authorization': `Bearer ${authToken}`,
-          'ngrok-skip-browser-warning': 'true'
-        }
-      });
-      
-      console.log('📡 User data response status:', response.status);
-      
-      if (response.ok) {
-        const userData = await response.json();
-        console.log('✅ User data fetched successfully:', userData);
-        setUser(userData);
-        setLoading(false);
-      } else if (response.status === 401) {
-        console.log('🔒 Token expired or invalid, logging out...');
-        // Token is invalid, log out
-        logout();
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        setSession(session);
       } else {
-        // For other errors (500, network issues), don't logout - keep user logged in
-        console.error('❌ Error fetching user data, but keeping user logged in:', response.status);
-        const errorText = await response.text();
-        console.error('❌ Error details:', errorText);
         setLoading(false);
       }
-    } catch (error) {
-      // Network errors shouldn't log out the user
-      console.error('❌ Network error fetching user data, keeping user logged in:', error);
+    });
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (session) {
+          setSession(session);
+        } else {
+          setIsAuthenticated(false);
+          setToken(null);
+          setUser(null);
       setLoading(false);
     }
-  };
+      }
+    );
 
-  const login = (newToken: string) => {
-    localStorage.setItem('access_token', newToken);
-    setToken(newToken);
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const setSession = async (session: Session) => {
+    setToken(session.access_token);
     setIsAuthenticated(true);
-    fetchUserData(newToken);
+    
+    // Convert Supabase user to our User interface
+    const supabaseUser = session.user;
+    const userData: User = {
+      id: supabaseUser.id,
+      email: supabaseUser.email!,
+      username: supabaseUser.user_metadata?.username || supabaseUser.email!.split('@')[0],
+      is_active: true,
+      created_at: supabaseUser.created_at
+    };
+    
+    setUser(userData);
+    setLoading(false);
   };
 
-  const logout = () => {
-    localStorage.removeItem('access_token');
+  // Keep the same login interface for compatibility
+  const login = async (emailOrToken: string, password?: string) => {
+    // This function is kept for compatibility but will be called differently
+    // The actual login will happen through Supabase in the login components
+    setLoading(false);
+  };
+
+  const logout = async () => {
+    await supabase.auth.signOut();
     setToken(null);
     setUser(null);
     setIsAuthenticated(false);
     setLoading(false);
+    
     // Only redirect if we're not already on login/register pages
     if (!window.location.pathname.includes('/login') && !window.location.pathname.includes('/register')) {
       window.location.href = '/';

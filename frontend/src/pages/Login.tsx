@@ -3,16 +3,15 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { motion } from "framer-motion";
 import { DocumentTextIcon, EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
-import { apiConfig } from '../config/api';
+import { supabase } from '../config/api';
 import Logo from '../components/Logo';
 
 const Login: React.FC = () => {
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -21,29 +20,16 @@ const Login: React.FC = () => {
     setIsLoading(true);
 
     try {
-      // Create form data object
-      const formData = new URLSearchParams();
-      formData.append('username', username);
-      formData.append('password', password);
-
-      const response = await fetch(apiConfig.url(apiConfig.endpoints.auth.login), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'ngrok-skip-browser-warning': 'true'
-        },
-        body: formData,
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email,
+        password: password,
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        if (data.access_token) {
-          // Use the login function from AuthContext
-          login(data.access_token);
+      if (error) {
+        setError('Invalid email or password');
+      } else if (data.session) {
+        // AuthContext will handle the session automatically
           navigate('/dashboard');
-        }
-      } else {
-        setError('Invalid username or password');
       }
     } catch (err) {
       setError('Invalid credentials. Please try again.');
@@ -90,19 +76,19 @@ const Login: React.FC = () => {
             )}
 
             <div>
-              <label htmlFor="username" className="block text-sm font-medium text-gray-300 mb-2">
-                Username
+              <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">
+                Email
               </label>
               <input
-                id="username"
-                name="username"
-                type="text"
+                id="email"
+                name="email"
+                type="email"
                 required
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 className="w-full px-4 py-3 border border-gray-600/50 rounded-3xl text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500/50 focus:border-gray-500/50 transition-all"
                 style={{ backgroundColor: '#2F2F2F' }}
-                placeholder="Enter your username"
+                placeholder="Enter your email"
               />
             </div>
 

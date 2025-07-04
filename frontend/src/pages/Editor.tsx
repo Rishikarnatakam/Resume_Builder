@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import Editor from '@monaco-editor/react';
 import { useAuth } from '../context/AuthContext';
@@ -8,6 +8,8 @@ import AIChat, { AIChatRef } from '../components/AIChat';
 import ThreePanelSplitter from '../components/ThreePanelSplitter';
 import { apiConfig } from '../config/api';
 import Logo from '../components/Logo';
+import { supabase } from '../lib/supabase';
+import { debounce } from 'lodash';
 
 const LaTeXEditor: React.FC = () => {
   const { resumeId } = useParams<{ resumeId?: string }>();
@@ -21,6 +23,7 @@ const LaTeXEditor: React.FC = () => {
   const [jobDescription, setJobDescription] = useState<string>('');
   const [showJobForm, setShowJobForm] = useState(false);
   const [resumeTitle, setResumeTitle] = useState<string>('Untitled Resume');
+  const [aiChatSessionId, setAiChatSessionId] = useState<string | null>(null);
   
   // New states for AI chat and inline editing
   const [proposedLatex, setProposedLatex] = useState<string>('');
@@ -65,7 +68,7 @@ const LaTeXEditor: React.FC = () => {
   // Load resume if resumeId is provided
   useEffect(() => {
     if (resumeId && user) {
-      loadResume(parseInt(resumeId));
+      loadResume(resumeId);
     } else {
       // Start with empty template
       setLatexContent(`\\documentclass{resume}
@@ -120,26 +123,25 @@ Programming Languages, Frameworks, Tools, etc.
     };
   }, [latexContent, resumeTitle, jobDescription, resumeId]);
 
-  const loadResume = async (id: number) => {
+  const loadResume = async (id: string) => {
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(apiConfig.url(apiConfig.endpoints.resumes.get(id.toString())), {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'ngrok-skip-browser-warning': 'true'
-        },
-      });
+      const session = await supabase.auth.getSession();
+      if (!session.data.session) throw new Error("Not authenticated");
+      const token = session.data.session.access_token;
 
-      if (response.ok) {
-        const resume = await response.json();
-        setCurrentResume(resume);
-        setLatexContent(resume.latex_content || '');
-        setJobDescription(resume.job_description || '');
-        setResumeTitle(resume.title || 'Untitled Resume');
-        setLastSaved(new Date(resume.updated_at));
-      }
+      const response = await fetch(`${apiConfig.baseUrl}/resumes/${id}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!response.ok) throw new Error('Failed to fetch resume');
+      const data = await response.json();
+      setCurrentResume(data.resume_data);
+      setLatexContent(data.latex_content);
+      setJobDescription(data.job_description || '');
+      setResumeTitle(data.title || 'Untitled Resume');
+      setLastSaved(new Date(data.updated_at));
+      setAiChatSessionId(data.ai_chat_session_id || null);
     } catch (error) {
-      console.error('Failed to load resume:', error);
+      console.error("Error fetching resume:", error);
     }
   };
 
@@ -148,13 +150,15 @@ Programming Languages, Frameworks, Tools, etc.
 
     setIsSaving(true);
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(apiConfig.url(apiConfig.endpoints.resumes.get(resumeId)), {
+      const session = await supabase.auth.getSession();
+      if (!session.data.session) throw new Error("Not authenticated");
+      const token = session.data.session.access_token;
+
+      const response = await fetch(`${apiConfig.baseUrl}/resumes/${resumeId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
-          'ngrok-skip-browser-warning': 'true'
         },
         body: JSON.stringify({
           title: resumeTitle,
@@ -188,13 +192,15 @@ Programming Languages, Frameworks, Tools, etc.
     setCompileLog('');
 
     try {
-      const token = localStorage.getItem('access_token');
+      const session = await supabase.auth.getSession();
+      if (!session.data.session) throw new Error("Not authenticated");
+      const token = session.data.session.access_token;
       console.log('🔄 Starting LaTeX compilation...', {
         contentLength: contentToCompile.length,
         isOverride: !!overrideContent
       });
       
-      const response = await fetch(apiConfig.url('/latex/compile'), {
+      const response = await fetch(`${apiConfig.baseUrl}/latex/compile`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -749,14 +755,17 @@ Tailor the content to match this specific role while maintaining professional, s
   );
 
   // Create the AI chat content
-  const aiChatContent = (
+  const aiChatContent = resumeId ? (
     <AIChat 
       ref={aiChatRef}
+      resumeId={resumeId}
       currentLatex={latexContent}
       onLatexChange={handleAILatexChange}
-      isLoading={isCompiling}
-      resumeId={resumeId}
     />
+  ) : (
+    <div className="flex h-full items-center justify-center p-4 text-center text-gray-400">
+      Save a new resume to enable AI Chat.
+    </div>
   );
 
   return (

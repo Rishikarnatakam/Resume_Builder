@@ -1,18 +1,19 @@
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
-from fastapi.responses import FileResponse
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
+from fastapi.responses import JSONResponse, FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from pydantic import BaseModel
-from typing import Optional
+from sqlalchemy import select
+from typing import Optional, List, Dict, Any
+import json
 import os
 import subprocess
 import tempfile
 import uuid
-import json
+from datetime import datetime
 import re
 
-from database import get_db, User
+from database import get_db, Resume
 from routes.auth import get_current_user
-
+from pydantic import BaseModel
 router = APIRouter()
 
 class LaTeXCompileRequest(BaseModel):
@@ -33,7 +34,7 @@ os.makedirs("static/logs", exist_ok=True)
 @router.post("/compile", response_model=LaTeXCompileResponse)
 async def compile_latex(
     request: LaTeXCompileRequest,
-    current_user: User = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user)
 ):
     """Compile LaTeX content to PDF"""
     
@@ -273,7 +274,7 @@ async def get_compile_log(file_id: str):
 @router.post("/compile-for-analysis", response_model=dict)
 async def compile_latex_for_analysis(
     request: LaTeXCompileRequest,
-    current_user: User = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user)
 ):
     """Compile LaTeX and return PDF as base64 for AI analysis"""
     import base64
@@ -363,7 +364,7 @@ async def get_resume_template():
 @router.post("/validate")
 async def validate_latex(
     request: LaTeXCompileRequest,
-    current_user: User = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user)
 ):
     """Validate LaTeX syntax without full compilation"""
     # This is a simplified validation - you could use a LaTeX parser

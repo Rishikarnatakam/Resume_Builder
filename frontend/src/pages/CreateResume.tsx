@@ -12,6 +12,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { apiConfig } from '../config/api';
 import Logo from '../components/Logo';
+import { supabase } from '../lib/supabase';
 
 interface Template {
   id: string;
@@ -97,6 +98,12 @@ const CreateResume: React.FC = () => {
 
     setIsGenerating(true);
     try {
+      const session = await supabase.auth.getSession();
+      if (!session.data.session) {
+        throw new Error("User not authenticated");
+      }
+      const token = session.data.session.access_token;
+
       const payload = {
         title: `${resumeData.personalInfo.name}'s Resume`,
         template_name: selectedTemplate,
@@ -104,8 +111,7 @@ const CreateResume: React.FC = () => {
         job_description: jobDescription || undefined,
       };
 
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(apiConfig.url(apiConfig.endpoints.resumes.create), {
+      const response = await fetch(`${apiConfig.baseUrl}/resumes/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -312,8 +318,6 @@ const CreateResume: React.FC = () => {
             </motion.div>
           ))}
         </div>
-
-
 
         {/* Action Button */}
         <div className="flex items-center justify-between mt-12">

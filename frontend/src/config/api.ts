@@ -1,6 +1,15 @@
+import { createClient } from '@supabase/supabase-js';
+
 // API Configuration
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 const API_HOST = import.meta.env.VITE_API_HOST;
+
+// Supabase Configuration
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+// Create Supabase client
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 export const apiConfig = {
   baseUrl: API_BASE_URL,
@@ -42,7 +51,9 @@ export const apiConfig = {
 
 // Helper function for making API requests with consistent headers
 export const apiRequest = async (endpoint: string, options: RequestInit = {}) => {
-  const token = localStorage.getItem('token');
+  // Get Supabase session token instead of localStorage token
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token;
   
   const defaultHeaders: HeadersInit = {
     'Content-Type': 'application/json',
