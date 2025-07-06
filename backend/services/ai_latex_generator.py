@@ -196,6 +196,9 @@ GENERAL INSTRUCTIONS:
 - Output only the LaTeX code, no explanations or markdown formatting
 - Pay special attention to template-specific requirements in the instructions above
 
+🚨 CRITICAL BEHAVIOR RULE:
+- When asked to remove, delete, or get rid of content, you MUST delete the lines entirely. DO NOT comment them out.
+
 🚨 CRITICAL DATA RULE: 
 - ONLY use data that actually exists in the USER DATA above
 - DO NOT add placeholder, example, or fake social media links (Twitter, Instagram, etc.)

@@ -12,7 +12,7 @@ import {
   XMarkIcon,
   CheckIcon
 } from '@heroicons/react/24/outline';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 import { apiConfig, apiRequest } from '../config/api';
 import Logo from '../components/Logo';
 

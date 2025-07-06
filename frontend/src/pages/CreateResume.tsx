@@ -9,10 +9,10 @@ import {
   UserIcon,
   StarIcon
 } from '@heroicons/react/24/outline';
-import { useAuth } from '../context/AuthContext';
-import { apiConfig } from '../config/api';
+import { Dialog, DialogActions, DialogContent, DialogTitle, TextField, Button, Grid, CircularProgress, Typography } from '@mui/material';
+import { useAuth } from '../hooks/useAuth';
+import { apiConfig, supabase } from '../config/api';
 import Logo from '../components/Logo';
-import { supabase } from '../lib/supabase';
 
 interface Template {
   id: string;
@@ -27,61 +27,46 @@ interface Template {
 }
 
 const CreateResume: React.FC = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, token } = useAuth();
   const navigate = useNavigate();
   const [selectedTemplate, setSelectedTemplate] = useState<string>('');
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string>('');
+  const [error, setError] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [resumeData, setResumeData] = useState<any>(null);
   const [jobDescription, setJobDescription] = useState<string>('');
 
-  // Fetch templates and load resume data from previous step
   useEffect(() => {
     const fetchTemplates = async () => {
+      if (!token) {
+        setError("Authentication token not found.");
+        setLoading(false);
+        return;
+      }
       try {
-        setLoading(true);
-        const response = await fetch(apiConfig.url(apiConfig.endpoints.templates.list), {
+        const response = await fetch(`${apiConfig.baseUrl}/templates/`, {
           headers: {
-            'ngrok-skip-browser-warning': 'true'
-          }
+            'Authorization': `Bearer ${token}`,
+          },
         });
         if (!response.ok) {
           throw new Error('Failed to fetch templates');
         }
-        const templateData = await response.json();
-        setTemplates(templateData);
-        
-        // Load resume data from localStorage
-        const savedResumeData = localStorage.getItem('resumeData');
-        const savedJobDescription = localStorage.getItem('jobDescription');
-        
-        if (savedResumeData) {
-          setResumeData(JSON.parse(savedResumeData));
-        } else {
-          // Redirect back to data form if no data found
-          navigate('/create');
-          return;
-        }
-        
-        if (savedJobDescription) {
-          setJobDescription(savedJobDescription);
-        }
-        
-      } catch (err) {
-        console.error('Error fetching templates:', err);
-        setError('Failed to load templates. Please try again.');
+        const data = await response.json();
+        setTemplates(data);
+      } catch (err: any) {
+        setError(err.message);
       } finally {
         setLoading(false);
       }
     };
 
     fetchTemplates();
-  }, [navigate]);
+  }, [token]);
 
-  const handleTemplateSelect = (templateId: string) => {
-    setSelectedTemplate(templateId);
+  const handleSelectTemplate = (templateName: string) => {
+    navigate(`/editor?template=${templateName}`);
   };
 
   const handleGenerateResume = async () => {
@@ -187,7 +172,7 @@ const CreateResume: React.FC = () => {
                 <span className="text-sm text-gray-400">{user?.username}</span>
               </div>
               <button
-                onClick={() => logout()}
+                onClick={logout}
                 className="text-sm text-gray-400 hover:text-white transition-colors"
               >
                 Logout
@@ -228,7 +213,7 @@ const CreateResume: React.FC = () => {
                   ? 'ring-2 ring-white'
                   : 'hover:ring-1 hover:ring-gray-400'
               }`}
-              onClick={() => handleTemplateSelect(template.id)}
+              onClick={() => handleSelectTemplate(template.name)}
             >
               {/* Template Preview */}
               <div className="aspect-[3/4] border border-gray-600/20 rounded-3xl overflow-hidden relative" style={{ backgroundColor: '#0A0A0A' }}>

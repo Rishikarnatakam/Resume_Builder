@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
+import React, { createContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '../config/api';
 import type { User as SupabaseUser, Session } from '@supabase/supabase-js';
 
@@ -19,15 +19,7 @@ interface AuthContextType {
   loading: boolean;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
+export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 interface AuthProviderProps {
   children: ReactNode;
@@ -59,8 +51,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           setIsAuthenticated(false);
           setToken(null);
           setUser(null);
-      setLoading(false);
-    }
+          setLoading(false);
+        }
       }
     );
 
@@ -68,6 +60,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   const setSession = async (session: Session) => {
+    // Only update user state if the user ID has changed
+    if (user?.id === session.user.id) {
+      setToken(session.access_token);
+      setIsAuthenticated(true);
+      setLoading(false);
+      return;
+    }
+    
     setToken(session.access_token);
     setIsAuthenticated(true);
     
@@ -115,6 +115,4 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-};
-
-export default AuthContext; 
+}; 

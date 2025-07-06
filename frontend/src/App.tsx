@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { ResumeProvider } from './context/ResumeContext';
+import { EditorStateProvider } from './context/EditorStateContext';
 import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -14,6 +15,7 @@ function App() {
   return (
     <AuthProvider>
       <ResumeProvider>
+        <EditorStateProvider>
         <Router>
           <div className="min-h-screen bg-black">
             <Routes>
@@ -61,6 +63,7 @@ function App() {
             </Routes>
           </div>
         </Router>
+        </EditorStateProvider>
       </ResumeProvider>
     </AuthProvider>
   );

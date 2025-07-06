@@ -10,11 +10,10 @@ import {
   DocumentArrowUpIcon,
   CheckCircleIcon
 } from '@heroicons/react/24/outline';
-import { useAuth } from '../context/AuthContext';
-import { apiConfig } from '../config/api';
+import { useAuth } from '../hooks/useAuth';
+import { apiConfig, supabase } from '../config/api';
 import Logo from '../components/Logo';
 import { motion } from 'framer-motion';
-import { supabase } from '../lib/supabase';
 
 interface PersonalInfo {
   name: string;

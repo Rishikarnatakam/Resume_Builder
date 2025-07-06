@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { apiConfig, supabase } from '../config/api';
+import { useEditorState } from '../context/EditorStateContext';
 
 interface Message {
   id: string;
@@ -19,8 +20,6 @@ interface Message {
 }
 
 interface AIChatProps {
-  currentLatex: string;
-  onLatexChange: (newLatex: string) => void;
   isLoading?: boolean;
   resumeId?: string;
   onPopulateInput?: (message: string) => void;
@@ -33,7 +32,9 @@ export interface AIChatRef {
   sendMessage: () => void;
 }
 
-const AIChat = forwardRef<AIChatRef, AIChatProps>(({ currentLatex, onLatexChange, resumeId }, ref) => {
+const AIChat = forwardRef<AIChatRef, AIChatProps>(({ resumeId }, ref) => {
+  // Use editor state context instead of props
+  const editorState = useEditorState();
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -363,7 +364,7 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ currentLatex, onLatexChange
   };
 
   const compileAndUploadCurrentPdf = async () => {
-    if (!currentLatex.trim()) {
+    if (!editorState.originalLatex.trim()) {
       alert('No LaTeX content to compile. Please write some LaTeX code first.');
       return;
     }
@@ -373,7 +374,7 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ currentLatex, onLatexChange
       if (!session) throw new Error("User not authenticated");
       const token = session.access_token;
       console.log('🔄 FRONTEND: Compiling LaTeX for AI analysis...', {
-        latexLength: currentLatex.length
+        latexLength: editorState.originalLatex.length
       });
 
       const response = await fetch(apiConfig.url('/latex/compile-for-analysis'), {
@@ -384,7 +385,7 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ currentLatex, onLatexChange
           'ngrok-skip-browser-warning': 'true'
         },
         body: JSON.stringify({
-          latex_content: currentLatex,
+          latex_content: editorState.originalLatex,
           compiler: 'pdflatex'
         }),
       });
@@ -468,10 +469,11 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ currentLatex, onLatexChange
     // No PDF file input to clear since we compile directly
 
     try {
+      editorState.startAIOperation();
       const requestBody: any = {
         session_id: sessionId,
         message: userMessage.content,
-        current_latex: currentLatex
+        current_latex: editorState.originalLatex
       };
 
       // Add image data if present
@@ -521,18 +523,18 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ currentLatex, onLatexChange
 
         setMessages(prev => [...prev, assistantMessage]);
 
-        // Check for modified LaTeX
-        if (result.modified_latex && result.modified_latex.trim() && result.modified_latex !== currentLatex) {
+        // Check for modified LaTeX - now uses context
+        if (result.modified_latex && result.modified_latex.trim() && result.modified_latex !== editorState.originalLatex) {
           console.log('✅ FRONTEND: Updating LaTeX editor with modified content');
-          console.log('📄 FRONTEND: LaTeX comparison - Original length:', currentLatex.length, 'Modified length:', result.modified_latex.length);
-          onLatexChange(result.modified_latex);
-        } else if (result.modified_latex && result.modified_latex === currentLatex) {
+          console.log('📄 FRONTEND: LaTeX comparison - Original length:', editorState.originalLatex.length, 'Modified length:', result.modified_latex.length);
+          editorState.receiveAIResponse(result.modified_latex);
+        } else if (result.modified_latex && result.modified_latex === editorState.originalLatex) {
           console.log('ℹ️ FRONTEND: Modified LaTeX is same as current LaTeX');
         } else {
           console.log('ℹ️ FRONTEND: No modified LaTeX in response');
         }
       } else {
-        console.error('❌ FRONTEND: Session chat request failed:', result);
+        console.error('❌ FRONTEND: AI response indicates failure:', result);
         const errorMessage: Message = {
           id: (Date.now() + 1).toString(),
           type: 'assistant',
@@ -542,14 +544,16 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ currentLatex, onLatexChange
         setMessages(prev => [...prev, errorMessage]);
       }
     } catch (error) {
-      console.error('❌ FRONTEND: Chat error:', error);
+      console.error('❌ Error sending message to session:', error);
+      // Handle network or other unexpected errors
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         type: 'assistant',
-        content: 'Sorry, I couldn\'t connect to the AI service. Please check your connection and try again.',
+        content: `Sorry, something went wrong. Please check the console for details.`,
         timestamp: new Date()
       };
       setMessages(prev => [...prev, errorMessage]);
+      editorState.completeAIOperation();
     } finally {
       setIsProcessing(false);
     }
@@ -794,7 +798,7 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ currentLatex, onLatexChange
               {/* Compile Current PDF Button */}
               <button
                 onClick={compileAndUploadCurrentPdf}
-                disabled={isProcessing || templateLoading || !currentLatex.trim()}
+                disabled={isProcessing || templateLoading || !editorState.originalLatex.trim()}
                 className="w-8 h-8 text-gray-400 hover:text-white hover:bg-gray-700/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center rounded-full"
                 title="Compile current LaTeX as PDF for AI analysis"
               >
