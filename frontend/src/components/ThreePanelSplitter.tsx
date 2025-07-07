@@ -31,6 +31,7 @@ const ThreePanelSplitter: React.FC<ThreePanelSplitterProps> = ({
   const isDragging = useRef<'left' | 'right' | null>(null);
   const dragStartX = useRef<number>(0);
   const initialWidths = useRef<{ left: number; center: number }>({ left: 0, center: 0 });
+  const animationFrame = useRef<number | null>(null);
 
   const handleMouseDown = useCallback((divider: 'left' | 'right') => (e: React.MouseEvent) => {
     e.preventDefault();
@@ -44,6 +45,12 @@ const ThreePanelSplitter: React.FC<ThreePanelSplitterProps> = ({
     document.body.style.cursor = 'col-resize';
     document.body.style.userSelect = 'none';
     
+    // Disable pointer events on iframes during drag to prevent lag
+    const iframes = document.querySelectorAll('iframe');
+    iframes.forEach(iframe => {
+      (iframe as HTMLElement).style.pointerEvents = 'none';
+    });
+    
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
   }, [leftWidth, centerWidth]);
@@ -52,6 +59,15 @@ const ThreePanelSplitter: React.FC<ThreePanelSplitterProps> = ({
     if (!isDragging.current || !containerRef.current) return;
 
     e.preventDefault();
+    
+    // Cancel any pending animation frame
+    if (animationFrame.current) {
+      cancelAnimationFrame(animationFrame.current);
+    }
+    
+    // Use requestAnimationFrame to throttle updates
+    animationFrame.current = requestAnimationFrame(() => {
+      if (!containerRef.current || !isDragging.current) return;
     
     const containerRect = containerRef.current.getBoundingClientRect();
     const deltaX = e.clientX - dragStartX.current;
@@ -91,14 +107,27 @@ const ThreePanelSplitter: React.FC<ThreePanelSplitterProps> = ({
       
       setCenterWidth(newCenterWidth);
     }
+    });
   }, [minLeftWidth, minCenterWidth, minRightWidth]);
 
   const handleMouseUp = useCallback(() => {
     isDragging.current = null;
     
+    // Cancel any pending animation frame
+    if (animationFrame.current) {
+      cancelAnimationFrame(animationFrame.current);
+      animationFrame.current = null;
+    }
+    
     // Remove cursor styles
     document.body.style.cursor = '';
     document.body.style.userSelect = '';
+    
+    // Re-enable pointer events on iframes
+    const iframes = document.querySelectorAll('iframe');
+    iframes.forEach(iframe => {
+      (iframe as HTMLElement).style.pointerEvents = '';
+    });
     
     document.removeEventListener('mousemove', handleMouseMove);
     document.removeEventListener('mouseup', handleMouseUp);
@@ -107,10 +136,19 @@ const ThreePanelSplitter: React.FC<ThreePanelSplitterProps> = ({
   // Cleanup event listeners on unmount
   useEffect(() => {
     return () => {
+      if (animationFrame.current) {
+        cancelAnimationFrame(animationFrame.current);
+      }
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
+      
+      // Ensure iframes are re-enabled
+      const iframes = document.querySelectorAll('iframe');
+      iframes.forEach(iframe => {
+        (iframe as HTMLElement).style.pointerEvents = '';
+      });
     };
   }, [handleMouseMove, handleMouseUp]);
 
@@ -133,7 +171,8 @@ const ThreePanelSplitter: React.FC<ThreePanelSplitterProps> = ({
         className="w-1 h-full cursor-col-resize bg-gray-600/20 hover:bg-gray-500/50 transition-colors relative group flex-shrink-0"
         onMouseDown={handleMouseDown('left')}
         style={{ 
-          backgroundColor: isDragging.current === 'left' ? 'rgba(107, 114, 128, 0.7)' : undefined 
+          backgroundColor: isDragging.current === 'left' ? 'rgba(107, 114, 128, 0.7)' : undefined,
+          transition: isDragging.current ? 'none' : undefined // Disable transitions during drag
         }}
       >
         <div className="absolute inset-0 w-3 -ml-1 z-10" /> {/* Wider hit area */}
@@ -153,7 +192,8 @@ const ThreePanelSplitter: React.FC<ThreePanelSplitterProps> = ({
         className="w-1 h-full cursor-col-resize bg-gray-600/20 hover:bg-gray-500/50 transition-colors relative group flex-shrink-0"
         onMouseDown={handleMouseDown('right')}
         style={{ 
-          backgroundColor: isDragging.current === 'right' ? 'rgba(107, 114, 128, 0.7)' : undefined 
+          backgroundColor: isDragging.current === 'right' ? 'rgba(107, 114, 128, 0.7)' : undefined,
+          transition: isDragging.current ? 'none' : undefined // Disable transitions during drag
         }}
       >
         <div className="absolute inset-0 w-3 -ml-1 z-10" /> {/* Wider hit area */}
@@ -163,7 +203,11 @@ const ThreePanelSplitter: React.FC<ThreePanelSplitterProps> = ({
       {/* Right Panel */}
       <div 
         className="h-full overflow-hidden"
-        style={{ width: `${rightWidth}%` }}
+        style={{ 
+          width: `${rightWidth}%`,
+          // Disable transitions on the content during drag to prevent lag
+          transition: isDragging.current ? 'none' : undefined
+        }}
       >
         {rightContent}
       </div>

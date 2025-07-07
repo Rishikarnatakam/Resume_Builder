@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import Editor from '@monaco-editor/react';
 import { useAuth } from '../hooks/useAuth';
 import { useResume } from '../context/ResumeContext';
-import { useEditorState } from '../context/EditorStateContext';
+import { useEditorState } from '../hooks/useEditorState';
 import { motion } from 'framer-motion';
 import AIChat, { AIChatRef } from '../components/AIChat';
 import ThreePanelSplitter from '../components/ThreePanelSplitter';
@@ -28,6 +28,14 @@ const LaTeXEditor: React.FC = () => {
   
   const editorRef = useRef<any>(null);
   const aiChatRef = useRef<AIChatRef>(null);
+  const latestLatexContent = useRef(editorState.currentLatex);
+  const isInitialMount = useRef(true);
+  const decorations = useRef<string[]>([]);
+
+  // Keep a ref to the latest latex content to avoid stale closures
+  useEffect(() => {
+    latestLatexContent.current = editorState.currentLatex;
+  }, [editorState.currentLatex]);
 
   // Utility function to format time since last save
   const formatTime = (date: Date) => {
@@ -43,6 +51,19 @@ const LaTeXEditor: React.FC = () => {
     return date.toLocaleDateString();
   };
 
+  // Auto-compile after a successful save
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+
+    if (editorState.lastSaved) {
+      console.log('✅ Save completed, triggering auto-compilation.');
+      compileLatex();
+    }
+  }, [editorState.lastSaved]); // Intentionally not including compileLatex, see below
+
   // Debug logging for inline changes state
   useEffect(() => {
     console.log('🔍 EDITOR: showInlineChanges changed to:', editorState.showInlineChanges, 'proposedLatex length:', editorState.proposedLatex.length);
@@ -50,8 +71,11 @@ const LaTeXEditor: React.FC = () => {
 
   // Apply Monaco decorations when they change
   useEffect(() => {
-    if (editorRef.current && editorState.editorDecorations.length > 0) {
-      editorRef.current.deltaDecorations([], editorState.editorDecorations);
+    if (editorRef.current) {
+      decorations.current = editorRef.current.deltaDecorations(
+        decorations.current,
+        editorState.editorDecorations
+      );
     }
   }, [editorState.editorDecorations]);
 
@@ -88,9 +112,9 @@ Programming Languages, Frameworks, Tools, etc.
 \\end{rSection}
 
 \\end{document}`;
-      editorState.initializeEditor(null, emptyTemplate);
+      editorState.initializeEditor(null, emptyTemplate, null);
     }
-  }, [resumeId, user?.id, editorState.initializeEditor]);
+  }, [resumeId, user?.id]);
 
   const loadResume = async (id: string) => {
     try {
@@ -107,19 +131,19 @@ Programming Languages, Frameworks, Tools, etc.
       editorState.initializeEditor(
         id, 
         data.latex_content, 
+        new Date(data.updated_at),
         data.title || 'Untitled Resume', 
         data.job_description || ''
       );
-      editorState.setLastSaved(new Date(data.updated_at));
       setAiChatSessionId(data.ai_chat_session_id || null);
     } catch (error) {
       console.error("Error fetching resume:", error);
     }
   };
 
-  const compileLatexWithContent = async (overrideContent?: string) => {
-    // Use override content if provided, otherwise use current state
-    const contentToCompile = overrideContent || editorState.currentLatex;
+  const compileLatexWithContent = useCallback(async (overrideContent?: string) => {
+    // Use override content if provided, otherwise use the latest from the ref
+    const contentToCompile = overrideContent || latestLatexContent.current;
     
     if (!contentToCompile.trim()) return;
 
@@ -193,10 +217,10 @@ Programming Languages, Frameworks, Tools, etc.
     } finally {
       setIsCompiling(false);
     }
-  };
+  }, [editorState.resumeTitle]); // Depends on resumeTitle for the save payload
 
   // Wrapper for onClick handlers that don't need content override
-  const compileLatex = () => compileLatexWithContent();
+  const compileLatex = useCallback(() => compileLatexWithContent(), [compileLatexWithContent]);
 
   const generateWithAI = async () => {
     if (!editorState.jobDescription.trim()) {

@@ -10,7 +10,7 @@ interface User {
   created_at: string;
 }
 
-interface AuthContextType {
+export interface AuthContextType {
   isAuthenticated: boolean;
   token: string | null;
   user: User | null;
@@ -44,15 +44,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (session) {
-          setSession(session);
-        } else {
+      (event, session) => {
+        // Handle different auth events
+        if (event === 'SIGNED_OUT') {
+          // User has logged out, clear everything
           setIsAuthenticated(false);
           setToken(null);
           setUser(null);
           setLoading(false);
+        } else if (session) {
+          // Any other event with a session (SIGNED_IN, TOKEN_REFRESHED, USER_UPDATED)
+          // means the user is authenticated.
+          setSession(session);
         }
+        // If event is something else without a session, do nothing to prevent flicker
       }
     );
 

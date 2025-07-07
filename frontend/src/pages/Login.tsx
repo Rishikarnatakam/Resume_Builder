@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
 import { motion } from "framer-motion";
 import { DocumentTextIcon, EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
 import { supabase } from '../config/api';
@@ -29,7 +28,7 @@ const Login: React.FC = () => {
         setError('Invalid email or password');
       } else if (data.session) {
         // AuthContext will handle the session automatically
-          navigate('/dashboard');
+          navigate('/dashboard', { replace: true });
       }
     } catch (err) {
       setError('Invalid credentials. Please try again.');

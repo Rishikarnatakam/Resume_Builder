@@ -131,7 +131,8 @@ class ChatSessionManager:
             if pdf_data:
                 # Process PDF  
                 processed_pdf = await self._process_pdf_attachment(pdf_data)
-                message_parts.append(processed_pdf)
+                if processed_pdf:
+                    message_parts.append(processed_pdf)
                 logger.info("📄 SESSION: Added PDF to message")
             
             # Send to chat session - AI remembers all previous context!
@@ -310,10 +311,22 @@ Please help with this request, referring to the template and data we discussed a
     async def _process_pdf_attachment(self, pdf_data: str):
         """Process PDF for Gemini"""
         try:
-            # For now, we'll skip PDF processing to keep it simple
-            # Can be enhanced later with Gemini's file upload API
-            logger.warning("📄 SESSION: PDF processing not implemented yet")
-            return None
+            # Decode base64 PDF data to binary
+            decoded_pdf = base64.b64decode(pdf_data)
+            
+            # Create a temporary file-like object for Gemini
+            import io
+            pdf_io = io.BytesIO(decoded_pdf)
+            
+            # Create Gemini document part
+            import google.generativeai as genai
+            pdf_part = {
+                "mime_type": "application/pdf",
+                "data": decoded_pdf
+            }
+            
+            logger.info(f"✅ SESSION: PDF processed successfully for Gemini - Size: {len(decoded_pdf)} bytes")
+            return pdf_part
                 
         except Exception as e:
             logger.error(f"❌ SESSION: Error processing PDF: {e}")

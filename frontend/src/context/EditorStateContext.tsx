@@ -30,7 +30,13 @@ interface EditorState {
 
 interface EditorActions {
   // Initialization
-  initializeEditor: (resumeId: string | null, latexContent: string, title?: string, jobDesc?: string) => void;
+  initializeEditor: (
+    resumeId: string | null, 
+    latexContent: string, 
+    lastSaved: Date | null,
+    title?: string, 
+    jobDesc?: string
+  ) => void;
   
   // Content management
   updateLatexFromUser: (content: string) => void;
@@ -52,24 +58,15 @@ interface EditorActions {
   
   // UI state
   setEditorDecorations: (decorations: any[]) => void;
-  setLastSaved: (date: Date | null) => void;
 }
 
 interface EditorContextType extends EditorState, EditorActions {}
 
-const EditorContext = createContext<EditorContextType | undefined>(undefined);
+export const EditorContext = createContext<EditorContextType | undefined>(undefined);
 
 interface EditorStateProviderProps {
   children: React.ReactNode;
 }
-
-export const useEditorState = () => {
-  const context = useContext(EditorContext);
-  if (context === undefined) {
-    throw new Error('useEditorState must be used within an EditorStateProvider');
-  }
-  return context;
-};
 
 export const EditorStateProvider: React.FC<EditorStateProviderProps> = ({ children }) => {
   // Core state
@@ -91,13 +88,18 @@ export const EditorStateProvider: React.FC<EditorStateProviderProps> = ({ childr
 
   // Ref for AI operation state to avoid stale closures
   const aiOperationInProgress = useRef(false);
+  const stateRef = useRef(state);
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
 
   // Auto-save timeout ref
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Auto-save effect - only trigger when safe to save
   useEffect(() => {
-    if (!state.resumeId || !state.isAutoSaveEnabled || aiOperationInProgress.current || !state.isDirty) {
+    const currentState = stateRef.current;
+    if (!currentState.resumeId || !currentState.isAutoSaveEnabled || aiOperationInProgress.current || !currentState.isDirty) {
       return;
     }
 
@@ -117,10 +119,16 @@ export const EditorStateProvider: React.FC<EditorStateProviderProps> = ({ childr
         clearTimeout(saveTimeoutRef.current);
       }
     };
-  }, [state.isDirty, state.resumeId, state.isAutoSaveEnabled, state.originalLatex, state.resumeTitle, state.jobDescription]);
+  }, [state.isDirty, state.resumeId, state.isAutoSaveEnabled]);
 
   // Initialize editor with resume data
-  const initializeEditor = useCallback((resumeId: string | null, latexContent: string, title = 'Untitled Resume', jobDesc = '') => {
+  const initializeEditor = useCallback((
+    resumeId: string | null, 
+    latexContent: string, 
+    lastSaved: Date | null,
+    title = 'Untitled Resume', 
+    jobDesc = ''
+  ) => {
     aiOperationInProgress.current = false; // Reset on init
     setState(prev => ({
       ...prev,
@@ -130,6 +138,7 @@ export const EditorStateProvider: React.FC<EditorStateProviderProps> = ({ childr
       proposedLatex: '',
       diffMode: 'none',
       isDirty: false,
+      lastSaved, // Set lastSaved atomically
       showInlineChanges: false,
       editorDecorations: [],
       resumeTitle: title,
@@ -200,56 +209,61 @@ export const EditorStateProvider: React.FC<EditorStateProviderProps> = ({ childr
     dmp.diff_cleanupSemantic(diffs);
 
     const decorations: any[] = [];
-    let originalLine = 1;
+    let unifiedDiffText = '';
+    let previewLineNum = 1;
 
     for (const diff of diffs) {
       const op = diff[0];
       const text = diff[1];
+      // Note: lineCount from dmp is reliable with diff_linesToChars_
       const lineCount = (text.match(/\n/g) || []).length;
 
-      if (op === DIFF_EQUAL) {
-        originalLine += lineCount;
-      } else if (op === DIFF_INSERT) {
-        // For insertions, we just need to mark the line in the original document
-        // where the new content will be inserted.
+      if (lineCount === 0 && text.length > 0) {
+        // This case shouldn't happen with line-based diff, but as a safeguard...
+        unifiedDiffText += text;
+        continue;
+      }
+      if (text.length === 0) continue;
+
+      unifiedDiffText += text;
+
+      if (op === DIFF_INSERT) {
         decorations.push({
           range: {
-            startLineNumber: originalLine,
+            startLineNumber: previewLineNum,
             startColumn: 1,
-            endLineNumber: originalLine,
+            endLineNumber: previewLineNum + lineCount - 1,
             endColumn: 1,
           },
           options: {
             isWholeLine: true,
             className: 'bg-green-600 bg-opacity-20',
             glyphMarginClassName: 'bg-green-600',
-            linesDecorationsClassName: 'bg-green-600 bg-opacity-10'
           }
         });
       } else if (op === DIFF_DELETE) {
-        // For deletions, highlight the range of lines being removed.
         decorations.push({
           range: {
-            startLineNumber: originalLine,
+            startLineNumber: previewLineNum,
             startColumn: 1,
-            endLineNumber: originalLine + lineCount -1,
+            endLineNumber: previewLineNum + lineCount - 1,
             endColumn: 1,
           },
           options: {
             isWholeLine: true,
-            className: 'bg-red-600 bg-opacity-20',
+            className: 'bg-red-600 bg-opacity-20 line-through',
             glyphMarginClassName: 'bg-red-600',
           }
         });
-        originalLine += lineCount;
       }
+      
+      previewLineNum += lineCount;
     }
 
     setState(prev => ({
       ...prev,
       proposedLatex: newLatex,
-      // Keep currentLatex as original to show diff against it
-      currentLatex: prev.originalLatex, 
+      currentLatex: unifiedDiffText, // Show the combined diff view
       diffMode: 'viewing',
       showInlineChanges: true,
       editorDecorations: decorations
@@ -296,7 +310,8 @@ export const EditorStateProvider: React.FC<EditorStateProviderProps> = ({ childr
 
   // Auto-save function
   const triggerAutoSave = useCallback(async () => {
-    if (!state.resumeId || state.isSaving || aiOperationInProgress.current) {
+    const currentState = stateRef.current;
+    if (!currentState.resumeId || currentState.isSaving || aiOperationInProgress.current) {
       return;
     }
 
@@ -307,16 +322,16 @@ export const EditorStateProvider: React.FC<EditorStateProviderProps> = ({ childr
       if (!session.data.session) throw new Error("Not authenticated");
       const token = session.data.session.access_token;
 
-      const response = await fetch(`${apiConfig.baseUrl}/resumes/${state.resumeId}`, {
+      const response = await fetch(`${apiConfig.baseUrl}/resumes/${currentState.resumeId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
-          title: state.resumeTitle,
-          latex_content: state.originalLatex, // Always save original, never diff content
-          job_description: state.jobDescription
+          title: currentState.resumeTitle,
+          latex_content: currentState.originalLatex, // Always save original, never diff content
+          job_description: currentState.jobDescription
         }),
       });
 
@@ -324,18 +339,19 @@ export const EditorStateProvider: React.FC<EditorStateProviderProps> = ({ childr
         setState(prev => ({
           ...prev,
           isDirty: false,
-          lastSaved: new Date()
+          lastSaved: new Date(),
+          isSaving: false,
         }));
         console.log('✅ Auto-saved resume successfully');
       } else {
         console.error('❌ Auto-save failed:', response.status);
+        setState(prev => ({ ...prev, isSaving: false }));
       }
     } catch (error) {
       console.error('❌ Auto-save error:', error);
-    } finally {
       setState(prev => ({ ...prev, isSaving: false }));
     }
-  }, [state.resumeId, state.isSaving, state.resumeTitle, state.originalLatex, state.jobDescription]);
+  }, []);
 
   // Update resume title
   const updateResumeTitle = useCallback((title: string) => {
@@ -363,14 +379,6 @@ export const EditorStateProvider: React.FC<EditorStateProviderProps> = ({ childr
     }));
   }, []);
 
-  // Set last saved date
-  const setLastSaved = useCallback((date: Date | null) => {
-    setState(prev => ({
-      ...prev,
-      lastSaved: date
-    }));
-  }, []);
-
   const value: EditorContextType = {
     // State
     ...state,
@@ -387,7 +395,6 @@ export const EditorStateProvider: React.FC<EditorStateProviderProps> = ({ childr
     updateResumeTitle,
     updateJobDescription,
     setEditorDecorations,
-    setLastSaved
   };
 
   return (

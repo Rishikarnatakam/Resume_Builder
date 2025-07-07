@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { apiConfig, supabase } from '../config/api';
-import { useEditorState } from '../context/EditorStateContext';
+import { useEditorState } from '../hooks/useEditorState';
 
 interface Message {
   id: string;
