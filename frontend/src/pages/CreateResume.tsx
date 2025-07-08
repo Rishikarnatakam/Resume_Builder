@@ -38,6 +38,19 @@ const CreateResume: React.FC = () => {
   const [jobDescription, setJobDescription] = useState<string>('');
 
   useEffect(() => {
+    // Load resume data from localStorage
+    const storedResumeData = localStorage.getItem('resumeData');
+    const storedJobDescription = localStorage.getItem('jobDescription');
+    
+    if (storedResumeData) {
+      setResumeData(JSON.parse(storedResumeData));
+    }
+    if (storedJobDescription) {
+      setJobDescription(storedJobDescription);
+    }
+  }, []);
+
+  useEffect(() => {
     const fetchTemplates = async () => {
       if (!token) {
         setError("Authentication token not found.");
@@ -65,8 +78,10 @@ const CreateResume: React.FC = () => {
     fetchTemplates();
   }, [token]);
 
-  const handleSelectTemplate = (templateName: string) => {
-    navigate(`/editor?template=${templateName}`);
+  const handleSelectTemplate = (templateId: string) => {
+    // Just select the template, don't navigate
+    setSelectedTemplate(templateId);
+    console.log('Selected template:', templateId);
   };
 
   const handleGenerateResume = async () => {
@@ -89,12 +104,15 @@ const CreateResume: React.FC = () => {
       }
       const token = session.data.session.access_token;
 
+      // Create the resume in the database
       const payload = {
         title: `${resumeData.personalInfo.name}'s Resume`,
-        template_name: selectedTemplate,
+        template_name: selectedTemplate, // This is now template.id which matches backend expectation
         resume_data: resumeData,
         job_description: jobDescription || undefined,
       };
+
+      console.log('Creating resume with payload:', payload);
 
       const response = await fetch(`${apiConfig.baseUrl}/resumes/`, {
         method: 'POST',
@@ -108,15 +126,19 @@ const CreateResume: React.FC = () => {
 
       if (response.ok) {
         const newResume = await response.json();
+        console.log('Resume created successfully:', newResume);
+        
         // Clean up localStorage
         localStorage.removeItem('resumeData');
         localStorage.removeItem('jobDescription');
+        
+        // Navigate to editor with the new resume
         navigate(`/editor/${newResume.id}`);
-    } else {
+      } else {
         const errorData = await response.json();
         console.error('Failed to create resume:', errorData);
         alert('Failed to create resume. Please try again.');
-    }
+      }
     } catch (error) {
       console.error('Error creating resume:', error);
       alert('Error creating resume. Please try again.');
@@ -140,7 +162,7 @@ const CreateResume: React.FC = () => {
     return (
       <div className="min-h-screen flex items-center justify-center text-white" style={{ backgroundColor: '#000000' }}>
         <div className="text-center">
-          <p className="text-xl text-red-400 mb-4">{error}</p>
+                      <p className="text-xl text-red-400 mb-4 break-words">{error}</p>
           <button 
             onClick={() => window.location.reload()} 
             className="px-6 py-2 text-white rounded-3xl hover:opacity-90 transition-all"
@@ -213,7 +235,7 @@ const CreateResume: React.FC = () => {
                   ? 'ring-2 ring-white'
                   : 'hover:ring-1 hover:ring-gray-400'
               }`}
-              onClick={() => handleSelectTemplate(template.name)}
+              onClick={() => handleSelectTemplate(template.id)}
             >
               {/* Template Preview */}
               <div className="aspect-[3/4] border border-gray-600/20 rounded-3xl overflow-hidden relative" style={{ backgroundColor: '#0A0A0A' }}>
@@ -221,7 +243,7 @@ const CreateResume: React.FC = () => {
                   {template.has_preview ? (
                     /* Preview Image */
                     <img 
-                                              src={apiConfig.hostUrl(template.preview_url || '')}
+                      src={apiConfig.hostUrl(template.preview_url || '')}
                       alt={`${template.name} Preview`}
                       className="w-full h-full object-cover"
                       onError={(e) => {

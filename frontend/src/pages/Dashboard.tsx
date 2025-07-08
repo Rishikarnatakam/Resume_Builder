@@ -152,7 +152,7 @@ const Dashboard: React.FC = () => {
           <div className="flex items-center space-x-6">
             <div className="flex items-center space-x-2 text-sm text-gray-400">
               <UserIcon className="w-4 h-4" />
-              <span>{user?.username}</span>
+              <span className="username-text">{user?.username}</span>
             </div>
             <button
               onClick={logout}
@@ -253,12 +253,7 @@ const Dashboard: React.FC = () => {
                     </div>
                   ) : (
                     <div className="mb-2">
-                      <h3 className="font-semibold text-lg mb-1 leading-tight overflow-hidden" style={{ 
-                        display: '-webkit-box',
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: 'vertical',
-                        wordBreak: 'break-word'
-                      }}>
+                      <h3 className="font-semibold text-lg mb-1 leading-tight title-text">
                         {resume.title}
                       </h3>
                     </div>

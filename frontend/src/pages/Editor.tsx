@@ -79,6 +79,29 @@ const LaTeXEditor: React.FC = () => {
     }
   }, [editorState.editorDecorations]);
 
+  // Load PDF from browser storage if available
+  useEffect(() => {
+    if (resumeId) {
+      const storageKey = `pdf_${resumeId}`;
+      const storedPdfData = sessionStorage.getItem(storageKey);
+      if (storedPdfData) {
+        // Convert data URL back to blob and create object URL
+        fetch(storedPdfData)
+          .then(response => response.blob())
+          .then(blob => {
+            const pdfUrl = URL.createObjectURL(blob);
+            setPdfUrl(pdfUrl);
+            console.log('📄 Loaded existing PDF from browser storage');
+          })
+          .catch(error => {
+            console.error('Failed to load PDF from storage:', error);
+            // Clear invalid data
+            sessionStorage.removeItem(storageKey);
+          });
+      }
+    }
+  }, [resumeId]);
+
   // Load resume if resumeId is provided
   useEffect(() => {
     if (resumeId && user) {
@@ -152,6 +175,7 @@ Programming Languages, Frameworks, Tools, etc.
 
     try {
       const session = await supabase.auth.getSession();
+
       if (!session.data.session) throw new Error("Not authenticated");
       const token = session.data.session.access_token;
       console.log('🔄 Starting LaTeX compilation...', {
@@ -174,42 +198,53 @@ Programming Languages, Frameworks, Tools, etc.
       });
 
       console.log('📊 Compile response status:', response.status);
-      const result = await response.json();
-      console.log('📊 Compile response data:', result);
+      console.log('📊 Response headers:', Object.fromEntries(response.headers.entries()));
+      
+      // Check compilation status from headers
+      const success = response.headers.get('X-Success') === 'true';
+      const filename = response.headers.get('X-Filename') || 'resume.pdf';
+      const error = response.headers.get('X-Error') || '';
 
-      if (result.success && result.pdf_url) {
-        const fullPdfUrl = apiConfig.hostUrl(result.pdf_url);
-        console.log('✅ Compilation successful!');
-        console.log('📄 PDF URL from server:', result.pdf_url);
-        console.log('📄 Full PDF URL:', fullPdfUrl);
+      if (success && response.body) {
+        // PDF compilation successful
+        const blob = await response.blob();
         
-        setPdfUrl(fullPdfUrl);
-        setCompileLog(result.log_output || '');
-        
-        // Debug logging
-        console.log('📝 Compilation log details:', {
-          hasLogOutput: !!result.log_output,
-          logLength: result.log_output?.length || 0,
-          logPreview: result.log_output?.substring(0, 200) || 'No log'
-        });
-        
-        // Log will always be visible in dedicated section
-        
-        // Test if PDF is accessible
-        try {
-          const pdfTest = await fetch(fullPdfUrl, {
-            headers: {
-              'ngrok-skip-browser-warning': 'true'
-            }
-          });
-          console.log('📊 PDF accessibility test:', pdfTest.status, pdfTest.statusText);
-          console.log('📊 PDF content-type:', pdfTest.headers.get('content-type'));
-        } catch (pdfError) {
-          console.error('❌ PDF accessibility test failed:', pdfError);
+        if (blob.size > 0) {
+          // Convert blob to data URL for storage
+          const reader = new FileReader();
+          reader.onload = () => {
+            const dataUrl = reader.result as string;
+            
+            // Store PDF in browser storage with resume ID as key
+            const storageKey = `pdf_${resumeId}`;
+            sessionStorage.setItem(storageKey, dataUrl);
+            
+            // Create object URL for immediate display
+            const pdfUrl = URL.createObjectURL(blob);
+            setPdfUrl(pdfUrl);
+            
+            console.log('✅ PDF compiled and stored in browser storage');
+            console.log('📄 PDF filename:', filename);
+          };
+          reader.readAsDataURL(blob);
+          
+          // Clear any previous compilation errors
+          setCompileLog('✅ Compilation successful');
+        } else {
+          throw new Error('PDF compilation returned empty file');
         }
       } else {
-        console.error('❌ Compilation failed:', result);
-        setCompileLog(result.log_output || result.errors || 'Compilation failed');
+        // Compilation failed
+        const errorMessage = error.replace(/_/g, ' ') || 'Unknown compilation error';
+        console.error('❌ Compilation failed:', errorMessage);
+        setCompileLog(`❌ Compilation failed: ${errorMessage}`);
+        setPdfUrl('');
+        
+        // Clear any stored PDF
+        if (resumeId) {
+          const storageKey = `pdf_${resumeId}`;
+          sessionStorage.removeItem(storageKey);
+        }
       }
     } catch (error) {
       console.error('❌ Compile error:', error);
@@ -268,56 +303,51 @@ Tailor the content to match this specific role while maintaining professional, s
   };
 
   const downloadPDF = async () => {
-    if (!pdfUrl) {
-      alert('Please compile the PDF first before downloading');
+    if (!resumeId) {
+      alert('Resume ID not found');
       return;
     }
 
     setIsDownloading(true);
     try {
-      // Method 1: Try to find and click the PDF viewer's download button
-      const iframe = document.querySelector('iframe[title="PDF Preview"]') as HTMLIFrameElement;
-      if (iframe?.contentDocument) {
-        // Look for download button in PDF viewer
-        const downloadButton = iframe.contentDocument.querySelector('[title="Download"], [aria-label="Download"], button[download]');
-        if (downloadButton) {
-          (downloadButton as HTMLElement).click();
-          console.log('📥 Used PDF viewer download button');
-          return;
-        }
-      }
+      // Get PDF from browser storage
+      const storageKey = `pdf_${resumeId}`;
+      const storedPdfData = sessionStorage.getItem(storageKey);
       
-      // Method 2: Force download using fetch + blob (more reliable)
-      const response = await fetch(pdfUrl, {
-        headers: {
-          'ngrok-skip-browser-warning': 'true'
-        }
-      });
+      if (!storedPdfData) {
+        alert('Please compile the PDF first before downloading');
+        return;
+      }
+
+      // Convert data URL back to blob
+      const response = await fetch(storedPdfData);
       const blob = await response.blob();
       
-      // Create filename from resume title
-      const filename = editorState.resumeTitle ? 
-        `${editorState.resumeTitle.replace(/[^\w\s-]/g, '').replace(/\s+/g, '_')}.pdf` : 
-        'resume.pdf';
+      // Generate filename based on resume data or use default
+      const filename = editorState.resumeTitle 
+        ? `${editorState.resumeTitle.replace(/[^\w\s-]/g, '').replace(/\s+/g, '_')}_Resume.pdf`
+        : 'Resume.pdf';
       
       // Create download link
-      const downloadUrl = window.URL.createObjectURL(blob);
+      const downloadUrl = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = downloadUrl;
       link.download = filename;
       link.style.display = 'none';
       
+      // Trigger download
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       
       // Clean up
-      window.URL.revokeObjectURL(downloadUrl);
+      URL.revokeObjectURL(downloadUrl);
       
-      console.log('📥 Download triggered using blob method:', filename);
+      console.log('📥 PDF downloaded:', filename);
+      
     } catch (error) {
-      console.error('Failed to download PDF:', error);
-      alert('Failed to download PDF');
+      console.error('Download failed:', error);
+      alert('Failed to download PDF. Please try compiling again.');
     } finally {
       setIsDownloading(false);
     }
@@ -539,9 +569,9 @@ Tailor the content to match this specific role while maintaining professional, s
           
           <div className="flex-1 overflow-y-auto p-4">
             {compileLog ? (
-              <pre className="text-xs text-gray-400 font-mono whitespace-pre-wrap leading-relaxed">
-                {compileLog}
-              </pre>
+                              <pre className="text-xs text-gray-400 font-mono whitespace-pre-wrap leading-relaxed log-text">
+                  {compileLog}
+                </pre>
             ) : (
               <div className="flex items-center justify-center h-full">
                 <div className="text-center">
@@ -617,7 +647,7 @@ Tailor the content to match this specific role while maintaining professional, s
                   type="text"
                   value={editorState.resumeTitle}
                   onChange={(e) => editorState.updateResumeTitle(e.target.value)}
-                  className="border border-gray-600/30 rounded-3xl px-4 py-2 text-white focus:outline-none focus:ring-1 focus:ring-gray-500/50 focus:border-gray-500/50 transition-all"
+                  className="border border-gray-600/30 rounded-3xl px-4 py-2 text-white focus:outline-none focus:ring-1 focus:ring-gray-500/50 focus:border-gray-500/50 transition-all title-text"
                   style={{ backgroundColor: '#151515' }}
                   placeholder="Resume title..."
                 />
@@ -697,7 +727,7 @@ Tailor the content to match this specific role while maintaining professional, s
 
             {/* Right side */}
             <div className="flex items-center space-x-4">
-              <span className="text-gray-400 text-sm">{user?.username}</span>
+              <span className="text-gray-400 text-sm username-text">{user?.username}</span>
               <button
                 onClick={logout}
                 className="text-gray-400 hover:text-white transition-colors text-sm"

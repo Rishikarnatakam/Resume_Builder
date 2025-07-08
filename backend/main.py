@@ -45,65 +45,30 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Configure CORS for production and development
-def is_allowed_origin(origin: str) -> bool:
-    """Check if origin is allowed (includes ngrok domain checking)"""
-    allowed_origins = [
-        "http://localhost:5173",  # Vite dev server
-        "http://127.0.0.1:5173",  # Local dev
-        "http://localhost:3000",  # Production frontend container
-        "http://frontend:80",     # Docker internal
-    ]
-    
-    # Add environment-specific origins
-    if os.getenv("ENVIRONMENT") == "production":
-        domain = os.getenv("DOMAIN")
-        if domain:
-            allowed_origins.extend([
-                f"http://{domain}",
-                f"https://{domain}",
-            ])
-    
-    # Add specific ngrok URL from environment variable if provided
-    ngrok_url = os.getenv("NGROK_URL")
-    if ngrok_url:
-        allowed_origins.append(ngrok_url)
-    
-    # Add static ngrok domain for development
-    allowed_origins.append("https://herring-meet-seasnail.ngrok-free.app")
-    
-    # Check exact matches first
-    if origin in allowed_origins:
-        return True
-    
-    # For development, allow ngrok domains
-    if os.getenv("ENVIRONMENT") != "production":
-        ngrok_domains = [
-            ".ngrok-free.app",
-            ".ngrok.app", 
-            ".ngrok.io"
-        ]
-        if origin and any(domain in origin for domain in ngrok_domains):
-            return True
-    
-    return False
+# Define allowed origins for CORS
+# This is now controlled by environment variables via config.py
+allow_origins = config.CORS_ALLOWED_ORIGINS
+allow_origin_regex = config.CORS_ALLOW_ORIGIN_REGEX
 
+# Add CORS middleware to the application
 app.add_middleware(
     CORSMiddleware,
-    allow_origin_regex=r"https://.*\.ngrok-free\.app|https://.*\.ngrok\.app|https://.*\.ngrok\.io|http://localhost:.*|http://127\.0\.0\.1:.*",
+    allow_origins=allow_origins,
+    allow_origin_regex=allow_origin_regex,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
+    expose_headers=["X-Success", "X-Filename", "X-Error"],  # Expose custom headers
 )
 
-# Mount static files for PDFs and assets
-app.mount("/static", StaticFiles(directory="static"), name="static")
+# Static files no longer needed - PDFs are streamed directly to browser
+# app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # API Routes
 app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(users.router, prefix="/api/users", tags=["Users"])
 app.include_router(resumes.router, prefix="/api/resumes", tags=["Resumes"])
-app.include_router(latex.router, prefix="/api/latex", tags=["LaTeX"])
+app.include_router(latex.router, prefix="/api", tags=["LaTeX"])  # latex router already has /latex prefix
 app.include_router(templates.router, prefix="/api/templates", tags=["Templates"])
 app.include_router(ai_chat.router, prefix="/api/ai", tags=["AI Chat (Session-based)"])
 

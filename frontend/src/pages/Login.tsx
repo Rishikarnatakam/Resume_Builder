@@ -67,7 +67,7 @@ const Login: React.FC = () => {
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="border border-red-500/30 rounded-3xl p-4 text-red-400 text-sm text-center"
+                className="border border-red-500/30 rounded-3xl p-4 text-red-400 text-sm text-center break-words"
                 style={{ backgroundColor: '#2F2F2F' }}
               >
                 {error}

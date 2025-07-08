@@ -14,7 +14,7 @@ class Config:
     
     # API Keys
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
-    SECRET_KEY: str = os.getenv("SECRET_KEY", "your-secret-key-here")
+    SECRET_KEY: str = os.getenv("SECRET_KEY", "")
     
     # Supabase Configuration
     SUPABASE_URL: str = os.getenv("SUPABASE_URL", "")
@@ -23,7 +23,7 @@ class Config:
     SUPABASE_JWT_SECRET: str = os.getenv("SUPABASE_JWT_SECRET", "")  # JWT secret for token verification
     
     # Model Configuration
-    DEFAULT_GEMINI_MODEL: str = os.getenv("DEFAULT_GEMINI_MODEL", "gemini-2.5-flash")
+    DEFAULT_GEMINI_MODEL: str = os.getenv("DEFAULT_GEMINI_MODEL", "")
     
     # Database - Now using PostgreSQL/Supabase only
     DATABASE_URL: str = os.getenv("DATABASE_URL", "")
@@ -32,13 +32,19 @@ class Config:
     DEFAULT_CACHE_TTL_HOURS: int = int(os.getenv("DEFAULT_CACHE_TTL_HOURS", "24"))
     MIN_CACHE_TOKENS: int = int(os.getenv("MIN_CACHE_TOKENS", "1024"))
     
-    # File Upload
+    # File Upload (kept for potential future use, but PDFs are now streamed)
     MAX_PDF_SIZE_MB: int = int(os.getenv("MAX_PDF_SIZE_MB", "10"))
-    UPLOAD_DIR: str = os.getenv("UPLOAD_DIR", "static/uploaded_pdfs")
+    # UPLOAD_DIR no longer used - PDFs are streamed directly to browser
+    # UPLOAD_DIR: str = os.getenv("UPLOAD_DIR", "static/uploaded_pdfs")
     
     # Security
     JWT_ALGORITHM: str = os.getenv("JWT_ALGORITHM", "HS256")
     ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
+    
+    # CORS Configuration - No defaults, must be set in .env
+    raw_origins = os.getenv("CORS_ALLOWED_ORIGINS", "")
+    CORS_ALLOWED_ORIGINS: list[str] = [origin.strip() for origin in raw_origins.split(',') if origin.strip()]
+    CORS_ALLOW_ORIGIN_REGEX: str = os.getenv("CORS_ALLOW_ORIGIN_REGEX", "")
 
     @classmethod
     def get_gemini_model(cls) -> str:

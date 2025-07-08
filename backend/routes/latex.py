@@ -1,20 +1,16 @@
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
-from fastapi.responses import JSONResponse, FileResponse
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-from typing import Optional, List, Dict, Any
+from fastapi.responses import StreamingResponse
+from typing import Optional
 import json
 import os
 import subprocess
 import tempfile
 import uuid
-from datetime import datetime
 import re
 
-from database import get_db, Resume
 from routes.auth import get_current_user
 from pydantic import BaseModel
-router = APIRouter()
+router = APIRouter(prefix="/latex", tags=["latex"])
 
 class LaTeXCompileRequest(BaseModel):
     latex_content: str
@@ -23,105 +19,132 @@ class LaTeXCompileRequest(BaseModel):
 
 class LaTeXCompileResponse(BaseModel):
     success: bool
-    pdf_url: Optional[str] = None
+    filename: Optional[str] = None  # Add filename for browser storage
     log_output: str
     errors: Optional[str] = None
 
-# Ensure static directory exists
-os.makedirs("static/pdfs", exist_ok=True)
-os.makedirs("static/logs", exist_ok=True)
+# Remove static directory creation - no longer needed
+# os.makedirs("static/pdfs", exist_ok=True)
+# os.makedirs("static/logs", exist_ok=True)
 
-@router.post("/compile", response_model=LaTeXCompileResponse)
+@router.post("/compile")
 async def compile_latex(
     request: LaTeXCompileRequest,
     current_user: dict = Depends(get_current_user)
 ):
-    """Compile LaTeX content to PDF"""
+    """Compile LaTeX content to PDF and stream directly to browser"""
     
-    # Generate unique filename
-    file_id = str(uuid.uuid4())
+    print("[DEBUG] Compile endpoint called - LaTeX content length:", len(request.latex_content))
     
-    # Create temporary directory for compilation
-    with tempfile.TemporaryDirectory() as temp_dir:
-        # Write LaTeX content to file
-        tex_file = os.path.join(temp_dir, f"{file_id}.tex")
-        with open(tex_file, 'w', encoding='utf-8') as f:
-            f.write(request.latex_content)
+    try:
+        # Generate unique filename for this compilation
+        file_id = str(uuid.uuid4())
         
-        # Copy all template files to temp directory
-        templates_dir = "templates"
-        if os.path.exists(templates_dir):
-            for template_name in os.listdir(templates_dir):
-                template_path = os.path.join(templates_dir, template_name)
-                if os.path.isdir(template_path):
-                    cls_file = os.path.join(template_path, f"{template_name}.cls")
-                    if os.path.exists(cls_file):
-                        target_path = os.path.join(temp_dir, f"{template_name}.cls")
-                        with open(cls_file, 'r', encoding='utf-8') as src:
-                            with open(target_path, 'w', encoding='utf-8') as dst:
-                                dst.write(src.read())
-        
-        # Compile with pdflatex
-        try:
-            result = subprocess.run([
-                request.compiler,
-                "-interaction=nonstopmode",
-                "-output-directory", temp_dir,
-                tex_file
-            ], capture_output=True, text=True, timeout=30)
+        # Create temporary directory for compilation
+        with tempfile.TemporaryDirectory() as temp_dir:
+            # Write LaTeX content to file
+            tex_file = os.path.join(temp_dir, f"{file_id}.tex")
+            with open(tex_file, 'w', encoding='utf-8') as f:
+                f.write(request.latex_content)
             
-            log_output = result.stdout + result.stderr
+            # Copy all template files to temp directory
+            templates_dir = "templates"
+            if os.path.exists(templates_dir):
+                for template_name in os.listdir(templates_dir):
+                    template_path = os.path.join(templates_dir, template_name)
+                    if os.path.isdir(template_path):
+                        cls_file = os.path.join(template_path, f"{template_name}.cls")
+                        if os.path.exists(cls_file):
+                            target_path = os.path.join(temp_dir, f"{template_name}.cls")
+                            with open(cls_file, 'r', encoding='utf-8') as src:
+                                with open(target_path, 'w', encoding='utf-8') as dst:
+                                    dst.write(src.read())
             
-            # Check if PDF was generated
-            pdf_file = os.path.join(temp_dir, f"{file_id}.pdf")
-            if os.path.exists(pdf_file):
-                # Use resume title for meaningful filename
-                meaningful_filename = create_pdf_filename_from_title(request.resume_title) if request.resume_title else "resume"
+            # Compile with pdflatex
+            try:
+                result = subprocess.run([
+                    request.compiler,
+                    "-interaction=nonstopmode",
+                    "-output-directory", temp_dir,
+                    tex_file
+                ], capture_output=True, text=True, timeout=30)
                 
-                # Copy PDF to static directory
-                static_pdf_path = f"static/pdfs/{file_id}.pdf"
-                with open(pdf_file, 'rb') as src:
-                    with open(static_pdf_path, 'wb') as dst:
-                        dst.write(src.read())
+                log_output = result.stdout + result.stderr
                 
-                # Save log with additional metadata
-                log_path = f"static/logs/{file_id}.log"
-                with open(log_path, 'w', encoding='utf-8') as f:
-                    f.write(log_output)
-                
-                # Store filename mapping for the get_pdf endpoint
-                metadata_path = f"static/logs/{file_id}.meta"
-                with open(metadata_path, 'w', encoding='utf-8') as f:
-                    f.write(json.dumps({
-                        "resume_title": request.resume_title,
-                        "filename": meaningful_filename,
-                        "original_file_id": file_id
-                    }))
-                
-                return LaTeXCompileResponse(
-                    success=True,
-                    pdf_url=f"/api/latex/pdf/{file_id}",
-                    log_output=log_output
+                # Check if PDF was generated
+                pdf_file = os.path.join(temp_dir, f"{file_id}.pdf")
+                if os.path.exists(pdf_file):
+                    # Create meaningful filename (clean for HTTP header)
+                    meaningful_filename = create_pdf_filename_from_title(request.resume_title) if request.resume_title else "resume"
+                    # Ensure filename is ASCII safe for headers
+                    safe_filename = re.sub(r'[^\w\-_.]', '_', meaningful_filename)
+                    
+                    # Read PDF content into memory
+                    with open(pdf_file, 'rb') as f:
+                        pdf_content = f.read()
+                    
+                    # Stream PDF directly to browser with safe headers
+                    return StreamingResponse(
+                        iter([pdf_content]),
+                        media_type="application/pdf",
+                        headers={
+                            "Content-Disposition": f"inline; filename=\"{safe_filename}.pdf\"",
+                            "X-Filename": f"{safe_filename}.pdf",
+                            "X-Success": "true"
+                        }
+                    )
+                else:
+                    # Print log output for debugging
+                    print("[LaTeX Compile Error]", log_output[:1000])
+                    # Return empty PDF with error status
+                    return StreamingResponse(
+                        iter([b""]),
+                        media_type="application/pdf",
+                        headers={
+                            "X-Success": "false",
+                            "X-Error": "PDF_generation_failed"
+                        }
+                    )
+                    
+            except subprocess.TimeoutExpired as e:
+                print("[LaTeX Timeout]", str(e))
+                return StreamingResponse(
+                    iter([b""]),
+                    media_type="application/pdf",
+                    headers={
+                        "X-Success": "false",
+                        "X-Error": "Compilation_timeout"
+                    }
                 )
-            else:
-                return LaTeXCompileResponse(
-                    success=False,
-                    log_output=log_output,
-                    errors="PDF generation failed. Check the log for errors."
+            except Exception as e:
+                import traceback
+                tb = traceback.format_exc()
+                print("[LaTeX Compile Exception]", tb)
+                # Clean error message for header safety
+                safe_error = re.sub(r'[^\w\s\-_.]', '_', str(e))[:100]
+                return StreamingResponse(
+                    iter([b""]),
+                    media_type="application/pdf",
+                    headers={
+                        "X-Success": "false",
+                        "X-Error": f"Compilation_error_{safe_error}"
+                    }
                 )
-                
-        except subprocess.TimeoutExpired:
-            return LaTeXCompileResponse(
-                success=False,
-                log_output="",
-                errors="Compilation timed out after 30 seconds"
-            )
-        except Exception as e:
-            return LaTeXCompileResponse(
-                success=False,
-                log_output="",
-                errors=f"Compilation error: {str(e)}"
-            )
+    
+    except Exception as e:
+        # Catch-all for any exception in the entire function
+        import traceback
+        tb = traceback.format_exc()
+        print("[Function Exception]", tb)
+        safe_error = re.sub(r'[^\w\s\-_.]', '_', str(e))[:100]
+        return StreamingResponse(
+            iter([b""]),
+            media_type="application/pdf",
+            headers={
+                "X-Success": "false",
+                "X-Error": f"Setup_error_{safe_error}"
+            }
+        )
 
 def extract_name_from_latex(latex_content: str) -> Optional[str]:
     """Extract name from LaTeX content for filename generation"""
@@ -228,48 +251,7 @@ def create_pdf_filename(name: str) -> str:
     
     return result
 
-@router.get("/pdf/{file_id}")
-async def get_pdf(file_id: str):
-    """Serve compiled PDF file with meaningful filename"""
-    pdf_path = f"static/pdfs/{file_id}.pdf"
-    if os.path.exists(pdf_path):
-        meaningful_filename = "resume"
-        
-        # Try to load filename from metadata
-        metadata_path = f"static/logs/{file_id}.meta"
-        if os.path.exists(metadata_path):
-            try:
-                with open(metadata_path, 'r', encoding='utf-8') as f:
-                    metadata = json.loads(f.read())
-                    meaningful_filename = metadata.get("filename", "resume")
-                print(f"✅ PDF Download: Serving {file_id} as '{meaningful_filename}.pdf'")
-            except Exception as e:
-                # If metadata fails to load, fall back to default
-                print(f"Warning: Could not load metadata for {file_id}: {e}")
-                pass
-        else:
-            print(f"⚠️ PDF Download: No metadata found for {file_id}, using default filename")
-        
-        return FileResponse(
-            pdf_path,
-            media_type="application/pdf",
-            filename=f"{meaningful_filename}.pdf",
-            headers={
-                "Content-Disposition": f"inline; filename=\"{meaningful_filename}.pdf\""
-            }
-        )
-    else:
-        raise HTTPException(status_code=404, detail="PDF not found")
-
-@router.get("/log/{file_id}")
-async def get_compile_log(file_id: str):
-    """Get compilation log for debugging"""
-    log_path = f"static/logs/{file_id}.log"
-    if os.path.exists(log_path):
-        with open(log_path, 'r', encoding='utf-8') as f:
-            return {"log": f.read()}
-    else:
-        raise HTTPException(status_code=404, detail="Log not found")
+# PDF serving endpoints removed - PDFs are now streamed directly from compile endpoint
 
 @router.post("/compile-for-analysis", response_model=dict)
 async def compile_latex_for_analysis(

@@ -654,26 +654,26 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ resumeId }, ref) => {
                       alt={message.image.name}
                       className="rounded-lg border border-gray-600/30 max-w-full h-auto"
                     />
-                    <p className="text-xs text-gray-500 mt-1">{message.image.name}</p>
+                    <p className="text-xs text-gray-500 mt-1 filename-text">{message.image.name}</p>
                   </div>
                 )}
 
                 {/* Show PDF if present */}
                 {message.pdf && (
-                  <div className="mb-3 p-3 bg-red-900/20 border border-red-600/30 rounded-lg max-w-xs">
+                  <div className="mb-3 p-3 bg-gray-800/30 border border-gray-600/20 rounded-lg max-w-xs">
                     <div className="flex items-center space-x-2">
-                      <svg className="w-8 h-8 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                       </svg>
                       <div>
-                        <p className="text-sm text-white font-medium">{message.pdf.name}</p>
+                        <p className="text-sm text-white font-medium filename-text">{message.pdf.name}</p>
                         <p className="text-xs text-gray-400">PDF Document for Analysis</p>
                       </div>
                     </div>
                   </div>
                 )}
                 
-                <div className="whitespace-pre-wrap text-sm">{message.content}</div>
+                <div className="whitespace-pre-wrap text-sm break-words">{message.content}</div>
                 <div className={`text-xs mt-2 ${
                   message.type === 'user' ? 'text-gray-400' : 'text-gray-500'
                 }`}>
@@ -719,7 +719,7 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ resumeId }, ref) => {
                   className="w-12 h-12 object-cover rounded border border-gray-600/30"
                 />
                 <div>
-                  <p className="text-sm text-white font-medium">{selectedImage.name}</p>
+                  <p className="text-sm text-white font-medium filename-text">{selectedImage.name}</p>
                   <p className="text-xs text-gray-400">Ready to analyze with your message</p>
                 </div>
               </div>
@@ -737,16 +737,16 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ resumeId }, ref) => {
 
         {/* PDF Upload Section */}
         {selectedPdf && (
-          <div className="mb-4 p-3 bg-red-900/20 rounded-lg border border-red-600/30">
+          <div className="mb-4 p-3 bg-gray-800/30 rounded-lg border border-gray-600/20">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
-                <div className="w-12 h-12 flex items-center justify-center bg-red-800/30 rounded border border-red-600/30">
-                  <svg className="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="w-12 h-12 flex items-center justify-center bg-gray-700/40 rounded border border-gray-600/20">
+                  <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                   </svg>
                 </div>
                 <div>
-                  <p className="text-sm text-white font-medium">{selectedPdf.name}</p>
+                  <p className="text-sm text-white font-medium filename-text">{selectedPdf.name}</p>
                   <p className="text-xs text-gray-400">PDF ready for visual analysis</p>
                 </div>
               </div>
