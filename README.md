@@ -35,20 +35,24 @@ This project is designed for a modern, decoupled deployment. The frontend is hos
 
 ### Step 1: Deploy the Backend to Render
 
-First, we will deploy the Python backend. The `render.yaml` file in this repository automates the setup.
+First, we will deploy the Python backend. The `render.yaml` file in this repository automates the initial setup.
 
 1.  **Create a Render Account:** Sign up at [render.com](https://render.com) using your GitHub account.
 2.  **Create a Blueprint:**
     *   On your dashboard, click **New +** and select **Blueprint**.
-    *   Connect your GitHub repository for this project. Render will automatically detect and use the `render.yaml` file.
-    *   Give your backend service a name (e.g., `resumecraft-backend`).
-    *   Click **Apply**.
-3.  **Add Your Secrets:** Render will start deploying, but it needs your secret keys.
-    *   Go to your new service's **Environment** tab.
-    *   Under **Secret Files**, create a new file named `.env`.
-    *   Copy the contents of your local `backend/.env` file (or the `env.example`) and paste them into this secret file. This includes your `DATABASE_URL`, `GEMINI_API_KEY`, `SUPABASE_SERVICE_KEY`, etc.
-    *   Save the changes. This will trigger a new deploy.
-4.  **Get Your Backend URL:** Once the deployment is finished, your service will have a public URL like `https://your-backend-name.onrender.com`. **Copy this URL.**
+    *   Connect your GitHub repository. Render will automatically detect the `render.yaml` file.
+    *   Give your service a name (e.g., `resumecraft-backend`) and click **Apply**.
+3.  **Add Environment Variables:** This is the most critical step. Go to your new service's **Environment** tab and add the following variables.
+    *   **Add these as individual environment variables (Key-Value pairs):**
+        *   `GEMINI_API_KEY`: Your secret key from Google AI Studio.
+        *   `SECRET_KEY`: A long, random string you generate for security.
+        *   `DATABASE_URL`: Your full PostgreSQL connection string from Supabase.
+        *   `SUPABASE_URL`: Your Supabase project URL.
+        *   `SUPABASE_ANON_KEY`: Your Supabase public `anon` key.
+        *   `SUPABASE_SERVICE_KEY`: Your Supabase secret `service_role` key.
+        *   `SUPABASE_JWT_SECRET`: Your Supabase JWT Secret from the project's API settings.
+        *   `CORS_ALLOWED_ORIGINS`: **Leave this blank for now.** We will fill this in after deploying the frontend.
+4.  **Get Your Backend URL:** After the deployment succeeds, your service will have a public URL like `https://resumecraft-backend.onrender.com`. **Copy this URL.**
 
 ### Step 2: Deploy the Frontend to Netlify
 
@@ -57,17 +61,24 @@ Now, we'll deploy the React frontend.
 1.  **Create a Netlify Account:** Sign up at [netlify.com](https://netlify.com) using your GitHub account.
 2.  **Create a New Site:**
     *   On your dashboard, click **Add new site** and select **Import an existing project**.
-    *   Connect your GitHub repository.
+    *   Connect the same GitHub repository.
     *   Netlify will automatically detect and use the settings in your `netlify.toml` file.
-3.  **Add Your Environment Variables:** Before deploying, you must add your public environment variables.
-    *   Go to **Site settings > Build & deploy > Environment > Environment variables** and click **Edit variables**.
-    *   Add the following:
-        *   `VITE_SUPABASE_URL`: Your public Supabase project URL.
-        *   `VITE_SUPABASE_ANON_KEY`: Your public Supabase `anon` key.
-        *   `VITE_API_BASE_URL`: **The full URL to your Render backend from Step 1**, including `/api` at the end (e.g., `https://your-backend-name.onrender.com/api`).
-4.  **Deploy:** Click **Deploy site**. Netlify will build and deploy your frontend.
+3.  **Add Environment Variables:** Go to **Site settings > Build & deploy > Environment > Environment variables** and click **Edit variables**. Add the following:
+    *   `VITE_SUPABASE_URL`: Your public Supabase project URL.
+    *   `VITE_SUPABASE_ANON_KEY`: Your public Supabase `anon` key.
+    *   `VITE_API_BASE_URL`: **The full URL to your Render backend from Step 1**, including `/api` at the end (e.g., `https://resumecraft-backend.onrender.com/api`).
+4.  **Deploy:** Click **Deploy site**. Once finished, Netlify will give you a public URL for your frontend, like `https://my-awesome-resume-app.netlify.app`. **Copy this URL.**
 
-### Step 3: Keep Your Free Backend Awake (IMPORTANT)
+### Step 3: Connect the Frontend and Backend
+
+The final step is to tell your backend to accept requests from your frontend.
+
+1.  Go back to your backend service on **Render**.
+2.  Navigate to the **Environment** tab.
+3.  Find the `CORS_ALLOWED_ORIGINS` variable and set its value to **the Netlify URL you just copied** (e.g., `https://my-awesome-resume-app.netlify.app`).
+4.  Save the changes. This will cause your backend to restart with the new setting.
+
+### Step 4: Keep Your Free Backend Awake (IMPORTANT)
 
 Render's free services "spin down" after 15 minutes of inactivity, causing a 30-40 second delay for the next user. To prevent this, use a free service to ping your backend every 10-14 minutes.
 
