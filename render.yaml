@@ -7,9 +7,8 @@ services:
     region: oregon    # The server region (you can change this)
     plan: free        # Use the free instance type
 
-    # --- Git Repository Settings ---
-    repo: https://github.com/your-username/resumecraft.git # This will be auto-filled by Render
-    rootDir: backend  # Look for the code in the 'backend' directory
+    # The root directory for the backend code
+    rootDir: backend
 
     # --- Build & Start Commands ---
     buildCommand: "pip install -r requirements.txt"
