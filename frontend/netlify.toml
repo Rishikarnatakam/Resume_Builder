@@ -1,14 +1,11 @@
-# Netlify Build Configuration for ResumeCraft
+# Netlify Build Configuration for ResumeCraft Frontend
 
 [build]
-  # The base directory tells Netlify to run commands from the 'frontend' folder
-  base = "frontend/"
-
-  # This is the command to build your React application
+  # Build command for the React application
   command = "npm run build"
 
-  # This is the directory that contains the built site files
-  publish = "frontend/dist/"
+  # Directory that contains the built site files
+  publish = "dist/"
 
 [context.production.environment]
   # The public URL of your Supabase project
@@ -17,7 +14,7 @@
   # The public 'anon' key for your Supabase project
   VITE_SUPABASE_ANON_KEY = "your_supabase_anon_key"
 
-  # The URL of your deployed backend API from Step 1
+  # The URL of your deployed backend API from Render
   VITE_API_BASE_URL = "https://your-backend-name.onrender.com/api"
 
   # The build environment for Vite
