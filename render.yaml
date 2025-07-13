@@ -7,12 +7,9 @@ services:
     region: oregon    # The server region (you can change this)
     plan: free        # Use the free instance type
 
-    # The root directory for the backend code
-    rootDir: backend
-
     # --- Build & Start Commands ---
     buildCommand: "pip install -r requirements.txt"
-    startCommand: "uvicorn main:app --host 0.0.0.0 --port $PORT"
+    startCommand: "cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT"
 
     # --- Health & Scaling ---
     healthCheckPath: /api/health # Render uses this to check if your app is live
