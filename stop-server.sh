@@ -1,36 +1,42 @@
 #!/bin/bash
+# 🚀 ResumeCraft - Server Stopper
+# This script stops all running services for the application.
 set -e
 
-echo "🛑 Stopping Resume Builder Server..."
+echo "🛑 Stopping ResumeCraft Server..."
 
 # --- Stop Backend Server ---
 if [ -f "backend.pid" ]; then
     PID=$(cat backend.pid)
-    echo "Stopping backend server with PID $PID..."
-    # The '|| true' prevents the script from exiting if the process is already gone.
+    echo "⚙️  Stopping backend server with PID $PID..."
+    # Kill process and ignore errors if it's already gone
     kill $PID || true
     rm -f backend.pid
-    echo "Backend server stopped."
+    echo "✅ Backend server stopped."
 else
-    echo "Backend PID file not found. Assuming it is not running."
+    echo "✅ Backend server is not running."
 fi
 
 # --- Stop Ngrok Tunnel ---
 if [ -f "ngrok.pid" ]; then
     PID=$(cat ngrok.pid)
-    echo "Stopping ngrok tunnel with PID $PID..."
+    echo "⚙️  Stopping ngrok tunnel with PID $PID..."
     kill $PID || true
     rm -f ngrok.pid
-    echo "Ngrok tunnel stopped."
+    echo "✅ Ngrok tunnel stopped."
 else
-    echo "Ngrok PID file not found. Assuming it is not running."
+    echo "✅ Ngrok tunnel is not running."
 fi
 
 # --- Stop Nginx ---
-echo "Stopping Nginx service on Ubuntu..."
-sudo systemctl stop nginx
-echo "Nginx service stopped."
+if sudo systemctl is-active --quiet nginx; then
+    echo "⚙️  Stopping Nginx service..."
+    sudo systemctl stop nginx
+    echo "✅ Nginx service stopped."
+else
+    echo "✅ Nginx service is not running."
+fi
 
 echo "---"
-echo "✅ All services have been stopped."
+echo "🎉 All services have been stopped."
 echo "---" 

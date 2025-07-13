@@ -1,0 +1,41 @@
+# Render Blueprint for ResumeCraft Backend
+
+services:
+  - type: web         # This is a web service
+    name: resumecraft-backend
+    env: python       # The environment is Python
+    region: oregon    # The server region (you can change this)
+    plan: free        # Use the free instance type
+
+    # --- Git Repository Settings ---
+    repo: https://github.com/your-username/resumecraft.git # This will be auto-filled by Render
+    rootDir: backend  # Look for the code in the 'backend' directory
+
+    # --- Build & Start Commands ---
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "uvicorn main:app --host 0.0.0.0 --port $PORT"
+
+    # --- Health & Scaling ---
+    healthCheckPath: /api/health # Render uses this to check if your app is live
+    autoDeploy: true             # Automatically deploy on push to main branch
+
+    # --- Environment Variables ---
+    # These secrets MUST be set in the Render dashboard
+    # The 'sync: false' prevents Render from overwriting your secrets
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: DATABASE_URL
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: SUPABASE_JWT_SECRET
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: SECRET_KEY
+        sync: false
+      - key: CORS_ALLOWED_ORIGINS # e.g., https://your-frontend.netlify.app
+        sync: false 

@@ -1,152 +1,132 @@
 #!/bin/bash
+# 🚀 ResumeCraft - Application Setup Script
+# This script sets up the application environment, dependencies, and server configs.
+# Run this from the project root after installing prerequisites with quick-setup.sh.
+set -e
 
-echo "🚀 Setting up ResumeCraft with Supabase..."
+echo "🚀 Setting up the ResumeCraft application..."
 
-# Navigate to project directory
-cd /var/www/resumecraft
-
-# Set up Python environment
+# --- Backend Setup ---
+echo "🐍 Setting up Python virtual environment and dependencies..."
 python3.11 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
+deactivate
+echo "✅ Backend environment is ready."
 
-# Build frontend
+# --- Frontend Setup ---
+echo "🌐 Setting up Node.js dependencies and building for production..."
 cd frontend
 npm install
+npm run build
+cd ..
+echo "✅ Frontend has been built for production."
 
-# Create frontend environment files (IN FRONTEND DIRECTORY)
-echo "📝 Creating frontend environment files..."
+# --- Environment Configuration ---
+echo "📝 Creating environment configuration files..."
 
-# Development environment
-cat > .env << 'EOF'
-# API Configuration
-VITE_API_BASE_URL=http://localhost:8000/api
-VITE_API_HOST=http://localhost:8000
+# Create backend .env file if it doesn't exist
+if [ ! -f "backend/.env" ]; then
+    cp env.example backend/.env
+    echo "✅ Created backend/.env from env.example."
+    echo "⚠️  IMPORTANT: You must edit backend/.env with your secrets!"
+else
+    echo "✅ backend/.env already exists."
+fi
 
-# Supabase Configuration
-VITE_SUPABASE_URL=https://[PROJECT_REF].supabase.co
-VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-
-# Environment
-VITE_NODE_ENV=development
-EOF
-
-# Production environment (for nginx)
-cat > .env.production << 'EOF'
-# API Configuration for Production
+# Create frontend .env.production file
+cat > frontend/.env.production << 'EOF'
+# API Configuration for Production (proxied via Nginx)
 VITE_API_BASE_URL=/api
 VITE_API_HOST=
 
-# Supabase Configuration
-VITE_SUPABASE_URL=https://[PROJECT_REF].supabase.co
+# Supabase Configuration (replace with your project details)
+VITE_SUPABASE_URL=https://[YOUR_PROJECT_REF].supabase.co
 VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 
 # Environment
 VITE_NODE_ENV=production
 EOF
+echo "✅ Created frontend/.env.production."
+echo "⚠️  IMPORTANT: You must edit frontend/.env.production with your Supabase details!"
 
-# Static domain environment (for your custom domain)
-cat > .env.static << 'EOF'
-# API Configuration for Static Domain
-VITE_API_BASE_URL=https://your-domain.com/api
-VITE_API_HOST=https://your-domain.com
 
-# Supabase Configuration
-VITE_SUPABASE_URL=https://[PROJECT_REF].supabase.co
-VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-
-# Environment
-VITE_NODE_ENV=production
-EOF
-
-echo "✅ Frontend environment files created"
-
-npm run build
-cd ..
-
-# Create necessary directories
+# --- Create Static Directories ---
 mkdir -p backend/static/uploaded_pdfs
 mkdir -p backend/static/generated_pdfs
 mkdir -p backend/static/temp
 
-# Copy environment file TO BACKEND DIRECTORY (where it's expected)
-cp env.example backend/.env
+# --- Nginx Configuration ---
+echo "🔧 Configuring Nginx to serve the application..."
+PROJECT_DIR=$(pwd)
+NGINX_CONF="/etc/nginx/sites-available/resumecraft"
 
-echo "📝 Backend environment file created at backend/.env"
-echo ""
-echo "⚠️  IMPORTANT: Edit backend/.env and configure these required variables:"
-echo "   - DATABASE_URL (your Supabase PostgreSQL connection string)"
-echo "   - SUPABASE_URL"
-echo "   - SUPABASE_ANON_KEY"  
-echo "   - SUPABASE_SERVICE_KEY"
-echo "   - GEMINI_API_KEY"
-echo ""
-
-# Set permissions
-sudo chown -R $USER:$USER .
-sudo chmod +x *.sh
-
-# Create nginx config for production
-sudo tee /etc/nginx/sites-available/resumecraft > /dev/null <<EOF
+sudo tee $NGINX_CONF > /dev/null <<EOF
 server {
     listen 80;
-    server_name _;
-    
-    # Frontend static files
+    server_name _; # Listens for any hostname
+
+    root $PROJECT_DIR/frontend/dist;
+    index index.html;
+
+    # Security headers
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
+    # Frontend serving
     location / {
-        root /var/www/resumecraft/frontend/dist;
-        index index.html;
         try_files \$uri \$uri/ /index.html;
-        
-        # Security headers
-        add_header X-Frame-Options "SAMEORIGIN" always;
-        add_header X-Content-Type-Options "nosniff" always;
-        add_header X-XSS-Protection "1; mode=block" always;
     }
-    
-    # API proxy
+
+    # API proxy to backend
     location /api/ {
         proxy_pass http://127.0.0.1:8000;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto \$scheme;
-        
-        # CORS headers for API
-        add_header Access-Control-Allow-Origin *;
-        add_header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS";
-        add_header Access-Control-Allow-Headers "Authorization, Content-Type";
     }
-    
-    # Static assets (PDFs, uploads)
+
+    # Static assets from backend
     location /static/ {
-        alias /var/www/resumecraft/backend/static/;
+        alias $PROJECT_DIR/backend/static/;
         expires 1d;
         add_header Cache-Control "public, immutable";
     }
-    
+
     # Health check endpoint
     location /health {
-        proxy_pass http://127.0.0.1:8000/health;
+        proxy_pass http://127.0.0.1:8000/api/health;
     }
 }
 EOF
 
-# Enable nginx site
-sudo ln -sf /etc/nginx/sites-available/resumecraft /etc/nginx/sites-enabled/
-sudo rm -f /etc/nginx/sites-enabled/default
+echo "✅ Nginx configuration created at $NGINX_CONF"
+
+# Enable the Nginx site
+if [ -L /etc/nginx/sites-enabled/resumecraft ]; then
+    sudo rm /etc/nginx/sites-enabled/resumecraft
+fi
+sudo ln -s $NGINX_CONF /etc/nginx/sites-enabled/resumecraft
+
+# Remove default site if it exists
+if [ -L /etc/nginx/sites-enabled/default ]; then
+    sudo rm /etc/nginx/sites-enabled/default
+fi
+
+echo "✅ Enabled Nginx site."
+
+# Test Nginx configuration
 sudo nginx -t
 
-echo "✅ Project setup complete!"
+# --- Final Instructions ---
+echo "🎉 ResumeCraft setup is complete!"
 echo ""
-echo "📋 Next Steps:"
-echo "1. Edit backend/.env with your Supabase credentials"
-echo "2. Edit frontend/.env with your Supabase project details"
-echo "3. Run the database schema in your Supabase SQL editor"
-echo "4. Start the server: ./start-server.sh"
-echo ""
-echo "📚 Documentation:"
-echo "   - README.md for detailed setup instructions"
-echo "   - CONTRIBUTING.md for development guidelines"
-echo ""
-echo "🔐 Security: Your app uses enterprise-grade Row Level Security with Supabase!" 
+echo "📋 NEXT STEPS:"
+echo "   1. Edit 'backend/.env' with your secret keys."
+echo "   2. Edit 'frontend/.env.production' with your Supabase public keys."
+echo "   3. Run the database schema from the README in your Supabase SQL editor."
+echo "   4. Use './start-server.sh' to launch the application."
+echo "   5. To enable HTTPS, use 'sudo certbot --nginx' after pointing a domain to this server." 

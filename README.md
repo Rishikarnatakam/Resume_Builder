@@ -1,253 +1,133 @@
-# 🚀 ResumeCraft - AI-Powered Resume Builder
-
-> Professional resume builder powered by AI and LaTeX. Create stunning, ATS-friendly resumes with real-time editing and live previews.
+# 🚀 ResumeCraft - AI-Powered LaTeX Resume Builder
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
-[![React 19](https://img.shields.io/badge/react-19.0-blue.svg)](https://reactjs.org/)
-[![TypeScript](https://img.shields.io/badge/typescript-5.0+-blue.svg)](https://www.typescriptlang.org/)
+[![React 18](https://img.shields.io/badge/react-18-blue.svg)](https://reactjs.org/)
+[![TypeScript](https://img.shields.io/badge/typescript-5.2+-blue.svg)](https://www.typescriptlang.org/)
+[![Made with Supabase](https://img.shields.io/badge/Made%20with-Supabase-green)](https://supabase.com)
 
-## ✨ Features
-
-- 🤖 **AI-Powered Assistance** - Smart content generation with Google Gemini
-- 📝 **LaTeX Editor** - Full control with real-time code editing
-- 👀 **Live Preview** - Instant PDF preview as you edit
-- 📄 **PDF Export** - Professional, ATS-friendly PDF output
-- 🎯 **Job Matching** - AI tailors resume to job descriptions
-- 🎨 **Multiple Templates** - Professional, academic, and creative layouts
-- 🔒 **Enterprise Security** - Row Level Security with Supabase
-- 📱 **Responsive Design** - Works perfectly on all devices
-- ☁️ **Cloud Sync** - Your resumes saved securely in the cloud
-
-## 🏗️ Architecture
-
-### **Frontend**
-- **React 19** with TypeScript for type safety
-- **Vite** for lightning-fast development
-- **Tailwind CSS** for modern, responsive design
-- **Framer Motion** for smooth animations
-- **Monaco Editor** for advanced code editing
-
-### **Backend**
-- **FastAPI** with async Python 3.11+
-- **Google Gemini AI** for intelligent content generation
-- **LaTeX** engine for professional document generation
-- **JWT Authentication** with secure session management
-
-### **Database & Infrastructure**
-- **Supabase PostgreSQL** with Row Level Security (RLS)
-- **Real-time capabilities** ready for future features
-- **Automatic backups** and point-in-time recovery
-- **SOC 2 Type II** compliant infrastructure
-
-## 🚀 Quick Start
-
-### Prerequisites
-- Python 3.11+
-- Node.js 18+
-- Supabase account (free tier available)
-- Google AI API key
-
-### 1. Clone Repository
-```bash
-git clone https://github.com/yourusername/resumecraft.git
-cd resumecraft
-```
-
-### 2. Environment Setup
-
-#### Backend Configuration
-```bash
-# Copy environment template
-cp env.example backend/.env
-
-# Edit backend/.env with your credentials:
-# DATABASE_URL=postgresql+asyncpg://postgres:[PASSWORD]@db.[PROJECT_REF].supabase.co:5432/postgres
-# SUPABASE_URL=https://[PROJECT_REF].supabase.co
-# SUPABASE_ANON_KEY=your_supabase_anon_key
-# SUPABASE_SERVICE_KEY=your_supabase_service_key
-# GEMINI_API_KEY=your_gemini_api_key
-```
-
-#### Frontend Configuration
-```bash
-cd frontend
-
-# Development environment
-cat > .env << 'EOF'
-VITE_API_BASE_URL=http://localhost:8000/api
-VITE_API_HOST=http://localhost:8000
-VITE_SUPABASE_URL=https://[PROJECT_REF].supabase.co
-VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-VITE_NODE_ENV=development
-EOF
-```
-
-### 3. Database Setup
-
-Run this SQL in your Supabase SQL Editor:
-
-<details>
-<summary>📄 Database Schema (Click to expand)</summary>
-
-```sql
--- Users table (compatible with Supabase Auth)
-CREATE TABLE IF NOT EXISTS users (
-    id BIGSERIAL PRIMARY KEY,
-    username VARCHAR(50) UNIQUE NOT NULL,
-    email VARCHAR(100) UNIQUE NOT NULL,
-    full_name VARCHAR(100) NOT NULL,
-    hashed_password VARCHAR(100) NOT NULL,
-    is_active BOOLEAN DEFAULT true,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW())
-);
-
--- Resumes table
-CREATE TABLE IF NOT EXISTS resumes (
-    id BIGSERIAL PRIMARY KEY,
-    user_id BIGINT NOT NULL,
-    title VARCHAR(200) NOT NULL,
-    template_name VARCHAR(100) DEFAULT 'resume',
-    latex_content TEXT NOT NULL,
-    job_description TEXT,
-    resume_data TEXT NOT NULL,
-    pdf_path VARCHAR(500),
-    is_public BOOLEAN DEFAULT false,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW())
-);
-
--- AI Chat Sessions table
-CREATE TABLE IF NOT EXISTS ai_chat_sessions (
-    id VARCHAR(100) PRIMARY KEY,
-    resume_id BIGINT NOT NULL,
-    user_id BIGINT NOT NULL,
-    cache_id VARCHAR(200),
-    cache_expires_at TIMESTAMP WITH TIME ZONE,
-    template_content TEXT NOT NULL,
-    form_data TEXT NOT NULL,
-    conversation_history TEXT DEFAULT '[]',
-    is_active BOOLEAN DEFAULT true,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW())
-);
-
--- Enable Row Level Security
-ALTER TABLE users ENABLE ROW LEVEL SECURITY;
-ALTER TABLE resumes ENABLE ROW LEVEL SECURITY;
-ALTER TABLE ai_chat_sessions ENABLE ROW LEVEL SECURITY;
-
--- RLS Policies (see full schema in docs/database.md)
-```
-</details>
-
-### 4. Installation & Run
-
-```bash
-# Backend setup
-cd backend
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-pip install -r requirements.txt
-python main.py
-
-# Frontend setup (new terminal)
-cd frontend
-npm install
-npm run dev
-```
-
-### 5. Access Application
-- **Frontend**: http://localhost:5173
-- **Backend API**: http://localhost:8000
-- **API Docs**: http://localhost:8000/docs
-
-## 📁 Project Structure
-
-```
-resumecraft/
-├── 📂 backend/              # FastAPI backend
-│   ├── 📂 routes/           # API endpoints
-│   ├── 📂 services/         # Business logic
-│   ├── 📂 utils/            # Utilities & config
-│   ├── 📂 templates/        # LaTeX templates
-│   └── 📄 main.py           # Application entry
-├── 📂 frontend/             # React frontend
-│   ├── 📂 src/
-│   │   ├── 📂 components/   # React components
-│   │   ├── 📂 pages/        # Application pages
-│   │   ├── 📂 context/      # React context
-│   │   └── 📂 config/       # API configuration
-│   └── 📄 package.json
-├── 📂 docs/                 # Documentation
-├── 📄 README.md
-└── 📄 requirements.txt
-```
-
-## 🔐 Security Features
-
-- ✅ **Row Level Security (RLS)** - Database-level user isolation
-- ✅ **JWT Authentication** - Secure session management
-- ✅ **Input Validation** - Protection against injection attacks
-- ✅ **HTTPS Encryption** - All data encrypted in transit
-- ✅ **SOC 2 Compliance** - Enterprise-grade infrastructure
-- ✅ **Automatic Backups** - Point-in-time recovery available
-
-## 🎯 Deployment
-
-### Development
-```bash
-# Backend
-cd backend && python main.py
-
-# Frontend
-cd frontend && npm run dev
-```
-
-### Production
-```bash
-# Build frontend
-cd frontend && npm run build
-
-# Deploy to your preferred platform:
-# - Vercel (Frontend)
-# - Railway/Render (Backend)
-# - Supabase (Database)
-```
-
-## 📊 Performance
-
-- **Database**: PostgreSQL with optimized indexes
-- **AI Caching**: 75% cost reduction with context caching
-- **CDN Ready**: Static assets optimized for global delivery
-- **Mobile Optimized**: <3s load time on 3G networks
-
-## 🤝 Contributing
-
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
-
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/amazing-feature`
-3. Commit changes: `git commit -m 'Add amazing feature'`
-4. Push to branch: `git push origin feature/amazing-feature`
-5. Open a Pull Request
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🆘 Support
-
-- 📖 [Documentation](docs/)
-- 🐛 [Issue Tracker](https://github.com/yourusername/resumecraft/issues)
-- 💬 [Discussions](https://github.com/yourusername/resumecraft/discussions)
-
-## 🌟 Star History
-
-⭐ If this project helped you, please consider giving it a star!
+**ResumeCraft** is a professional resume builder that leverages the power of AI and the elegance of LaTeX. Create stunning, ATS-friendly resumes with a real-time editor, live PDF previews, and intelligent content generation.
 
 ---
 
-<div align="center">
-  <sub>Built with ❤️ by the ResumeCraft team</sub>
-</div> 
+## ✨ Features
+
+- 🤖 **AI-Powered Assistance**: Smart content generation and job description tailoring with Google Gemini.
+- 📝 **Real-Time LaTeX Editor**: Full control with a Monaco-powered editor for precise resume crafting.
+- 👀 **Live PDF Preview**: Instantly see your compiled PDF as you type.
+- 📄 **Professional Templates**: Choose from a selection of beautifully designed, ATS-friendly LaTeX templates.
+- 🔒 **Secure Cloud Storage**: Your data is protected with Supabase's enterprise-grade security, including Row Level Security.
+- 📱 **Responsive Design**: A seamless experience on desktop, tablet, and mobile devices.
+
+## 🏗️ Architecture
+
+- **Frontend**: **React 18** with **TypeScript** and **Vite**, styled with **Tailwind CSS**.
+- **Backend**: **FastAPI** (Python 3.11+) providing a powerful asynchronous API.
+- **Database**: **Supabase PostgreSQL** for secure and scalable data storage.
+- **AI Engine**: **Google Gemini** for intelligent text generation.
+- **Document Engine**: On-the-fly **LaTeX** compilation for professional PDF generation.
+
+---
+
+## 🚀 Getting Started: Deploying to Production (Netlify + Render)
+
+This project is designed for a modern, decoupled deployment. The frontend is hosted on **Netlify** for maximum speed, and the backend is hosted on **Render** for its robust free tier.
+
+### Step 1: Deploy the Backend to Render
+
+First, we will deploy the Python backend. The `render.yaml` file in this repository automates the setup.
+
+1.  **Create a Render Account:** Sign up at [render.com](https://render.com) using your GitHub account.
+2.  **Create a Blueprint:**
+    *   On your dashboard, click **New +** and select **Blueprint**.
+    *   Connect your GitHub repository for this project. Render will automatically detect and use the `render.yaml` file.
+    *   Give your backend service a name (e.g., `resumecraft-backend`).
+    *   Click **Apply**.
+3.  **Add Your Secrets:** Render will start deploying, but it needs your secret keys.
+    *   Go to your new service's **Environment** tab.
+    *   Under **Secret Files**, create a new file named `.env`.
+    *   Copy the contents of your local `backend/.env` file (or the `env.example`) and paste them into this secret file. This includes your `DATABASE_URL`, `GEMINI_API_KEY`, `SUPABASE_SERVICE_KEY`, etc.
+    *   Save the changes. This will trigger a new deploy.
+4.  **Get Your Backend URL:** Once the deployment is finished, your service will have a public URL like `https://your-backend-name.onrender.com`. **Copy this URL.**
+
+### Step 2: Deploy the Frontend to Netlify
+
+Now, we'll deploy the React frontend.
+
+1.  **Create a Netlify Account:** Sign up at [netlify.com](https://netlify.com) using your GitHub account.
+2.  **Create a New Site:**
+    *   On your dashboard, click **Add new site** and select **Import an existing project**.
+    *   Connect your GitHub repository.
+    *   Netlify will automatically detect and use the settings in your `netlify.toml` file.
+3.  **Add Your Environment Variables:** Before deploying, you must add your public environment variables.
+    *   Go to **Site settings > Build & deploy > Environment > Environment variables** and click **Edit variables**.
+    *   Add the following:
+        *   `VITE_SUPABASE_URL`: Your public Supabase project URL.
+        *   `VITE_SUPABASE_ANON_KEY`: Your public Supabase `anon` key.
+        *   `VITE_API_BASE_URL`: **The full URL to your Render backend from Step 1**, including `/api` at the end (e.g., `https://your-backend-name.onrender.com/api`).
+4.  **Deploy:** Click **Deploy site**. Netlify will build and deploy your frontend.
+
+### Step 3: Keep Your Free Backend Awake (IMPORTANT)
+
+Render's free services "spin down" after 15 minutes of inactivity, causing a 30-40 second delay for the next user. To prevent this, use a free service to ping your backend every 10-14 minutes.
+
+1.  **Sign up for a free cron job service** like [UptimeRobot](https://uptimerobot.com/).
+2.  **Create a new monitor** with the following settings:
+    *   **Type:** `HTTP(s)`
+    *   **URL:** Your backend's health check path: `https://your-backend-name.onrender.com/api/health`
+    *   **Interval:** Every 10 or 14 minutes.
+
+Your application is now fully deployed and configured to stay responsive!
+
+---
+
+## 💻 Local Development Setup
+
+1.  **Clone & Install**: Clone the repo, then set up the backend and frontend dependencies.
+    ```bash
+    # Backend
+    cd backend
+    python3.11 -m venv venv
+    source venv/bin/activate
+    pip install -r requirements.txt
+
+    # Frontend (in a new terminal)
+    cd frontend
+    npm install
+    ```
+2.  **Configure**: Create `backend/.env` and `frontend/.env` files from the examples and add your development keys.
+3.  **Run**: Start the backend and frontend servers in separate terminals.
+    ```bash
+    # Terminal 1: Backend
+    cd backend && uvicorn main:app --reload
+
+    # Terminal 2: Frontend
+    cd frontend && npm run dev
+    ```
+4.  **Access**:
+    - Frontend: `http://localhost:5173`
+    - Backend API Docs: `http://localhost:8000/api/docs`
+
+---
+
+## 🤝 Contributing
+
+We welcome contributions! Please follow these guidelines.
+
+### Development Process
+
+1.  **Fork** the repository and create a new branch from `main`.
+    - Branch Naming: `feature/your-idea` or `bugfix/the-issue`.
+2.  Follow the **Local Development Setup** guide.
+3.  Adhere to the code style (PEP 8 for Python, standard React/TypeScript practices).
+4.  Commit your changes using the **Conventional Commits** format (e.g., `feat(editor): add new template`).
+5.  Submit a **Pull Request** to the `main` branch with a clear description of your changes.
+
+### Reporting Issues
+
+- Use the GitHub Issues tab to report bugs or request features.
+- Provide a clear title, detailed steps to reproduce, and expected vs. actual results.
+
+## 📄 License
+
+This project is licensed under the **MIT License**. See the `LICENSE` file for details. 
