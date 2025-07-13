@@ -9,7 +9,7 @@ import {
   UserIcon,
   StarIcon
 } from '@heroicons/react/24/outline';
-import { Dialog, DialogActions, DialogContent, DialogTitle, TextField, Button, Grid, CircularProgress, Typography } from '@mui/material';
+
 import { useAuth } from '../hooks/useAuth';
 import { apiConfig, supabase } from '../config/api';
 import Logo from '../components/Logo';

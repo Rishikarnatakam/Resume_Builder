@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { 
   ArrowRightIcon,
   ArrowLeftIcon,
@@ -13,7 +13,7 @@ import {
 import { useAuth } from '../hooks/useAuth';
 import { apiConfig, supabase } from '../config/api';
 import Logo from '../components/Logo';
-import { motion } from 'framer-motion';
+
 
 interface PersonalInfo {
   name: string;
@@ -163,14 +163,7 @@ interface DetectedSections {
   additional_sections: boolean;
 }
 
-interface Resume {
-  id: string;
-  title: string;
-  template_name: string;
-  resume_data: ResumeData;
-  created_at: string;
-  updated_at: string;
-}
+
 
 const defaultPersonalInfo: PersonalInfo = {
   name: '',
@@ -206,7 +199,6 @@ const defaultResumeData: ResumeData = {
 const ResumeDetails: React.FC = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const { id } = useParams<{ id: string }>();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Auto-resize function for textareas - optimized for responsiveness
@@ -237,11 +229,10 @@ const ResumeDetails: React.FC = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [extractedData, setExtractedData] = useState<boolean>(false);
-  const [extractionError, setExtractionError] = useState<string>('');
 
   
   // Adaptive form state
-  const [detectedSections, setDetectedSections] = useState<DetectedSections>({
+  const [detectedSections] = useState<DetectedSections>({
     publications: false,
     volunteering: false,
     speaking: false,
@@ -255,7 +246,7 @@ const ResumeDetails: React.FC = () => {
     enhanced_certifications: false,
     additional_sections: false
   });
-  const [visibleSections, setVisibleSections] = useState<string[]>([
+  const [visibleSections] = useState<string[]>([
     'personalInfo', 'summary', 'skills', 'experience', 'education', 'projects', 'awards', 'certifications', 'languages', 'additional'
   ]);
   
@@ -298,7 +289,6 @@ const ResumeDetails: React.FC = () => {
 
     setUploadedFile(file);
     setIsUploading(true);
-    setExtractionError('');
 
       const formData = new FormData();
       formData.append('file', file);
@@ -327,7 +317,6 @@ const ResumeDetails: React.FC = () => {
       setResumeData(prev => ({ ...prev, ...data.resume_data }));
         setExtractedData(true);
     } catch (error: any) {
-      setExtractionError(`Extraction failed: ${error.message}`);
       console.error('Extraction failed:', error);
     } finally {
       setIsUploading(false);

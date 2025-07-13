@@ -1,6 +1,6 @@
 import React, { createContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '../config/api';
-import type { User as SupabaseUser, Session } from '@supabase/supabase-js';
+import type { Session } from '@supabase/supabase-js';
 
 interface User {
   id: string; // Changed from number to string for UUID
@@ -91,7 +91,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   // Keep the same login interface for compatibility
-  const login = async (emailOrToken: string, password?: string) => {
+  const login = async () => {
     // This function is kept for compatibility but will be called differently
     // The actual login will happen through Supabase in the login components
     setLoading(false);

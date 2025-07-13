@@ -342,7 +342,6 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ resumeId }, ref) => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("User not authenticated");
-      const token = session.access_token;
 
       const reader = new FileReader();
       reader.onload = () => {
@@ -372,7 +371,6 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ resumeId }, ref) => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("User not authenticated");
-      const token = session.access_token;
       console.log('🔄 FRONTEND: Compiling LaTeX for AI analysis...', {
         latexLength: editorState.originalLatex.length
       });
@@ -381,7 +379,7 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ resumeId }, ref) => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          'Authorization': `Bearer ${session.access_token}`,
           'ngrok-skip-browser-warning': 'true'
         },
         body: JSON.stringify({
@@ -443,7 +441,6 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ resumeId }, ref) => {
 
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) throw new Error("User not authenticated");
-    const token = session.access_token;
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -499,7 +496,7 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ resumeId }, ref) => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          'Authorization': `Bearer ${session.access_token}`,
           'ngrok-skip-browser-warning': 'true'
         },
         body: JSON.stringify(requestBody),

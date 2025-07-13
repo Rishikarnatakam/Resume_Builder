@@ -1,112 +1,42 @@
 #!/bin/bash
+set -e
 
-echo "🚀 Starting ResumeCraft Server..."
+echo "🚀 Starting Resume Builder Server..."
 
-# Navigate to project directory
-PROJECT_DIR="/var/www/resumecraft"
-if [ ! -d "$PROJECT_DIR" ]; then
-    PROJECT_DIR="$(pwd)"
-    echo "📁 Using current directory: $PROJECT_DIR"
+# Activate Python virtual environment if it exists
+if [ -d "venv" ]; then
+    echo "Activating Python virtual environment..."
+    source venv/bin/activate
+else
+    echo "Warning: 'venv' directory not found. Assuming Python environment is active."
 fi
 
-cd "$PROJECT_DIR"
-
-# Activate Python virtual environment
-source venv/bin/activate
-
-# Validate environment configuration
-echo "🔍 Validating configuration..."
-if [ ! -f "backend/.env" ]; then
-    echo "❌ Backend environment file not found!"
-    echo "   Please copy env.example to backend/.env and configure it"
-    exit 1
-fi
-
-# Check for required environment variables
-if ! grep -q "DATABASE_URL.*postgresql" backend/.env; then
-    echo "⚠️  WARNING: DATABASE_URL not configured for PostgreSQL"
-    echo "   Please update backend/.env with your Supabase connection string"
-fi
-
-if ! grep -q "GEMINI_API_KEY" backend/.env; then
-    echo "⚠️  WARNING: GEMINI_API_KEY not found in backend/.env"
-fi
-
-# Start backend in background (FROM BACKEND DIRECTORY where .env file is)
-echo "🔧 Starting backend API..."
-cd backend
-
-# Validate Supabase connection
-echo "📡 Testing database connection..."
-python validate_supabase_only.py
-if [ $? -ne 0 ]; then
-    echo "❌ Database validation failed!"
-    echo "   Please check your Supabase configuration in backend/.env"
-    exit 1
-fi
-
-nohup uvicorn main:app --host 0.0.0.0 --port 8000 > ../backend.log 2>&1 &
+# --- Start Backend Server ---
+echo "Starting Python backend with Uvicorn..."
+# Start the backend in the background. Redirect stdout and stderr to a log file.
+nohup uvicorn main:app --host 127.0.0.1 --port 8000 --app-dir backend > backend.log 2>&1 &
 BACKEND_PID=$!
-echo "✅ Backend started (PID: $BACKEND_PID)"
-cd ..
+echo $BACKEND_PID > backend.pid
+echo "Backend started with PID $BACKEND_PID. Logs are in backend.log"
 
-# Start nginx if available
-if command -v nginx &> /dev/null; then
-    echo "🌐 Starting nginx..."
-    sudo systemctl start nginx
-    if sudo systemctl is-active --quiet nginx; then
-        echo "✅ Nginx is running"
-    else
-        echo "⚠️  Nginx failed to start (check configuration)"
-    fi
-else
-    echo "ℹ️  Nginx not installed - serving frontend via Vite dev server"
-    cd frontend
-    npm run dev &
-    FRONTEND_PID=$!
-    echo "✅ Frontend dev server started (PID: $FRONTEND_PID)"
-    cd ..
-fi
+# --- Start Nginx ---
+echo "Starting Nginx..."
+# This command is for Ubuntu. For Windows testing, you will start it manually.
+# Ensure your nginx config is in /etc/nginx/sites-enabled/
+sudo systemctl start nginx
+sudo systemctl reload nginx
+echo "Nginx started and reloaded."
 
-# Wait for backend to start
-echo "⏳ Waiting for services to initialize..."
-sleep 5
+# --- Start Ngrok Tunnel ---
+NGROK_DOMAIN="herring-meet-seasnail.ngrok-free.app"
+echo "Starting ngrok tunnel for domain: $NGROK_DOMAIN..."
+# Start ngrok, pointing to the Nginx port (80)
+nohup ngrok http 80 --domain=$NGROK_DOMAIN --log=stdout > ngrok.log 2>&1 &
+NGROK_PID=$!
+echo $NGROK_PID > ngrok.pid
+echo "Ngrok tunnel started with PID $NGROK_PID. Logs are in ngrok.log"
 
-# Health checks
-echo "🔍 Checking services..."
-
-# Check backend
-if curl -s http://localhost:8000/docs > /dev/null; then
-    echo "✅ Backend API is running on port 8000"
-else
-    echo "❌ Backend health check failed"
-    echo "   Check backend.log for errors"
-fi
-
-# Check if nginx is serving the frontend
-if command -v nginx &> /dev/null && sudo systemctl is-active --quiet nginx; then
-    if curl -s http://localhost/ > /dev/null; then
-        echo "✅ Frontend is served by nginx on port 80"
-    else
-        echo "⚠️  Frontend nginx check failed"
-    fi
-fi
-
-echo ""
-echo "🎉 ResumeCraft startup complete!"
-echo ""
-echo "📍 Access your application:"
-echo "   🌐 Frontend: http://localhost:5173 (dev) or http://localhost (nginx)"
-echo "   🔧 Backend API: http://localhost:8000"
-echo "   📚 API Documentation: http://localhost:8000/docs"
-echo ""
-echo "📝 Logs:"
-echo "   📄 Backend: tail -f backend.log"
-echo "   📄 Nginx: sudo tail -f /var/log/nginx/error.log"
-echo ""
-echo "🛑 To stop all services: ./stop-server.sh"
-echo ""
-echo "💡 Tips:"
-echo "   - Your data is securely stored in Supabase PostgreSQL"
-echo "   - Enterprise-grade Row Level Security is active"
-echo "   - AI features powered by Google Gemini"
+echo "---"
+echo "✅ Server is running!"
+echo "Your application is available at: https://$NGROK_DOMAIN"
+echo "---" 

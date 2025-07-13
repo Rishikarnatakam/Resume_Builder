@@ -39,3 +39,11 @@ reportlab==4.2.5
 
 # New line for the new package
 python-jose[cryptography]==3.3.0 
+
+fastapi
+python-dotenv
+uvicorn
+gunicorn
+# Supabase
+supabase
+gotrue 

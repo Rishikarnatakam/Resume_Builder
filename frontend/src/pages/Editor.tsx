@@ -23,7 +23,7 @@ const LaTeXEditor: React.FC = () => {
   const [isCompiling, setIsCompiling] = useState(false);
   const [compileLog, setCompileLog] = useState<string>('');
   const [showJobForm, setShowJobForm] = useState(false);
-  const [aiChatSessionId, setAiChatSessionId] = useState<string | null>(null);
+
   const [isDownloading, setIsDownloading] = useState(false);
   
   const editorRef = useRef<any>(null);
@@ -158,7 +158,6 @@ Programming Languages, Frameworks, Tools, etc.
         data.title || 'Untitled Resume', 
         data.job_description || ''
       );
-      setAiChatSessionId(data.ai_chat_session_id || null);
     } catch (error) {
       console.error("Error fetching resume:", error);
     }

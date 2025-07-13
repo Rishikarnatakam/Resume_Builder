@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useState, useRef, useEffect, useCallback } from 'react';
+import React, { createContext, useState, useRef, useEffect, useCallback } from 'react';
 import { supabase, apiConfig } from '../config/api';
-import { diff_match_patch, DIFF_DELETE, DIFF_INSERT, DIFF_EQUAL } from 'diff-match-patch';
+import { diff_match_patch, DIFF_DELETE, DIFF_INSERT } from 'diff-match-patch';
 
 // Types for editor state management
 interface EditorState {
