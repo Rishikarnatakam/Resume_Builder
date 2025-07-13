@@ -45,6 +45,7 @@ First, we will deploy the Python backend. The `render.yaml` file in this reposit
 3.  **Add Environment Variables:** This is the most critical step. Go to your new service's **Environment** tab and add the following variables.
     *   **Add these as individual environment variables (Key-Value pairs):**
         *   `GEMINI_API_KEY`: Your secret key from Google AI Studio.
+        *   `DEFAULT_GEMINI_MODEL`: The Gemini model you want to use (e.g., `gemini-1.5-flash`).
         *   `SECRET_KEY`: A long, random string you generate for security.
         *   `DATABASE_URL`: Your full PostgreSQL connection string from Supabase.
         *   `SUPABASE_URL`: Your Supabase project URL.

@@ -27,7 +27,7 @@ services:
       - key: GEMINI_API_KEY
         sync: false
       - key: DEFAULT_GEMINI_MODEL
-        value: "gemini-2.5-flash"
+        sync: false
       - key: DATABASE_URL
         sync: false
       - key: SUPABASE_URL
