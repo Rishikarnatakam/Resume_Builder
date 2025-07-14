@@ -4,17 +4,18 @@
 # Core Web Framework
 fastapi==0.115.6
 uvicorn[standard]==0.32.1
-pydantic==2.10.3
+
+# Data Validation (with email support)
+pydantic[email]==2.10.3
 
 # Database & ORM - PostgreSQL/Supabase
 sqlalchemy[asyncio]==2.0.36
 asyncpg==0.30.0
 
 # Authentication & Security
-# PyJWT is used for token validation
 PyJWT==2.8.0
 
-# AI & Machine Learning - Latest Google GenAI
+# AI & Machine Learning - Google GenAI
 google-generativeai==0.8.3
 
 # PDF & Document Processing
@@ -24,12 +25,10 @@ pdfplumber==0.11.4
 
 # Async & Web Utilities
 python-dotenv==1.0.1
+anyio==4.9.0
 
 # Image Processing
 Pillow==11.0.0
-
-# Core async support
-anyio==4.9.0
 
 # Development & Logging
 structlog==24.4.0
@@ -37,13 +36,11 @@ structlog==24.4.0
 # ReportLab for PDF generation
 reportlab==4.2.5
 
-# New line for the new package
-python-jose[cryptography]==3.3.0 
+# Deployment (optional, if you use it in production)
+# gunicorn
 
-fastapi
-python-dotenv
-uvicorn
-gunicorn
-# Supabase
-supabase
-gotrue 
+# If you use Supabase Python client directly, uncomment these:
+# supabase
+# gotrue
+# storage3
+# postgrest 
