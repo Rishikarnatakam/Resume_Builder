@@ -1,46 +1,37 @@
-# LaTeX Resume AI - Modern Python 3.11 Dependencies
-# Optimized for compatibility and performance
+# == Core Web Framework ==
+fastapi==0.115.13
+uvicorn[standard]==0.34.3
 
-# Core Web Framework
-fastapi==0.115.6
-uvicorn[standard]==0.32.1
-
-# Data Validation (with email support)
+# == Data Validation & File Uploads ==
+# pydantic[email] includes email-validator for email validation.
+# python-multipart is required by FastAPI for file uploads.
 pydantic[email]==2.10.3
+python-multipart==0.0.12
 
-# Database & ORM - PostgreSQL/Supabase
+# == Database & ORM (PostgreSQL/Supabase) ==
 sqlalchemy[asyncio]==2.0.36
 asyncpg==0.30.0
 
-# Authentication & Security
+# == Authentication & Security ==
+# PyJWT is used for Supabase token verification.
 PyJWT==2.8.0
 
-# AI & Machine Learning - Google GenAI
-google-generativeai==0.8.3
+# == AI & Machine Learning ==
+# NOTE: Using v0.3.1 to match the 'from google import genai' statement in the code.
+google-generativeai==0.3.1
 
-# PDF & Document Processing
+# == PDF & Document Processing ==
 PyPDF2==3.0.1
 python-docx==1.1.2
 pdfplumber==0.11.4
-
-# Async & Web Utilities
-python-dotenv==1.0.1
-anyio==4.9.0
-
-# Image Processing
+reportlab==4.4.1
 Pillow==11.0.0
 
-# Development & Logging
+# == Utilities ==
+python-dotenv==1.0.1
+anyio==4.9.0
 structlog==24.4.0
 
-# ReportLab for PDF generation
-reportlab==4.2.5
-google-genai==1.23.0  
-# Deployment (optional, if you use it in production)
-# gunicorn
-
-# If you use Supabase Python client directly, uncomment these:
-# supabase
-# gotrue
-# storage3
-# postgrest 
+# == Deployment (Optional) ==
+# gunicorn is a common production server for Python web apps.
+# gunicorn 
