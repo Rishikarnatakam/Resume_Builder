@@ -35,7 +35,7 @@ structlog==24.4.0
 
 # ReportLab for PDF generation
 reportlab==4.2.5
-
+google-genai==1.23.0  
 # Deployment (optional, if you use it in production)
 # gunicorn
 
