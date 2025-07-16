@@ -11,7 +11,6 @@ from utils.config import config
 
 # Supabase JWT Secret for verification (not the service key)
 SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET", "")
-print(f"--- DEBUG: JWT Secret loaded. Starts: '{SUPABASE_JWT_SECRET[:4]}', Ends: '{SUPABASE_JWT_SECRET[-4:]}' ---") # Temporary debug line
 
 if not SUPABASE_JWT_SECRET:
     raise ValueError("SUPABASE_JWT_SECRET environment variable is required")

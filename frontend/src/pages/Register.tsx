@@ -16,6 +16,7 @@ const Register: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
@@ -30,6 +31,7 @@ const Register: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setSuccessMessage('');
 
     // Validation
     if (formData.password !== formData.confirmPassword) {
@@ -62,9 +64,9 @@ const Register: React.FC = () => {
         navigate('/dashboard');
       } else {
         // Email confirmation required
-        navigate('/login', { 
-          state: { message: 'Account created successfully! Please check your email to verify your account.' }
-        });
+        setSuccessMessage('Account created successfully! Please check your email to verify your account.');
+        // Clear form
+        setFormData({ username: '', email: '', password: '', confirmPassword: '' });
       }
     } catch (err) {
       setError('Network error. Please try again.');
@@ -107,6 +109,17 @@ const Register: React.FC = () => {
                 style={{ backgroundColor: '#2F2F2F' }}
               >
                 {error}
+              </motion.div>
+            )}
+
+            {successMessage && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="border border-green-500/30 rounded-3xl p-4 text-green-400 text-sm text-center"
+                style={{ backgroundColor: '#2F2F2F' }}
+              >
+                {successMessage}
               </motion.div>
             )}
 
