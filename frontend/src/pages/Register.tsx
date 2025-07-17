@@ -47,26 +47,7 @@ const Register: React.FC = () => {
     setIsLoading(true);
 
     try {
-      // Check if user already exists by trying to sign in
-      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-        email: formData.email,
-        password: formData.password,
-      });
-
-      if (signInData.user) {
-        // User exists (even with correct password) - don't allow registration
-        setError('Account already exists with this email. Please sign in instead.');
-        return;
-      }
-
-      // If sign-in failed, it's likely the user already exists but entered wrong password
-      if (signInError?.message === 'Invalid login credentials') {
-        // Show simple message - email exists but wrong password
-        setError('Account already exists with this email. Please sign in instead.');
-        return;
-      }
-
-      // If we get here, user doesn't exist - proceed with signup
+      // Attempt signup
       const { data, error } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
@@ -78,15 +59,33 @@ const Register: React.FC = () => {
       });
 
       if (error) {
-        setError(error.message || 'Registration failed. Please try again.');
+        // Handle specific Supabase errors
+        if (error.message.includes('already registered') || 
+            error.message.includes('already exists') || 
+            error.message.includes('email address is already registered') ||
+            error.message.includes('User already registered')) {
+          setError('Account already exists with this email. Please sign in instead.');
+        } else {
+          setError(error.message || 'Registration failed. Please try again.');
+        }
       } else if (data.session) {
-        // User is automatically logged in
+        // User is automatically logged in (email confirmation disabled)
         navigate('/dashboard');
+      } else if (data.user) {
+        // Check if this is a genuine new signup or Supabase's anti-enumeration response
+        // Supabase returns a user object even for existing emails (security feature)
+        // But we can detect this by checking if identities array is empty
+        if (data.user.identities && data.user.identities.length === 0) {
+          // No identities means this email already exists
+          setError('Account already exists with this email. Please sign in instead.');
+        } else {
+          // Real new user - email confirmation required
+          setSuccessMessage('Account created successfully! Please check your email to verify your account.');
+          // Clear form
+          setFormData({ full_name: '', email: '', password: '', confirmPassword: '' });
+        }
       } else {
-        // Email confirmation required
-        setSuccessMessage('Account created successfully! Please check your email to verify your account.');
-        // Clear form
-        setFormData({ full_name: '', email: '', password: '', confirmPassword: '' });
+        setError('Registration failed. Please try again.');
       }
     } catch (err) {
       setError('Network error. Please try again.');
