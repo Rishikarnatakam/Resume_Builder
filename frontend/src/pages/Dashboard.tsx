@@ -152,7 +152,7 @@ const Dashboard: React.FC = () => {
           <div className="flex items-center space-x-6">
             <div className="flex items-center space-x-2 text-sm text-gray-400">
               <UserIcon className="w-4 h-4" />
-              <span className="username-text">{user?.username}</span>
+              <span className="full-name-text">{user?.full_name}</span>
             </div>
             <button
               onClick={logout}

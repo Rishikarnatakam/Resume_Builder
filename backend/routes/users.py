@@ -13,7 +13,7 @@ async def get_user_profile(current_user: dict = Depends(get_current_user)):
     """Get current user profile"""
     return UserResponse(
         id=current_user['id'],
-        username=current_user['username'],
+        full_name=current_user['full_name'],
         email=current_user['email'],
         is_active=current_user['is_active'],
         created_at=current_user['created_at']
@@ -50,7 +50,7 @@ async def delete_all_user_resumes(
     result = await db.execute(query, {"user_id": current_user['id']})
     await db.commit()
     
-    return {"message": f"Deleted all resumes for user {current_user['username']}"}
+    return {"message": f"Deleted all resumes for user {current_user['full_name']}"}
 
 @router.delete("/account")
 async def delete_user_account(

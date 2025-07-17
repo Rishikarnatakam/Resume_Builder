@@ -726,7 +726,7 @@ Tailor the content to match this specific role while maintaining professional, s
 
             {/* Right side */}
             <div className="flex items-center space-x-4">
-              <span className="text-gray-400 text-sm username-text">{user?.username}</span>
+              <span className="text-gray-400 text-sm full-name-text">{user?.full_name}</span>
               <button
                 onClick={logout}
                 className="text-gray-400 hover:text-white transition-colors text-sm"

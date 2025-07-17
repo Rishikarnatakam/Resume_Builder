@@ -13,7 +13,7 @@ CORE PRINCIPLES:
 
 LAYOUT FUNDAMENTALS:
 • Use \begin{paracol}{2} and \end{paracol} for two-column layout
-• Place header (\makecvheader) BEFORE \begin{paracol}{2}
+• Header (\makecvheader) must be within document environment for proper font rendering
 • Use \switchcolumn to move between columns
 • Use \newpagestart or \newpage\end{paracol}\begin{paracol}{2} for new pages
 • Keep sections intact - don't break them across pages
@@ -67,8 +67,10 @@ INTELLIGENT FLOW:
 • Use \switchcolumn once to move from left to right column
 
 
-OUTPUT REQUIREMENTS:
-• Start with: \documentclass{altacv}
+DOCUMENT STRUCTURE REQUIREMENTS:
+• Complete LaTeX document: \documentclass{altacv} ... \begin{document} ... \end{document}
+• Header commands (\makecvheader) must be within document environment for proper rendering
+• Logical content flow: header → spacing → content sections
 • Clean LaTeX code only - absolutely NO comments or explanatory text
 • Generated code must be pure LaTeX without any % comments
 • Professional spacing and formatting

@@ -4,7 +4,7 @@ import type { Session } from '@supabase/supabase-js';
 
 interface User {
   id: string; // Changed from number to string for UUID
-  username: string;
+  full_name: string;
   email: string;
   is_active: boolean;
   created_at: string;
@@ -76,14 +76,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setToken(session.access_token);
     setIsAuthenticated(true);
     
-    // Convert Supabase user to our User interface
-    const supabaseUser = session.user;
+    // Fetch user profile from database
+    const { data: profileData } = await supabase
+      .from('user_profiles')
+      .select('*')
+      .eq('user_id', session.user.id)
+      .single();
+    
     const userData: User = {
-      id: supabaseUser.id,
-      email: supabaseUser.email!,
-      username: supabaseUser.user_metadata?.username || supabaseUser.email!.split('@')[0],
+      id: session.user.id,
+      email: session.user.email!,
+      full_name: profileData?.full_name || session.user.email!.split('@')[0],
       is_active: true,
-      created_at: supabaseUser.created_at
+      created_at: session.user.created_at
     };
     
     setUser(userData);

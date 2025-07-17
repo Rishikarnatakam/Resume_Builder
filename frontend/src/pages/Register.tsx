@@ -8,7 +8,7 @@ import Logo from '../components/Logo';
 
 const Register: React.FC = () => {
   const [formData, setFormData] = useState({
-    username: '',
+    full_name: '',
     email: '',
     password: '',
     confirmPassword: ''
@@ -47,12 +47,32 @@ const Register: React.FC = () => {
     setIsLoading(true);
 
     try {
+      // Check if user already exists by trying to sign in
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.password,
+      });
+
+      if (signInData.user) {
+        // User exists (even with correct password) - don't allow registration
+        setError('Account already exists with this email. Please sign in instead.');
+        return;
+      }
+
+      // If sign-in failed, it's likely the user already exists but entered wrong password
+      if (signInError?.message === 'Invalid login credentials') {
+        // Show simple message - email exists but wrong password
+        setError('Account already exists with this email. Please sign in instead.');
+        return;
+      }
+
+      // If we get here, user doesn't exist - proceed with signup
       const { data, error } = await supabase.auth.signUp({
-          email: formData.email,
+        email: formData.email,
         password: formData.password,
         options: {
           data: {
-            username: formData.username
+            full_name: formData.full_name
           }
         }
       });
@@ -66,7 +86,7 @@ const Register: React.FC = () => {
         // Email confirmation required
         setSuccessMessage('Account created successfully! Please check your email to verify your account.');
         // Clear form
-        setFormData({ username: '', email: '', password: '', confirmPassword: '' });
+        setFormData({ full_name: '', email: '', password: '', confirmPassword: '' });
       }
     } catch (err) {
       setError('Network error. Please try again.');
@@ -125,19 +145,19 @@ const Register: React.FC = () => {
 
             <div className="grid grid-cols-1 gap-6">
               <div>
-                <label htmlFor="username" className="block text-sm font-medium text-gray-300 mb-2">
-                  Username
+                <label htmlFor="full_name" className="block text-sm font-medium text-gray-300 mb-2">
+                  Full Name
                 </label>
                 <input
-                  id="username"
-                  name="username"
+                  id="full_name"
+                  name="full_name"
                   type="text"
                   required
-                  value={formData.username}
+                  value={formData.full_name}
                   onChange={handleChange}
                   className="w-full px-4 py-3 border border-gray-600/50 rounded-3xl text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500/50 focus:border-gray-500/50 transition-all"
                   style={{ backgroundColor: '#2F2F2F' }}
-                  placeholder="Choose a username"
+                  placeholder="Enter your full name"
                 />
               </div>
 

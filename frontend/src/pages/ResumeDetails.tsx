@@ -659,7 +659,7 @@ const ResumeDetails: React.FC = () => {
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2">
                 <UserIcon className="w-5 h-5 text-gray-400" />
-                <span className="text-sm text-gray-400">{user?.username}</span>
+                <span className="text-sm text-gray-400">{user?.full_name}</span>
             </div>
             <button
                 onClick={() => logout()}
