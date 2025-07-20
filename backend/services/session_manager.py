@@ -138,9 +138,66 @@ class ChatSessionManager:
             # Send to chat session - AI remembers all previous context!
             response = chat.send_message(message_parts)
             
-            # Extract LaTeX and clean response
-            latex_code = self._extract_latex_from_response(response.text)
-            clean_response = self._clean_response_text(response.text, latex_code)
+            # Parse AI response - could be JSON patch or full LaTeX
+            response_text = response.text.strip()
+
+            # --- Token/Word Count Logging ---
+            def simple_token_word_count(text):
+                cleaned = text.replace('\n', ' ').replace('\r', ' ').strip()
+                words = cleaned.split()
+                word_count = len(words)
+                token_estimate = int(word_count * 1.3)  # 1 word ≈ 1.3 tokens for code/JSON
+                print(f"🔢 AI Response Word Count: {word_count}")
+                print(f"🔢 AI Response Estimated Token Count: {token_estimate}")
+                return word_count, token_estimate
+
+            simple_token_word_count(response_text)
+            # --- End Logging ---
+
+            logger.info(f"🔍 SESSION: AI response preview: {response_text[:100]}...")
+            
+            # Try to parse as JSON patch first
+            try:
+                import json
+                import re
+                
+                # Clean up response text - remove markdown formatting if present
+                clean_response = response_text
+                if clean_response.startswith('```json'):
+                    clean_response = re.sub(r'^```json\s*', '', clean_response)
+                    clean_response = re.sub(r'\s*```$', '', clean_response)
+                elif clean_response.startswith('```'):
+                    clean_response = re.sub(r'^```\s*', '', clean_response)
+                    clean_response = re.sub(r'\s*```$', '', clean_response)
+                
+                # Try to detect and fix common JSON issues
+                if '{' in clean_response and '"type"' in clean_response:
+                    logger.info(f"🔍 SESSION: Detected potential JSON, attempting to parse...")
+                    # Extract JSON-like content
+                    start_idx = clean_response.find('{')
+                    end_idx = clean_response.rfind('}') + 1
+                    if start_idx != -1 and end_idx > start_idx:
+                        json_content = clean_response[start_idx:end_idx]
+                        logger.info(f"🔍 SESSION: Extracted JSON content: {json_content}")
+                        
+                        # Try to parse the JSON
+                        patch_data = json.loads(json_content)
+                        if patch_data.get('type') == 'patch' and 'operations' in patch_data:
+                            logger.info(f"✅ SESSION: Received JSON patch with {len(patch_data['operations'])} operations")
+                            return {
+                                "success": True,
+                                "response": patch_data.get('message', 'Changes applied'),
+                                "patch_data": patch_data,
+                                "is_patch": True
+                            }
+            except (json.JSONDecodeError, KeyError, ValueError) as e:
+                logger.warning(f"⚠️ SESSION: Failed to parse JSON patch: {e}")
+                # Not a valid JSON patch, continue with LaTeX extraction
+                pass
+            
+            # Extract LaTeX and clean response (fallback for full code responses)
+            latex_code = self._extract_latex_from_response(response_text)
+            clean_response = self._clean_response_text(response_text, latex_code)
             
             # Update conversation history in database
             await self._update_conversation_history(db, session, user_message, clean_response)
@@ -150,7 +207,8 @@ class ChatSessionManager:
             return {
                 "success": True,
                 "response": clean_response,
-                "modified_latex": latex_code
+                "modified_latex": latex_code,
+                "is_patch": False
             }
             
         except Exception as e:
@@ -264,11 +322,37 @@ class ChatSessionManager:
         elif is_explanation and not is_change:
             instruction = "\n🚨 EXPLANATION REQUEST: Provide text explanation ONLY. Do NOT include any code examples."
         elif is_change:
-            instruction = "\n🚨 CHANGE REQUEST: Make the change with a friendly, natural response. Be warm but efficient. No LaTeX tutorials."
+            instruction = "\n🚨 PATCH REQUEST: Return ONLY valid JSON patch. No explanations, no markdown, no other text. Just pure JSON."
         
-        return f"""Current LaTeX code:
+        # Split current LaTeX into numbered lines for AI reference
+        latex_lines = current_latex.split('\n')
+        numbered_latex = '\n'.join([f"{i+1:3d}: {line}" for i, line in enumerate(latex_lines)])
+
+        if is_change:
+            return f"""Current LaTeX code (with line numbers):
 ```latex
-{current_latex}
+{numbered_latex}
+```
+
+Request: {user_message}
+
+🚨 CRITICAL: Return ONLY this JSON format (no explanations, no markdown, no other text):
+{{"type": "patch", "operations": [{{"op": "replace", "line": 8, "content": "new content here"}}], "message": "Done! Summary removed."}}
+
+Valid operations:
+- "replace": Change existing line content
+- "insert": Add new line after specified line number  
+- "delete": Remove specified line
+
+IMPORTANT:
+- Line numbers are 1-indexed (first line = 1)
+- "content" must be a single string, not an array
+- For multiple lines, use multiple operations
+- Return ONLY the JSON, nothing else"""
+        else:
+            return f"""Current LaTeX code (with line numbers):
+```latex
+{numbered_latex}
 ```
 
 Request: {user_message}{instruction}
