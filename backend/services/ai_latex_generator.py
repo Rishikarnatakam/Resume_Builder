@@ -196,12 +196,6 @@ GENERAL INSTRUCTIONS:
 - Output only the LaTeX code, no explanations or markdown formatting
 - Pay special attention to template-specific requirements in the instructions above
 
-📄 DOCUMENT STRUCTURE:
-- Define header commands (\\name{}, \\address{}, etc.) BEFORE \\begin{document}
-- Place \\begin{document} AFTER all header definitions
-- This ensures proper header rendering when document begins
-- Example structure: \\documentclass{} → header commands → \\begin{document} → content → \\end{document}
-
 🚨 CRITICAL BEHAVIOR RULE:
 - When asked to remove, delete, or get rid of content, you MUST delete the lines entirely. DO NOT comment them out.
 
