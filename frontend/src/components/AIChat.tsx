@@ -53,6 +53,8 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ resumeId }, ref) => {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [sessionInitialized, setSessionInitialized] = useState(false);
   const [formData, setFormData] = useState<any>(null);
+  const [formDataLoaded, setFormDataLoaded] = useState(false);
+  const [templateLoaded, setTemplateLoaded] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -66,11 +68,11 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ resumeId }, ref) => {
   }, [messages]);
 
   useEffect(() => {
-    if (resumeId) {
+    if (resumeId && !templateLoaded && !formDataLoaded) {
       loadResumeTemplate();
       loadFormData();
     }
-  }, [resumeId]);
+  }, [resumeId, templateLoaded, formDataLoaded]);
 
   useEffect(() => {
     if (resumeId && templateName && formData && !sessionInitialized) {
@@ -106,19 +108,47 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ resumeId }, ref) => {
           event.preventDefault();
           const blob = item.getAsFile();
           if (blob) {
-            // Convert to the same format as file upload
-            const reader = new FileReader();
-            reader.onload = () => {
-              const base64Data = reader.result as string;
-              const base64String = base64Data.split(',')[1];
-              
-              setSelectedImage({
-                data: base64String,
-                type: item.type.split('/')[1],
-                name: `clipboard-image-${Date.now()}.${item.type.split('/')[1]}`
+            try {
+              // Convert blob to File for compression
+              const file = new File([blob], `clipboard-image-${Date.now()}.${item.type.split('/')[1]}`, {
+                type: item.type
               });
-            };
-            reader.readAsDataURL(blob);
+              
+              // Compress the pasted image
+              console.log('📸 FRONTEND: Original pasted image size:', file.size, 'bytes');
+              const compressedFile = await compressImage(file);
+              console.log('📸 FRONTEND: Compressed pasted image size:', compressedFile.size, 'bytes');
+              console.log('📸 FRONTEND: Compression ratio:', ((file.size - compressedFile.size) / file.size * 100).toFixed(1) + '%');
+
+              // Convert to the same format as file upload
+              const reader = new FileReader();
+              reader.onload = () => {
+                const base64Data = reader.result as string;
+                const base64String = base64Data.split(',')[1];
+                
+                setSelectedImage({
+                  data: base64String,
+                  type: compressedFile.type.split('/')[1],
+                  name: compressedFile.name
+                });
+              };
+              reader.readAsDataURL(compressedFile);
+            } catch (error) {
+              console.error('Error compressing pasted image:', error);
+              // Fallback to original blob without compression
+              const reader = new FileReader();
+              reader.onload = () => {
+                const base64Data = reader.result as string;
+                const base64String = base64Data.split(',')[1];
+                
+                setSelectedImage({
+                  data: base64String,
+                  type: item.type.split('/')[1],
+                  name: `clipboard-image-${Date.now()}.${item.type.split('/')[1]}`
+                });
+              };
+              reader.readAsDataURL(blob);
+            }
           }
           break;
         }
@@ -147,6 +177,7 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ resumeId }, ref) => {
       if (response.ok) {
         const resume = await response.json();
         setFormData(resume.resume_data);
+        setFormDataLoaded(true);
         console.log('✅ FRONTEND: Loaded form data for session:', {
           resumeId,
           hasPersonalInfo: !!resume.resume_data?.personalInfo,
@@ -190,6 +221,7 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ resumeId }, ref) => {
         if (templateResponse.ok) {
           const templateData = await templateResponse.json();
           setTemplateContent(templateData.content || '');
+          setTemplateLoaded(true);
           console.log('✅ FRONTEND: Loaded template for AI chat:', {
             templateName: resumeTemplateName,
             contentLength: templateData.content?.length || 0
@@ -343,19 +375,25 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ resumeId }, ref) => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("User not authenticated");
 
+      // Compress the image before processing
+      console.log('📸 FRONTEND: Original image size:', file.size, 'bytes');
+      const compressedFile = await compressImage(file);
+      console.log('📸 FRONTEND: Compressed image size:', compressedFile.size, 'bytes');
+      console.log('📸 FRONTEND: Compression ratio:', ((file.size - compressedFile.size) / file.size * 100).toFixed(1) + '%');
+
       const reader = new FileReader();
       reader.onload = () => {
         const base64Data = reader.result as string;
         const base64String = base64Data.split(',')[1];
         
-        const fileExtension = file.type.split('/')[1];
+        const fileExtension = compressedFile.type.split('/')[1];
         setSelectedImage({
           data: base64String,
           type: fileExtension,
-          name: file.name
+          name: compressedFile.name
         });
       };
-      reader.readAsDataURL(file);
+      reader.readAsDataURL(compressedFile);
     } catch (error) {
       console.error('Error uploading image:', error);
       alert('Error uploading image. Please try again.');
@@ -422,6 +460,39 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ resumeId }, ref) => {
   const removeSelectedPdf = () => {
     setSelectedPdf(null);
     // No file input to clear since we compile directly
+  };
+
+  // Image compression function
+  const compressImage = (file: File): Promise<File> => {
+    return new Promise((resolve) => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d')!;
+      const img = new Image();
+      
+      img.onload = () => {
+        // Keep original dimensions, just compress quality
+        canvas.width = img.width;
+        canvas.height = img.height;
+        
+        // Draw image
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        
+        // Compress to JPEG with 70% quality
+        canvas.toBlob((blob) => {
+          if (blob) {
+            const compressedFile = new File([blob], file.name, {
+              type: 'image/jpeg',
+              lastModified: Date.now()
+            });
+            resolve(compressedFile);
+          } else {
+            resolve(file); // Fallback to original
+          }
+        }, 'image/jpeg', 0.7);
+      };
+      
+      img.src = URL.createObjectURL(file);
+    });
   };
 
   const handleSendMessage = async () => {
@@ -507,28 +578,37 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ resumeId }, ref) => {
         success: result.success,
         hasResponse: !!result.response,
         hasModifiedLatex: !!result.modified_latex,
+        isPatch: !!result.is_patch,
+        hasPatchData: !!result.patch_data,
         sessionInfo: result.session_info
       });
-          
-      if (result.success && result.response) {
+
+      if (result.success) {
         const assistantMessage: Message = {
           id: (Date.now() + 1).toString(),
           type: 'assistant',
-          content: result.response,
+          content: result.response || 'I updated your resume.',
           timestamp: new Date()
         };
 
         setMessages(prev => [...prev, assistantMessage]);
 
-        // Check for modified LaTeX - now uses context
-        if (result.modified_latex && result.modified_latex.trim() && result.modified_latex !== editorState.originalLatex) {
+        // Handle patch responses (new optimized format)
+        if (result.is_patch && result.patch_data) {
+          console.log('✅ FRONTEND: Received AI patch response');
+          console.log('📄 FRONTEND: Patch operations:', result.patch_data.operations?.length || 0);
+          console.log('📄 FRONTEND: Full patch data:', result.patch_data);
+          editorState.receiveAIPatch(result.patch_data);
+        } else if (result.modified_latex && result.modified_latex.trim() && result.modified_latex !== editorState.originalLatex) {
+          // Handle full LaTeX responses (fallback)
           console.log('✅ FRONTEND: Updating LaTeX editor with modified content');
           console.log('📄 FRONTEND: LaTeX comparison - Original length:', editorState.originalLatex.length, 'Modified length:', result.modified_latex.length);
           editorState.receiveAIResponse(result.modified_latex);
         } else if (result.modified_latex && result.modified_latex === editorState.originalLatex) {
           console.log('ℹ️ FRONTEND: Modified LaTeX is same as current LaTeX');
-        } else {
+        } else if (!result.is_patch) {
           console.log('ℹ️ FRONTEND: No modified LaTeX in response');
+          console.log('🔍 FRONTEND: Full result object:', result);
         }
       } else {
         console.error('❌ FRONTEND: AI response indicates failure:', result);

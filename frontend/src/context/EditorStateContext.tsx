@@ -45,6 +45,7 @@ interface EditorActions {
   // AI operations
   startAIOperation: () => void;
   receiveAIResponse: (proposedLatex: string) => void;
+  receiveAIPatch: (patchData: any) => void;
   acceptAIChanges: () => void;
   rejectAIChanges: () => void;
   completeAIOperation: () => void;
@@ -270,6 +271,84 @@ export const EditorStateProvider: React.FC<EditorStateProviderProps> = ({ childr
     }));
   }, [state.originalLatex, completeAIOperation]);
 
+  // Apply patch operations to LaTeX content
+  const applyPatchToLatex = useCallback((originalLatex: string, operations: any[]): string => {
+    const lines = originalLatex.split('\n');
+    
+    // Sort operations by line number in descending order to avoid index shifts
+    const sortedOps = [...operations].sort((a, b) => (b.line || 0) - (a.line || 0));
+    
+    for (const operation of sortedOps) {
+      const { op, line, content } = operation;
+      const lineIndex = (line || 1) - 1; // Convert to 0-based index
+      
+      // Handle content that might be an array or string
+      let contentToInsert: string[];
+      if (Array.isArray(content)) {
+        contentToInsert = content;
+      } else if (typeof content === 'string') {
+        contentToInsert = [content];
+      } else {
+        contentToInsert = [''];
+      }
+      
+      console.log(`🔧 Applying operation: ${op} at line ${line}`, { contentToInsert });
+      
+      switch (op) {
+        case 'replace':
+          if (lineIndex >= 0 && lineIndex < lines.length) {
+            lines[lineIndex] = contentToInsert[0] || '';
+          }
+          break;
+        case 'insert':
+          // Insert after the specified line
+          const insertIndex = lineIndex + 1;
+          for (let i = contentToInsert.length - 1; i >= 0; i--) {
+            lines.splice(insertIndex, 0, contentToInsert[i]);
+          }
+          break;
+        case 'delete':
+          if (lineIndex >= 0 && lineIndex < lines.length) {
+            lines.splice(lineIndex, 1);
+          }
+          break;
+        default:
+          console.warn(`Unknown patch operation: ${op}`);
+      }
+    }
+    
+    console.log(`✅ Patch applied. Original: ${originalLatex.split('\n').length} lines, New: ${lines.length} lines`);
+    return lines.join('\n');
+  }, []);
+
+  // Receive AI patch response and apply it
+  const receiveAIPatch = useCallback((patchData: any) => {
+    if (!aiOperationInProgress.current) {
+      console.log('🚫 Received AI patch but no operation in progress');
+      return;
+    }
+
+    try {
+      console.log('📥 PATCH: Received patch data:', patchData);
+      console.log('📥 PATCH: Operations count:', patchData.operations?.length || 0);
+      console.log('📥 PATCH: Original LaTeX length:', state.originalLatex.length);
+      
+      // Apply patch to original LaTeX
+      const patchedLatex = applyPatchToLatex(state.originalLatex, patchData.operations || []);
+      
+      console.log('📥 PATCH: Patched LaTeX length:', patchedLatex.length);
+      console.log('📥 PATCH: Patched LaTeX preview:', patchedLatex.substring(0, 200) + '...');
+      
+      // Now use existing diff logic to show visual comparison
+      receiveAIResponse(patchedLatex);
+      
+      console.log(`✅ Applied ${patchData.operations?.length || 0} patch operations`);
+    } catch (error) {
+      console.error('❌ Error applying patch:', error);
+      completeAIOperation();
+    }
+  }, [state.originalLatex, applyPatchToLatex, receiveAIResponse, completeAIOperation]);
+
   // Accept AI changes
   const acceptAIChanges = useCallback(() => {
     if (state.diffMode !== 'viewing' || !state.proposedLatex) {
@@ -388,6 +467,7 @@ export const EditorStateProvider: React.FC<EditorStateProviderProps> = ({ childr
     updateLatexFromLoad,
     startAIOperation,
     receiveAIResponse,
+    receiveAIPatch,
     acceptAIChanges,
     rejectAIChanges,
     completeAIOperation,
