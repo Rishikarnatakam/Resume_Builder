@@ -6,13 +6,14 @@ Uses Gemini's native chat sessions with context set ONCE at start
 import logging
 import json
 from datetime import datetime
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, AsyncGenerator
 import google.generativeai as genai
 from sqlalchemy.ext.asyncio import AsyncSession
 import base64
 
 from database import AIChatSession
-from utils.config import get_gemini_model, get_gemini_api_key
+from utils.config import get_gemini_model
+from utils.prompt_composer import prompt_composer
 
 logger = logging.getLogger(__name__)
 
@@ -20,12 +21,9 @@ class ChatSessionManager:
     """Smart session manager using proper Gemini chat sessions"""
     
     def __init__(self):
-        genai.configure(api_key=get_gemini_api_key())
         self.model_name = get_gemini_model()
-        # Store active chat sessions in memory
-        self.active_chats: Dict[str, genai.ChatSession] = {}
-        logger.info(f"🔧 SESSION: Initialized with model {self.model_name}")
-
+        self.active_chats = {}  # Store active chat sessions
+        
     async def create_session(
         self, 
         db: AsyncSession,
@@ -34,15 +32,21 @@ class ChatSessionManager:
         form_data: Dict[str, Any],
         template_content: str,
         template_instructions: str = "",
-        job_description: Optional[str] = None
+        job_description: Optional[str] = None,
+        template_name: str = None  # Add template_name as explicit argument
     ) -> str:
         """Create chat session with context set ONCE"""
         logger.info(f"🚀 SESSION: Creating chat session for resume {resume_id}")
         
-        # Build initial context message (sent ONCE)
+        # Use the template_name passed from the frontend (trust the client)
+        if not template_name:
+            logger.error(f"❌ SESSION: No template_name provided!")
+            raise Exception("No template_name provided for session creation")
+        logger.info(f"✅ SESSION: Using template_name from request: {template_name}")
+        
+        # Build initial context using prompt composer
         initial_context = self._build_initial_context(
-            template_content=template_content,
-            template_instructions=template_instructions,
+            template_name=template_name,
             form_data=form_data,
             job_description=job_description
         )
@@ -68,27 +72,23 @@ class ChatSessionManager:
         # Store chat session in memory
         self.active_chats[session_id] = chat
         
-        # Store session metadata in database
+        # Store session in database
         session = AIChatSession(
             id=session_id,
             resume_id=resume_id,
             user_id=user_id,
-            cache_id=None,  # Not needed for native chat sessions
-            cache_expires_at=None,
-            template_content=template_content,
-            form_data=json.dumps(form_data),  # Just store the raw form data
-            conversation_history=json.dumps([
-                {"role": "user", "content": "Initial context established", "timestamp": datetime.utcnow().isoformat()},
-                {"role": "assistant", "content": "Ready to help with LaTeX resume editing", "timestamp": datetime.utcnow().isoformat()}
-            ]),
-            is_active=True
+            template_content=template_content,  # Required by database
+            form_data=json.dumps(form_data),    # Required by database
+            conversation_history=json.dumps([]),
+            is_active=True,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
         )
         
         db.add(session)
         await db.commit()
-        await db.refresh(session)
         
-        logger.info(f"✅ SESSION: Created session {session_id} with native chat memory")
+        logger.info(f"✅ SESSION: Created session {session_id}")
         return session_id
 
     async def send_message(
@@ -225,85 +225,39 @@ class ChatSessionManager:
 
     def _build_initial_context(
         self, 
-        template_content: str, 
-        template_instructions: str,
+        template_name: str, 
         form_data: Dict[str, Any], 
         job_description: Optional[str]
     ) -> str:
-        """Build the initial context message sent ONCE at session start"""
+        """Build the initial context using prompt composer"""
         
+        # Use prompt composer to build conversation prompt
+        conversation_prompt = prompt_composer.build_conversation_prompt(template_name)
+        
+        # Add user data context
         context_parts = [
-            "You are a LaTeX resume assistant. Here's the context for our entire conversation:",
+            conversation_prompt,
             "",
-            "=== TEMPLATE INSTRUCTIONS (FOLLOW THESE RULES) ===",
-            template_instructions,
+            "# Current Session Context",
+            f"Template: {template_name}",
             "",
-            "=== USER RESUME DATA ===",
-            json.dumps(form_data, indent=2),
-            "",
-            "=== CONVERSATION GUIDELINES ===",
-            "- You are a friendly, expert AI resume builder - not a LaTeX teacher",
-            "- Be warm, helpful, and conversational while getting things done",
-            "- Just DO what the user asks - don't explain HOW LaTeX works unless specifically asked", 
-            "- When user asks for changes: Make them right away with a friendly confirmation",
-            "- Use natural language like 'Perfect!', 'Got it!', 'There you go!', 'All set!'",
-            "",
-            "🚨 FORBIDDEN PHRASES - NEVER SAY THESE:",
-            "- 'Here's your updated LaTeX code'",
-            "- 'Here's the corrected code'", 
-            "- 'Updated LaTeX resume'",
-            "- 'The code is now'",
-            "- 'Here's your LaTeX'",
-            "- ANY mention of 'LaTeX' or 'code' in responses",
-            "",
-            "✅ REQUIRED RESPONSE EXAMPLES:",
-            "- Instead of 'Here's your updated code with smaller name' → Say 'Done! Your name is now the perfect size.'",
-            "- Instead of 'Here's the corrected code for your header' → Say 'Fixed! Your contact info now spans two lines.'",
-            "- Instead of 'Updated LaTeX resume' → Say 'Perfect! Made that change for you.'",
-            "- Focus on WHAT you changed, not HOW you changed it",
-            "- When user asks to tailor: Apply professional resume writing principles",
-            "- Write naturally flowing content, not keyword-stuffed text",
-            "- Focus on showcasing relevant qualifications in a compelling way",
-            "- Provide clean LaTeX code without comments",
-            "- Remember user customizations throughout our conversation",
-            "- Put LaTeX code in ```latex code blocks",
-            "- Be encouraging and supportive - you're helping them build something important",
-            "",
-            "🚨 CRITICAL: CODE vs EXPLANATION RULES 🚨",
-            "- ONLY provide LaTeX code when the user asks to CHANGE/ADD/MODIFY their resume content",
-            "- When user asks WHY/EXPLAIN/WHAT CAUSES: Give text explanation ONLY, NO code examples",
-            "- When user asks for template fixes: Clearly say 'This requires a template change' and explain",
-            "- NEVER include example code snippets in explanations - they will replace the user's resume!",
-            "- If you must show code structure, describe it in words, not actual code",
-            "",
-            "=== CRITICAL CODE FORMATTING RULE ===",
-            "🚨 ALWAYS add an empty line after every \\cvsection{} command in your LaTeX code",
-            "Example: \\cvsection{Education}",
-            "         [EMPTY LINE HERE]",
-            "         \\cvevent{...}",
-            "",
-            "=== TEMPLATE STRUCTURE REFERENCE ===",
-            template_content[:2000] + "..." if len(template_content) > 2000 else template_content  # Truncate if too long
+            "# User Resume Data",
+            json.dumps(form_data, indent=2)
         ]
         
         if job_description and job_description.strip():
             context_parts.extend([
                 "",
-                "=== JOB DESCRIPTION ===", 
+                "# Job Description", 
                 job_description,
                 "",
-                "🎯 PROFESSIONAL RESUME WRITING:",
-                "You are a professional resume writer helping tailor this resume for the job above.",
-                "Apply resume writing best practices - write compelling, natural content that flows well.",
-                "Think strategically about what employers want to see for this specific role.",
-                "Focus on creating professional descriptions that showcase relevant qualifications naturally.",
-                "Avoid keyword stuffing - instead, craft content that reads like a skilled professional wrote it.",
-                "Make it ATS-friendly while maintaining readability and professional tone."
+                "Apply professional resume writing principles when tailoring content for this role."
             ])
         
         context_parts.extend([
             "",
-            "Remember all of this context for our conversation. I'll send you current LaTeX code and requests, and you should help me edit the resume accordingly."
+            "Remember: Always respond in JSON patch format with operations and message fields.",
+            "I'll send you current LaTeX code and requests, and you should help me edit accordingly."
         ])
         
         return "\n".join(context_parts)
@@ -325,6 +279,12 @@ Request: {user_message}
 🚨 CRITICAL: Always respond in this JSON patch format (no exceptions):
 {{"type": "patch", "operations": [...], "message": "Your response message here"}}
 
+RESPONSE RULES:
+- **Keep messages SHORT** - use 1-3 words by default: "Done!", "Fixed!", "Perfect!"
+- **Encourage interaction** - end with: "More changes?" "What else?" "Need anything?"
+- **Only explain if user asks "why" or "how"** - save tokens otherwise
+- **Be friendly but brief** - warm tone in minimal words
+
 Instructions:
 - If the request requires changes to the LaTeX code, put the changes in "operations"
 - If the request is just a question or doesn't need changes, leave "operations" as an empty array []
@@ -344,8 +304,8 @@ IMPORTANT:
 - Even for questions/explanations, use this format with empty operations array
 
 Examples:
-- For "Why is my margin off?": {{"type": "patch", "operations": [], "message": "Your margins look fine! They're set to 0.5 inches. If you want to change them, let me know!"}}
-- For "Make my name bold": {{"type": "patch", "operations": [{{"op": "replace", "line": 5, "content": "\\name{{\\textbf{{John Doe}}}}"}}], "message": "Done! Your name is now bold."}}
+- For "Why is my margin off?": {{"type": "patch", "operations": [], "message": "Margins look fine! More changes?"}}
+- For "Make my name bold": {{"type": "patch", "operations": [{{"op": "replace", "line": 5, "content": "\\name{{\\textbf{{John Doe}}}}"}}], "message": "Name now bold. What else?"}}
 
 Return ONLY the JSON, nothing else."""
 

@@ -60,7 +60,7 @@ class LegacyChatRequest(BaseModel):
     message: str
     current_latex: str
     conversation_history: List[dict] = []
-    template_name: str = "professional_resume"
+    template_name: str  # Remove default
     template_content: Optional[str] = None
     image_data: Optional[str] = None
     image_type: Optional[str] = None
@@ -138,6 +138,7 @@ async def start_chat_session(
             )
         
         # Get template content and instructions
+        logger.info(f"🔍 AI_CHAT: Using template name from request: {request.template_name}")
         template_content = await _get_template_content(request.template_name)
         template_instructions = await _get_template_instructions(request.template_name)
         
@@ -147,6 +148,7 @@ async def start_chat_session(
             resume_id=request.resume_id,
             user_id=current_user['id'],
             form_data=request.form_data,
+            template_name=request.template_name,
             template_content=template_content,
             template_instructions=template_instructions,
             job_description=request.job_description

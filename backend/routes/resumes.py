@@ -7,6 +7,7 @@ import json
 import logging
 from datetime import datetime
 import uuid
+from database import Resume
 
 from database import get_db
 from routes.auth import get_current_user
@@ -90,7 +91,7 @@ class ResumeData(BaseModel):
 
 class ResumeCreateRequest(BaseModel):
     title: str
-    template_name: str = "professional_resume"
+    template_name: str  # Remove default
     resume_data: ResumeData
     job_description: Optional[str] = None
 
@@ -110,7 +111,7 @@ class ResumeResponse(BaseModel):
 class AIGenerateRequest(BaseModel):
     resume_data: ResumeData
     job_description: str
-    template_name: str = "professional_resume"
+    template_name: str  # Remove default
 
 class ResumeUpdateRequest(BaseModel):
     title: Optional[str] = None
@@ -420,67 +421,83 @@ async def create_resume(
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """Create a new resume using AI-generated LaTeX"""
-    
-    # Step 1: Long-running AI task (no db connection)
-    logger.info(f"📝 RESUMES: Generating LaTeX for template: {request.template_name}")
+    """Create a new resume with initial data"""
     try:
-        latex_content = ai_latex_generator.generate_latex(
-            template_name=request.template_name,
-            resume_data=request.resume_data.dict(),
-            job_description=request.job_description
-        )
-    except Exception as e:
-        logger.error(f"AI LaTeX generation failed: {e}")
-        raise HTTPException(status_code=500, detail="Failed to generate resume content from AI.")
-
-    logger.info("🧠 Used AI LaTeX generation")
-    
-    resume_id = str(uuid.uuid4())
-    user_id = current_user['id']
-    ai_chat_session_id = str(uuid.uuid4()) # Create a new chat session id
-
-    # Step 2: Acquire session, do DB work, and close session
-    try:
-        async with db:
-            query = text("""
-                INSERT INTO resumes (id, user_id, title, template_name, latex_content, job_description, resume_data, ai_chat_session_id)
-                VALUES (:id, :user_id, :title, :template_name, :latex_content, :job_description, :resume_data, :ai_chat_session_id)
-                RETURNING id, title, template_name, latex_content, job_description, resume_data, pdf_path, is_public, created_at, updated_at, ai_chat_session_id;
-            """)
-            
-            result = await db.execute(query, {
-                "id": resume_id,
-                "user_id": user_id,
-                "title": request.title,
-                "template_name": request.template_name,
-                "latex_content": latex_content,
-                "job_description": request.job_description,
-                "resume_data": json.dumps(request.resume_data.dict()),
-                "ai_chat_session_id": ai_chat_session_id,
-            })
-            
-            db_resume = result.fetchone()
-            await db.commit()
-
-        logger.info(f"💾 Saved AI-generated resume to database with id {db_resume.id}")
+        # Generate unique ID for the new resume
+        resume_id = str(uuid.uuid4())
         
-        return ResumeResponse(
-            id=db_resume.id,
-            title=db_resume.title,
-            template_name=db_resume.template_name,
-            latex_content=db_resume.latex_content,
-            job_description=db_resume.job_description,
-            resume_data=json.loads(db_resume.resume_data),
-            pdf_path=db_resume.pdf_path,
-            is_public=db_resume.is_public,
-            created_at=db_resume.created_at,
-            updated_at=db_resume.updated_at,
-            ai_chat_session_id=getattr(db_resume, 'ai_chat_session_id', None)
+        # Create new resume in database with basic info
+        new_resume = Resume(
+            id=resume_id,
+            user_id=current_user['id'],
+            title=request.title,
+            template_name=request.template_name,  # Use provided template, no default
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
         )
+        
+        # Step 1: Long-running AI task (no db connection)
+        logger.info(f"📝 RESUMES: Generating LaTeX for template: {request.template_name}")
+        try:
+            latex_content = ai_latex_generator.generate_latex(
+                template_name=request.template_name,
+                resume_data=request.resume_data.dict(),
+                job_description=request.job_description
+            )
+        except Exception as e:
+            logger.error(f"AI LaTeX generation failed: {e}")
+            raise HTTPException(status_code=500, detail="Failed to generate resume content from AI.")
+
+        logger.info("🧠 Used AI LaTeX generation")
+        
+        user_id = current_user['id']
+        ai_chat_session_id = str(uuid.uuid4()) # Create a new chat session id
+
+        # Step 2: Acquire session, do DB work, and close session
+        try:
+            async with db:
+                query = text("""
+                    INSERT INTO resumes (id, user_id, title, template_name, latex_content, job_description, resume_data, ai_chat_session_id)
+                    VALUES (:id, :user_id, :title, :template_name, :latex_content, :job_description, :resume_data, :ai_chat_session_id)
+                    RETURNING id, title, template_name, latex_content, job_description, resume_data, pdf_path, is_public, created_at, updated_at, ai_chat_session_id;
+                """)
+                
+                result = await db.execute(query, {
+                    "id": resume_id,
+                    "user_id": user_id,
+                    "title": request.title,
+                    "template_name": request.template_name,
+                    "latex_content": latex_content,
+                    "job_description": request.job_description,
+                    "resume_data": json.dumps(request.resume_data.dict()),
+                    "ai_chat_session_id": ai_chat_session_id,
+                })
+                
+                db_resume = result.fetchone()
+                await db.commit()
+
+            logger.info(f"💾 Saved AI-generated resume to database with id {db_resume.id}")
+            
+            return ResumeResponse(
+                id=db_resume.id,
+                title=db_resume.title,
+                template_name=db_resume.template_name,
+                latex_content=db_resume.latex_content,
+                job_description=db_resume.job_description,
+                resume_data=json.loads(db_resume.resume_data),
+                pdf_path=db_resume.pdf_path,
+                is_public=db_resume.is_public,
+                created_at=db_resume.created_at,
+                updated_at=db_resume.updated_at,
+                ai_chat_session_id=getattr(db_resume, 'ai_chat_session_id', None)
+            )
+        except Exception as e:
+            logger.error(f"Error creating resume in DB: {e}")
+            raise HTTPException(status_code=500, detail="Failed to save resume to database.")
+
     except Exception as e:
-        logger.error(f"Error creating resume in DB: {e}")
-        raise HTTPException(status_code=500, detail="Failed to save resume to database.")
+        logger.error(f"Error creating resume: {e}")
+        raise HTTPException(status_code=500, detail="Failed to create resume.")
 
 @router.get("/", response_model=List[ResumeResponse])
 async def get_user_resumes(

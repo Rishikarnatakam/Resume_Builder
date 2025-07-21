@@ -239,7 +239,11 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ resumeId }, ref) => {
 
       if (resumeResponse.ok) {
         const resume = await resumeResponse.json();
-        const resumeTemplateName = resume.template_name || 'professional_resume';
+        const resumeTemplateName = resume.template_name;
+        if (!resumeTemplateName) {
+          console.error('❌ No template name found in resume data');
+          return;
+        }
         setTemplateName(resumeTemplateName);
 
         const templateResponse = await fetch(apiConfig.url(`/templates/${resumeTemplateName}`), {
