@@ -138,7 +138,7 @@ class ChatSessionManager:
             # Send to chat session - AI remembers all previous context!
             response = chat.send_message(message_parts)
             
-            # Parse AI response - could be JSON patch or full LaTeX
+            # Parse AI response - always expect JSON patch format
             response_text = response.text.strip()
 
             # --- Token/Word Count Logging ---
@@ -156,7 +156,7 @@ class ChatSessionManager:
 
             logger.info(f"🔍 SESSION: AI response preview: {response_text[:100]}...")
             
-            # Try to parse as JSON patch first
+            # Always try to parse as JSON patch (unified approach)
             try:
                 import json
                 import re
@@ -170,45 +170,49 @@ class ChatSessionManager:
                     clean_response = re.sub(r'^```\s*', '', clean_response)
                     clean_response = re.sub(r'\s*```$', '', clean_response)
                 
-                # Try to detect and fix common JSON issues
-                if '{' in clean_response and '"type"' in clean_response:
-                    logger.info(f"🔍 SESSION: Detected potential JSON, attempting to parse...")
-                    # Extract JSON-like content
-                    start_idx = clean_response.find('{')
-                    end_idx = clean_response.rfind('}') + 1
-                    if start_idx != -1 and end_idx > start_idx:
-                        json_content = clean_response[start_idx:end_idx]
-                        logger.info(f"🔍 SESSION: Extracted JSON content: {json_content}")
+                # Extract JSON content
+                start_idx = clean_response.find('{')
+                end_idx = clean_response.rfind('}') + 1
+                if start_idx != -1 and end_idx > start_idx:
+                    json_content = clean_response[start_idx:end_idx]
+                    logger.info(f"🔍 SESSION: Extracted JSON content: {json_content}")
+                    
+                    # Parse the JSON patch
+                    patch_data = json.loads(json_content)
+                    if patch_data.get('type') == 'patch':
+                        operations = patch_data.get('operations', [])
+                        message = patch_data.get('message', 'Task completed')
                         
-                        # Try to parse the JSON
-                        patch_data = json.loads(json_content)
-                        if patch_data.get('type') == 'patch' and 'operations' in patch_data:
-                            logger.info(f"✅ SESSION: Received JSON patch with {len(patch_data['operations'])} operations")
-                            return {
-                                "success": True,
-                                "response": patch_data.get('message', 'Changes applied'),
-                                "patch_data": patch_data,
-                                "is_patch": True
-                            }
+                        logger.info(f"✅ SESSION: Received JSON patch with {len(operations)} operations")
+                        
+                        # Update conversation history in database
+                        await self._update_conversation_history(db, session, user_message, message)
+                        
+                        return {
+                            "success": True,
+                            "response": message,
+                            "patch_data": patch_data
+                        }
+                    else:
+                        logger.warning(f"⚠️ SESSION: Invalid patch format - missing 'type': {patch_data}")
+                        
             except (json.JSONDecodeError, KeyError, ValueError) as e:
-                logger.warning(f"⚠️ SESSION: Failed to parse JSON patch: {e}")
-                # Not a valid JSON patch, continue with LaTeX extraction
-                pass
+                logger.error(f"❌ SESSION: Failed to parse JSON patch: {e}")
+                logger.error(f"❌ SESSION: Raw response: {response_text}")
+                
+                # Fallback: return error message asking AI to follow format
+                return {
+                    "success": False,
+                    "response": "I had trouble understanding that request. Please try rephrasing it, and I'll respond in the proper format.",
+                    "error": f"JSON parsing failed: {str(e)}"
+                }
             
-            # Extract LaTeX and clean response (fallback for full code responses)
-            latex_code = self._extract_latex_from_response(response_text)
-            clean_response = self._clean_response_text(response_text, latex_code)
-            
-            # Update conversation history in database
-            await self._update_conversation_history(db, session, user_message, clean_response)
-            
-            logger.info(f"✅ SESSION: Message processed successfully")
-            
+            # If we get here, no valid JSON was found
+            logger.error(f"❌ SESSION: No valid JSON patch found in response")
             return {
-                "success": True,
-                "response": clean_response,
-                "modified_latex": latex_code,
-                "is_patch": False
+                "success": False,
+                "response": "I had trouble formatting my response correctly. Please try your request again.",
+                "error": "No valid JSON patch format detected"
             }
             
         except Exception as e:
@@ -305,59 +309,45 @@ class ChatSessionManager:
         return "\n".join(context_parts)
 
     def _build_simple_prompt(self, current_latex: str, user_message: str) -> str:
-        """Build simple prompt with just the essentials - AI remembers the context!"""
-        
-        # Detect type of request
-        explanation_keywords = ['why', 'what causes', 'how does', 'explain why', 'tell me why', 'what makes']
-        change_keywords = ['make', 'change', 'add', 'remove', 'modify', 'update', 'fix', 'create', 'bigger', 'smaller', 'larger', 'move', 'put']
-        
-        user_lower = user_message.lower()
-        is_explanation = any(phrase in user_lower for phrase in explanation_keywords)
-        is_change = any(word in user_lower for word in change_keywords)
-        is_tailoring = 'ats-friendly' in user_lower and 'target position' in user_lower
-        
-        instruction = ""
-        if is_tailoring:
-            instruction = "\n🚨 TAILORING REQUEST: Generate complete tailored resume AND provide a summary of key changes made. Format response as: 'I've tailored your resume for [position]! Here are the key improvements I made: • [change 1] • [change 2] • [change 3]'"
-        elif is_explanation and not is_change:
-            instruction = "\n🚨 EXPLANATION REQUEST: Provide text explanation ONLY. Do NOT include any code examples."
-        elif is_change:
-            instruction = "\n🚨 PATCH REQUEST: Return ONLY valid JSON patch. No explanations, no markdown, no other text. Just pure JSON."
+        """Build simple prompt - always request patch format for consistency"""
         
         # Split current LaTeX into numbered lines for AI reference
         latex_lines = current_latex.split('\n')
         numbered_latex = '\n'.join([f"{i+1:3d}: {line}" for i, line in enumerate(latex_lines)])
 
-        if is_change:
-            return f"""Current LaTeX code (with line numbers):
+        return f"""Current LaTeX code (with line numbers):
 ```latex
 {numbered_latex}
 ```
 
 Request: {user_message}
 
-🚨 CRITICAL: Return ONLY this JSON format (no explanations, no markdown, no other text):
-{{"type": "patch", "operations": [{{"op": "replace", "line": 8, "content": "new content here"}}], "message": "Done! Summary removed."}}
+🚨 CRITICAL: Always respond in this JSON patch format (no exceptions):
+{{"type": "patch", "operations": [...], "message": "Your response message here"}}
 
-Valid operations:
-- "replace": Change existing line content
-- "insert": Add new line after specified line number  
-- "delete": Remove specified line
+Instructions:
+- If the request requires changes to the LaTeX code, put the changes in "operations"
+- If the request is just a question or doesn't need changes, leave "operations" as an empty array []
+- Always put your response/explanation in the "message" field
+- Use natural, helpful language in the message
+
+Valid operations for LaTeX changes:
+- {{"op": "replace", "line": 8, "content": "new content here"}}
+- {{"op": "insert", "line": 8, "content": "new line to add after line 8"}}
+- {{"op": "delete", "line": 8}}
 
 IMPORTANT:
 - Line numbers are 1-indexed (first line = 1)
 - "content" must be a single string, not an array
 - For multiple lines, use multiple operations
-- Return ONLY the JSON, nothing else"""
-        else:
-            return f"""Current LaTeX code (with line numbers):
-```latex
-{numbered_latex}
-```
+- ALWAYS return valid JSON in this exact format
+- Even for questions/explanations, use this format with empty operations array
 
-Request: {user_message}{instruction}
+Examples:
+- For "Why is my margin off?": {{"type": "patch", "operations": [], "message": "Your margins look fine! They're set to 0.5 inches. If you want to change them, let me know!"}}
+- For "Make my name bold": {{"type": "patch", "operations": [{{"op": "replace", "line": 5, "content": "\\name{{\\textbf{{John Doe}}}}"}}], "message": "Done! Your name is now bold."}}
 
-Please help with this request, referring to the template and data we discussed at the start of our conversation."""
+Return ONLY the JSON, nothing else."""
 
     async def _process_image_attachment(self, image_data: str):
         """Process image for Gemini"""
@@ -463,54 +453,6 @@ Please help with this request, referring to the template and data we discussed a
         session.conversation_history = json.dumps(history)
         session.updated_at = datetime.utcnow()
         await db.commit()
-
-    def _extract_latex_from_response(self, response: str) -> Optional[str]:
-        """Extract LaTeX code from AI response"""
-        import re
-        
-        # Look for latex code blocks
-        code_block_pattern = r'```(?:latex)?\s*\n(.*?)```'
-        matches = re.findall(code_block_pattern, response, re.DOTALL)
-        if matches:
-            # PRESERVE EMPTY LINES - only strip leading/trailing whitespace from the entire block
-            return matches[0].rstrip()
-        
-        # Look for \documentclass patterns
-        doc_pattern = r'\\documentclass.*?\\end\{document\}'
-        matches = re.findall(doc_pattern, response, re.DOTALL)
-        if matches:
-            # PRESERVE EMPTY LINES - only strip leading/trailing whitespace from the entire block
-            return matches[0].rstrip()
-        
-        return None
-
-    def _clean_response_text(self, response: str, latex_code: Optional[str]) -> str:
-        """Remove LaTeX code from response to show only conversational part"""
-        import re
-        
-        if latex_code:
-            # Remove code blocks
-            response = re.sub(r'```(?:latex)?\s*\n.*?```', '', response, flags=re.DOTALL)
-            # Remove the LaTeX code itself
-            response = response.replace(latex_code, '')
-        
-        # Clean up extra whitespace
-        lines = [line.strip() for line in response.split('\n') if line.strip()]
-        cleaned_response = '\n'.join(lines)
-        
-        # If response is empty or very short after cleaning, provide a friendly response
-        if latex_code and (not cleaned_response or len(cleaned_response.strip()) < 10):
-            friendly_responses = [
-                "Perfect! I've made that change for you.",
-                "Got it! Your resume has been updated.",
-                "There you go! All set with that change.",
-                "Done! That looks much better now.",
-                "All updated! How does that look?"
-            ]
-            import random
-            return random.choice(friendly_responses)
-        
-        return cleaned_response
 
     async def get_session_info(self, db: AsyncSession, session_id: str) -> Optional[Dict[str, Any]]:
         """Get session information"""

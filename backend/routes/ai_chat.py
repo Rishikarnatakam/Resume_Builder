@@ -46,8 +46,6 @@ class ChatMessageRequest(BaseModel):
 class ChatMessageResponse(BaseModel):
     success: bool
     response: str
-    modified_latex: Optional[str] = None
-    is_patch: Optional[bool] = False
     patch_data: Optional[Dict[str, Any]] = None
     session_info: Optional[Dict[str, Any]] = None
     error: Optional[str] = None
@@ -239,8 +237,6 @@ async def send_chat_message(
         return ChatMessageResponse(
             success=response["success"],
             response=response["response"],
-            modified_latex=response.get("modified_latex"),
-            is_patch=response.get("is_patch", False),
             patch_data=response.get("patch_data"),
             session_info=updated_session_info
             )

@@ -577,38 +577,28 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ resumeId }, ref) => {
       console.log('📨 FRONTEND: Received session response:', {
         success: result.success,
         hasResponse: !!result.response,
-        hasModifiedLatex: !!result.modified_latex,
-        isPatch: !!result.is_patch,
         hasPatchData: !!result.patch_data,
-        sessionInfo: result.session_info
+        operationsCount: result.patch_data?.operations?.length || 0
       });
 
       if (result.success) {
         const assistantMessage: Message = {
           id: (Date.now() + 1).toString(),
           type: 'assistant',
-          content: result.response || 'I updated your resume.',
+          content: result.response || 'Task completed.',
           timestamp: new Date()
         };
 
         setMessages(prev => [...prev, assistantMessage]);
 
-        // Handle patch responses (new optimized format)
-        if (result.is_patch && result.patch_data) {
-          console.log('✅ FRONTEND: Received AI patch response');
-          console.log('📄 FRONTEND: Patch operations:', result.patch_data.operations?.length || 0);
+        // Always expect patch format - apply operations if any exist
+        if (result.patch_data && result.patch_data.operations && result.patch_data.operations.length > 0) {
+          console.log('✅ FRONTEND: Received AI patch with operations');
+          console.log('📄 FRONTEND: Patch operations:', result.patch_data.operations.length);
           console.log('📄 FRONTEND: Full patch data:', result.patch_data);
           editorState.receiveAIPatch(result.patch_data);
-        } else if (result.modified_latex && result.modified_latex.trim() && result.modified_latex !== editorState.originalLatex) {
-          // Handle full LaTeX responses (fallback)
-          console.log('✅ FRONTEND: Updating LaTeX editor with modified content');
-          console.log('📄 FRONTEND: LaTeX comparison - Original length:', editorState.originalLatex.length, 'Modified length:', result.modified_latex.length);
-          editorState.receiveAIResponse(result.modified_latex);
-        } else if (result.modified_latex && result.modified_latex === editorState.originalLatex) {
-          console.log('ℹ️ FRONTEND: Modified LaTeX is same as current LaTeX');
-        } else if (!result.is_patch) {
-          console.log('ℹ️ FRONTEND: No modified LaTeX in response');
-          console.log('🔍 FRONTEND: Full result object:', result);
+        } else {
+          console.log('ℹ️ FRONTEND: Received message-only response (no operations)');
         }
       } else {
         console.error('❌ FRONTEND: AI response indicates failure:', result);
