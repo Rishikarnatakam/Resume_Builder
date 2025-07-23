@@ -29,7 +29,6 @@ def extract_resume_data(file_content: bytes, filename: str) -> Dict[str, Any]:
     """
     Enhanced resume data extraction with AI-first approach
     PRIMARY: PDF → AI direct processing → Auto-fills form
-    FALLBACK: PDF → Text → AI extraction → Auto-fills form
     """
     try:
         file_extension = filename.lower().split('.')[-1]
@@ -38,16 +37,12 @@ def extract_resume_data(file_content: bytes, filename: str) -> Dict[str, Any]:
             # Primary approach: Send PDF directly to AI
             print("🤖 Attempting direct PDF-to-AI extraction...")
             ai_result = extract_resume_data_from_pdf_ai_primary(file_content, filename)
-            
             if ai_result and _validate_extraction_quality(ai_result):
                 print("✅ Direct PDF-to-AI extraction successful!")
                 return ai_result
             else:
-                print("⚠️ Direct PDF-to-AI failed or low quality, falling back to text-based approach...")
-                # Fallback to existing text-based approach
-                text = extract_text_from_pdf(file_content)
-                return parse_resume_text(text)
-                
+                print("❌ Direct PDF-to-AI failed or low quality. No fallback. Raising error.")
+                raise RuntimeError("AI PDF extraction failed or low quality.")
         elif file_extension in ['docx', 'doc']:
             text = extract_text_from_docx(file_content)
             return parse_resume_text(text)
@@ -55,7 +50,8 @@ def extract_resume_data(file_content: bytes, filename: str) -> Dict[str, Any]:
             raise ValueError(f"Unsupported file format: {file_extension}")
         
     except Exception as e:
-        logger.error(f"Error extracting resume data: {str(e)}")
+        # Commented out to reduce terminal clutter. Uncomment for debugging.
+        # logger.error(f"Error extracting resume data: {str(e)}")
         raise
 
 def extract_resume_data_from_pdf_ai_primary(file_content: bytes, filename: str) -> Dict[str, Any]:
@@ -292,6 +288,10 @@ CRITICAL INSTRUCTIONS:
             )
         ]
 
+        # Count input tokens before generation
+        client = genai.Client()
+        input_token_count = client.models.count_tokens(model=f'models/{get_gemini_model()}', contents=contents).total_tokens
+        print(f"GEMINI INPUT TOKEN COUNT: {input_token_count}")
         # Call Gemini with the most capable model for PDF processing
         response = parser.client.models.generate_content(
             model=f'models/{get_gemini_model()}',  # Use environment model
@@ -308,6 +308,10 @@ CRITICAL INSTRUCTIONS:
         
         response_text = response.text.strip()
         print(f"✅ AI PDF processing complete. Response length: {len(response_text)} characters")
+        # Count tokens in the output using the low-level, future-proof API
+        client = genai.Client()
+        token_count = client.models.count_tokens(model=f'models/{get_gemini_model()}', contents=response_text).total_tokens
+        print(f"GEMINI OUTPUT TOKEN COUNT: {token_count}")
         
         # Clean and parse JSON response
         json_data = _extract_and_validate_json(response_text)
@@ -318,12 +322,13 @@ CRITICAL INSTRUCTIONS:
             return json_data
         else:
             print("❌ AI PDF JSON parsing failed")
-            return None
+            raise RuntimeError("AI PDF JSON parsing failed.")
             
     except Exception as e:
         print(f"❌ AI PDF processing failed: {str(e)}")
-        logger.error(f"AI PDF processing error: {str(e)}")
-        return None
+        # Commented out to reduce terminal clutter. Uncomment for debugging.
+        # logger.error(f"AI PDF processing error: {str(e)}")
+        raise
 
 def _validate_extraction_quality(data: Dict[str, Any]) -> bool:
     """
@@ -417,7 +422,8 @@ def extract_text_from_pdf(file_content: bytes) -> str:
                     text += page_text + "\n"
                 
     except Exception as e:
-        logger.error(f"Error extracting text from PDF: {str(e)}")
+        # Commented out to reduce terminal clutter. Uncomment for debugging.
+        # logger.error(f"Error extracting text from PDF: {str(e)}")
         raise
     
     print(f"📋 Total extracted text: {len(text)} characters from PDF")
@@ -438,7 +444,8 @@ def extract_text_from_docx(file_content: bytes) -> str:
         return text.strip()
         
     except Exception as e:
-        logger.error(f"Error extracting text from DOCX: {str(e)}")
+        # Commented out to reduce terminal clutter. Uncomment for debugging.
+        # logger.error(f"Error extracting text from DOCX: {str(e)}")
         raise
 
 def parse_resume_text(text: str) -> Dict[str, Any]:
@@ -558,6 +565,10 @@ CRITICAL ATS-FRIENDLY INSTRUCTIONS:
 11. Always prioritize content over section names for maximum ATS compatibility"""
 
         # Use AI with optimal settings for comprehensive extraction
+        # Count input tokens before generation
+        client = genai.Client()
+        input_token_count = client.models.count_tokens(model=f'models/{get_gemini_model()}', contents=prompt).total_tokens
+        print(f"GEMINI INPUT TOKEN COUNT: {input_token_count}")
         response = parser.client.models.generate_content(
             model=f'models/{get_gemini_model()}',
             contents=prompt,
@@ -573,6 +584,10 @@ CRITICAL ATS-FRIENDLY INSTRUCTIONS:
         
         response_text = response.text.strip()
         print(f"✅ AI processing complete. Response length: {len(response_text)} characters")
+        # Count tokens in the output using the low-level, future-proof API
+        client = genai.Client()
+        token_count = client.models.count_tokens(model=f'models/{get_gemini_model()}', contents=response_text).total_tokens
+        print(f"GEMINI OUTPUT TOKEN COUNT: {token_count}")
         
         # Clean and parse JSON response
         json_data = _extract_and_validate_json(response_text)
@@ -582,12 +597,13 @@ CRITICAL ATS-FRIENDLY INSTRUCTIONS:
             _log_extraction_summary(json_data)
             return json_data
         else:
-            print("❌ AI JSON parsing failed, using fallback")
-            return _create_basic_fallback(text)
+            print("❌ AI JSON parsing failed. No fallback. Raising error.")
+            raise RuntimeError("AI JSON parsing failed.")
             
     except Exception as e:
-        print(f"❌ AI parsing failed: {str(e)}")
-        return _create_basic_fallback(text)
+        # Commented out to reduce terminal clutter. Uncomment for debugging.
+        # print(f"❌ AI parsing failed: {str(e)}")
+        raise
 
 def _extract_and_validate_json(response_text: str) -> Dict[str, Any]:
     """Extract and validate JSON from AI response"""
@@ -622,164 +638,3 @@ def _log_extraction_summary(data: Dict[str, Any]) -> None:
     print(f"   🚀 Projects: {len(data.get('projects', []))} items")
     print(f"   🏆 Awards: {len(data.get('awards', []))} items")
     print(f"   📜 Certifications: {len(data.get('certifications', []))} items")
-
-def _create_basic_fallback(text: str) -> Dict[str, Any]:
-    """Create basic fallback structure if AI fails"""
-    print("🔄 Creating basic fallback structure...")
-    
-    # Extract basic info with regex
-    email_pattern = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
-    email_match = re.search(email_pattern, text)
-    
-    lines = [line.strip() for line in text.split('\n') if line.strip()]
-    name = lines[0] if lines else ""
-    
-    return {
-        "personalInfo": {
-            "name": name,
-            "email": email_match.group(0) if email_match else "",
-        "phone": "",
-            "address": "",
-            "linkedin": "",
-            "website": "",
-            "github": ""
-        },
-        "summary": "Professional summary from uploaded resume",
-        "experience": [],
-        "education": [],
-        "skills": [],
-        "projects": [],
-        "awards": [],
-        "certifications": [],
-        "languages": [],
-        "additional_sections": []
-    }
-
-def extract_resume_data_from_pdf_ai(file_content: bytes, filename: str) -> dict:
-    """
-    BACKUP FUNCTION: Extract resume data by sending the entire PDF file to Gemini AI for parsing.
-    This is the original implementation kept as backup.
-    """
-    try:
-        parser = CVParser()  # Uses your existing Gemini client
-
-        # Compose the prompt with intelligent mapping
-        prompt = (
-            "You are an expert resume parser with INTELLIGENT SECTION MAPPING capabilities. Extract ALL information from this resume PDF and map it to standardized structure, regardless of how sections are named.\n\n"
-            "INTELLIGENT MAPPING RULES:\n"
-            "1. Different resumes use different names for the same content. Map intelligently:\n"
-            "   - \"Achievements\" = \"Awards\" = \"Honors\" = \"Recognitions\" = \"Accomplishments\" → map to \"awards\"\n"
-            "   - \"Experience\" = \"Work History\" = \"Employment\" = \"Professional Experience\" = \"Career\" → map to \"experience\"\n"
-            "   - \"Skills\" = \"Competencies\" = \"Technical Skills\" = \"Proficiencies\" = \"Expertise\" → map to \"skills\"\n"
-            "   - \"Projects\" = \"Portfolio\" = \"Work Samples\" = \"Personal Projects\" = \"Side Projects\" → map to \"projects\"\n"
-            "   - \"Education\" = \"Academic Background\" = \"Qualifications\" = \"Learning\" → map to \"education\"\n"
-            "   - \"Certifications\" = \"Licenses\" = \"Credentials\" = \"Professional Certifications\" → map to \"certifications\"\n"
-            "   - \"Languages\" = \"Language Skills\" = \"Linguistic Abilities\" → map to \"languages\"\n\n"
-            "2. COMPREHENSIVE EXTRACTION: Extract ALL content regardless of section names\n"
-            "3. FLEXIBLE CATEGORIZATION: If content doesn't fit standard categories, intelligently assign to closest match\n"
-            "4. PRESERVE CONTENT: Extract actual text - don't create or paraphrase\n\n"
-            "Return EXACTLY this JSON structure (fill all available fields, use empty string \"\" or empty array [] if not found):\n"
-            "{\n"
-            "    \"personalInfo\": {\n"
-            "        \"name\": \"Full name of person\",\n"
-            "        \"email\": \"Email address\", \n"
-            "        \"phone\": \"Phone number\",\n"
-            "        \"address\": \"Full address/location\",\n"
-            "        \"linkedin\": \"LinkedIn URL or username\",\n"
-            "        \"website\": \"Personal website URL\",\n"
-            "        \"github\": \"GitHub URL or username\"\n"
-            "    },\n"
-            "    \"summary\": \"Professional summary/objective (extract actual text, don't create)\",\n"
-            "    \"experience\": [\n"
-            "        {\n"
-            "            \"company\": \"Company name\",\n"
-            "            \"position\": \"Job title\", \n"
-            "            \"location\": \"Work location\",\n"
-            "            \"startDate\": \"Start date\",\n"
-            "            \"endDate\": \"End date or Present\",\n"
-            "            \"current\": true/false,\n"
-            "            \"description\": \"Detailed job description and achievements\"\n"
-            "        }\n"
-            "    ],\n"
-            "    \"education\": [\n"
-            "        {\n"
-            "            \"institution\": \"School/University name\",\n"
-            "            \"degree\": \"Degree type\",\n"
-            "            \"field\": \"Field of study/Major\",\n"
-            "            \"location\": \"School location\", \n"
-            "            \"startDate\": \"Start date\",\n"
-            "            \"endDate\": \"End date\",\n"
-            "            \"gpa\": \"GPA if mentioned\"\n"
-            "        }\n"
-            "    ],\n"
-            "    \"skills\": [\"skill1\", \"skill2\", \"skill3\"],\n"
-            "    \"projects\": [\n"
-            "        {\n"
-            "            \"name\": \"Project name\",\n"
-            "            \"description\": \"Project description\",\n"
-            "            \"technologies\": [\"tech1\", \"tech2\"],\n"
-            "            \"url\": \"Project URL if available\",\n"
-            "            \"github\": \"GitHub URL if available\",\n"
-            "            \"startDate\": \"Start date if available\",\n"
-            "            \"endDate\": \"End date if available\"\n"
-            "        }\n"
-            "    ],\n"
-            "    \"awards\": [\n"
-            "        {\n"
-            "            \"title\": \"Award title\",\n"
-            "            \"description\": \"Award description\", \n"
-            "            \"date\": \"Date received\"\n"
-            "        }\n"
-            "    ],\n"
-            "    \"certifications\": [\n"
-            "        {\n"
-            "            \"name\": \"Certification name\",\n"
-            "            \"issuer\": \"Issuing organization\",\n"
-            "            \"date\": \"Date received\",\n"
-            "            \"expiryDate\": \"Expiry date if applicable\"\n"
-            "        }\n"
-            "    ],\n"
-            "    \"languages\": [\"Language1\", \"Language2\"]\n"
-            "}\n"
-            "CRITICAL: Map intelligently - understand context over labels. Extract ALL content. Skills as flat array. Return ONLY valid JSON, no explanations or markdown."
-        )
-
-        # Prepare the contents: prompt as text, PDF as binary data
-        contents = [
-            types.Content(
-                parts=[
-                    types.Part(text=prompt),
-                    types.Part(inline_data=types.Blob(data=file_content, mime_type="application/pdf"))
-                ],
-                role="user"
-            )
-        ]
-
-        # Call Gemini (use a model that supports PDF input)
-        response = parser.client.models.generate_content(
-            model=f'models/{get_gemini_model()}',  # Use environment model
-            contents=contents,
-            config=types.GenerateContentConfig(
-                temperature=0.0,  # Deterministic for PDF parsing
-                top_p=0.95,  # High precision for structured data extraction
-                top_k=20,  # Limited vocabulary for JSON consistency
-                max_output_tokens=16384,  # Higher limit for PDF content
-                response_mime_type="application/json",  # Ensure JSON output
-                system_instruction="You are a precise resume parser. Extract ALL information comprehensively and return only valid JSON for form auto-filling."
-            )
-        )
-
-        response_text = response.text.strip()
-        # Use your existing _extract_and_validate_json() to parse the result
-        json_data = _extract_and_validate_json(response_text)
-        if json_data:
-            print("🎉 Successfully parsed resume PDF with AI!")
-            _log_extraction_summary(json_data)
-            return json_data
-        else:
-            print("❌ AI JSON parsing failed for PDF, using fallback")
-            return _create_basic_fallback("")
-
-    except Exception as e:
-        print(f"❌ AI PDF parsing failed: {str(e)}")
-        return _create_basic_fallback("")

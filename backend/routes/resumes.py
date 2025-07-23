@@ -455,29 +455,25 @@ async def create_resume(
 
         # Step 2: Acquire session, do DB work, and close session
         try:
-            async with db:
-                query = text("""
-                    INSERT INTO resumes (id, user_id, title, template_name, latex_content, job_description, resume_data, ai_chat_session_id)
-                    VALUES (:id, :user_id, :title, :template_name, :latex_content, :job_description, :resume_data, :ai_chat_session_id)
-                    RETURNING id, title, template_name, latex_content, job_description, resume_data, pdf_path, is_public, created_at, updated_at, ai_chat_session_id;
-                """)
-                
-                result = await db.execute(query, {
-                    "id": resume_id,
-                    "user_id": user_id,
-                    "title": request.title,
-                    "template_name": request.template_name,
-                    "latex_content": latex_content,
-                    "job_description": request.job_description,
-                    "resume_data": json.dumps(request.resume_data.dict()),
-                    "ai_chat_session_id": ai_chat_session_id,
-                })
-                
-                db_resume = result.fetchone()
-                await db.commit()
+            query = text("""
+                INSERT INTO resumes (id, user_id, title, template_name, latex_content, job_description, resume_data, ai_chat_session_id)
+                VALUES (:id, :user_id, :title, :template_name, :latex_content, :job_description, :resume_data, :ai_chat_session_id)
+                RETURNING id, title, template_name, latex_content, job_description, resume_data, pdf_path, is_public, created_at, updated_at, ai_chat_session_id;
+            """)
+            result = await db.execute(query, {
+                "id": resume_id,
+                "user_id": user_id,
+                "title": request.title,
+                "template_name": request.template_name,
+                "latex_content": latex_content,
+                "job_description": request.job_description,
+                "resume_data": json.dumps(request.resume_data.dict()),
+                "ai_chat_session_id": ai_chat_session_id,
+            })
+            db_resume = result.fetchone()
+            await db.commit()
 
             logger.info(f"💾 Saved AI-generated resume to database with id {db_resume.id}")
-            
             return ResumeResponse(
                 id=db_resume.id,
                 title=db_resume.title,

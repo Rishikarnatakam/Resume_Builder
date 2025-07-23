@@ -2,8 +2,8 @@ import json
 import logging
 from pathlib import Path
 from typing import Dict, Any, Optional
-import google.generativeai as genai
-from google.generativeai.types import HarmCategory, HarmBlockThreshold
+from google import genai
+from google.genai.types import HarmCategory, HarmBlockThreshold, GenerateContentConfig
 from utils.config import Config
 from utils.prompt_composer import prompt_composer
 
@@ -19,12 +19,8 @@ class AILatexGenerator:
     def __init__(self):
         self.config = Config()
         
-        # Configure Gemini API
-        genai.configure(api_key=self.config.GEMINI_API_KEY)
-        
         # Use model from environment variable
-        model_name = self.config.get_gemini_model()
-        self.model = genai.GenerativeModel(model_name)
+        self.model_name = self.config.get_gemini_model()
         self.generation_config = {
             'temperature': 0.1,
             'top_k': 30,
@@ -32,24 +28,6 @@ class AILatexGenerator:
         }
         
         # Simple safety settings
-        self.safety_settings = [
-            {
-                "category": HarmCategory.HARM_CATEGORY_HARASSMENT,
-                "threshold": HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-            },
-            {
-                "category": HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-                "threshold": HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-            },
-            {
-                "category": HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-                "threshold": HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-            },
-            {
-                "category": HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-                "threshold": HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-            },
-        ]
 
     def generate_latex(self, 
                       template_name: str, 
@@ -59,7 +37,8 @@ class AILatexGenerator:
         Generate LaTeX using the new modular prompt system
         """
         try:
-            logger.info(f"🚀 Generating LaTeX for template: {template_name}")
+            # Commented out to reduce terminal clutter. Uncomment for debugging.
+            # logger.info(f"🚀 Generating LaTeX for template: {template_name}")
             
             # Use prompt composer to build clean, modular prompt
             prompt = prompt_composer.build_generation_prompt(
@@ -67,21 +46,33 @@ class AILatexGenerator:
                 user_data=resume_data,
                 job_description=job_description
             )
-            
-            # Generate with Gemini
-            response = self.model.generate_content(
-                prompt,
-                generation_config=self.generation_config,
-                safety_settings=self.safety_settings
+            # Use new genai.Client for generation
+            client = genai.Client(api_key=self.config.GEMINI_API_KEY)
+            response = client.models.generate_content(
+                model=f"models/{self.model_name}",
+                contents=prompt,
+                config=GenerateContentConfig(
+                    temperature=0.1,
+                    top_k=30,
+                    max_output_tokens=12288
+                )
             )
-            
+            # Log input and output token counts
+            usage = getattr(response, 'usage_metadata', None)
+            if usage:
+                # Only leave Gemini token count prints
+                print(f"GEMINI INPUT TOKEN COUNT: {usage.prompt_token_count}")
+                print(f"GEMINI OUTPUT TOKEN COUNT: {usage.candidates_token_count}")
+            else:
+                print("GEMINI USAGE METADATA NOT AVAILABLE")
             # Clean and return the response
             latex_code = self._clean_response(response.text)
-            logger.info("✅ LaTeX generation successful")
+            # logger.info("✅ LaTeX generation successful")
             return latex_code
-            
         except Exception as e:
-            logger.error(f"❌ LaTeX generation failed: {str(e)}")
+            # logger.error(f"❌ LaTeX generation failed: {str(e)}")
+            # logger.error(f"AI LaTeX generation failed: {e}")
+            # logger.info("🧠 Used AI LaTeX generation")
             raise Exception(f"Failed to generate LaTeX: {str(e)}")
 
     def _clean_response(self, response_text: str) -> str:

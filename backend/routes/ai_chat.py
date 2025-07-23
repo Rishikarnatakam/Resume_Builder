@@ -15,10 +15,12 @@ import uuid
 import asyncio
 from datetime import datetime, timedelta
 
-from database import get_db
+from database import get_db, get_user_subscription, update_user_subscription, UserSubscription
 from routes.auth import get_current_user
 from services.session_manager import session_manager
 from utils.config import get_gemini_model
+from sqlalchemy.future import select
+from datetime import datetime
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -54,35 +56,6 @@ class SessionInfoResponse(BaseModel):
     success: bool
     session_info: Optional[Dict[str, Any]] = None
     error: Optional[str] = None
-
-# Legacy chat endpoint for backward compatibility
-class LegacyChatRequest(BaseModel):
-    message: str
-    current_latex: str
-    conversation_history: List[dict] = []
-    template_name: str  # Remove default
-    template_content: Optional[str] = None
-    image_data: Optional[str] = None
-    image_type: Optional[str] = None
-
-@router.post("/chat")
-async def legacy_chat_redirect(
-    request: LegacyChatRequest,
-    current_user: dict = Depends(get_current_user)
-):
-    """
-    Legacy chat endpoint - redirects to session-based approach
-    Provides migration path for existing frontend
-    """
-    return {
-        "success": False,
-        "error": "Please upgrade to session-based chat",
-        "migration_guide": {
-            "step_1": "Call POST /api/ai/session/start with resume_id and form_data",
-            "step_2": "Use returned session_id for POST /api/ai/session/message",
-            "benefits": "75% cost savings + persistent memory"
-        }
-    }
 
 @router.post("/session/start", response_model=SessionStartResponse)
 async def start_chat_session(
@@ -206,6 +179,23 @@ async def send_chat_message(
         else:
             logger.info(f"📄 AI_CHAT: No PDF data received")
         
+        # --- Message Quota Enforcement ---
+        user_id = current_user['id']
+        subscription = await get_user_subscription(user_id, db)
+
+        if not subscription:
+            raise HTTPException(
+                status_code=status.HTTP_402_PAYMENT_REQUIRED,
+                detail="You need to purchase a message pack to send messages."
+            )
+        
+        if subscription.messages_used >= subscription.message_quota:
+            raise HTTPException(
+                status_code=status.HTTP_402_PAYMENT_REQUIRED,
+                detail="You have exhausted your message quota. Please buy a new message pack."
+            )
+        # --- End Message Quota Enforcement ---
+
         # Validate session belongs to user
         session_info = await session_manager.get_session_info(db, request.session_id)
         if not session_info:
@@ -232,17 +222,23 @@ async def send_chat_message(
             image_data=request.image_data,
             pdf_data=request.pdf_data
         )
-        
+
         # Get updated session info
         updated_session_info = await session_manager.get_session_info(db, request.session_id)
-        
+
+        # IMPORTANT: Increment message count ONLY if the AI response was successful
+        if response["success"]:
+            await update_user_subscription(db, subscription.id, messages_used=subscription.messages_used + 1)
+            updated_sub = await get_user_subscription(user_id, db)
+            logger.info(f"Incremented message count for user {user_id}. Used: {updated_sub.messages_used}/{updated_sub.message_quota}")
+
         return ChatMessageResponse(
             success=response["success"],
             response=response["response"],
             patch_data=response.get("patch_data"),
             session_info=updated_session_info
-            )
-            
+        )
+        
     except HTTPException:
         raise
     except Exception as e:

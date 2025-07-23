@@ -9,6 +9,7 @@ import Dashboard from './pages/Dashboard';
 import CreateResume from './pages/CreateResume';
 import ResumeDetails from './pages/ResumeDetails';
 import Editor from './pages/Editor';
+import Billing from './pages/Billing'; // Import the new Billing page
 import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
@@ -54,6 +55,14 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <Editor />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/billing"
+                element={
+                  <ProtectedRoute>
+                    <Billing />
                   </ProtectedRoute>
                 }
               />

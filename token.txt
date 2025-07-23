@@ -1,0 +1,17 @@
+
+Step	                  Input Tokens	 Output Tokens
+Session Initialization	      6,249	          —
+LaTeX Generation	          4,648	        1,320
+PDF Parsing	                  2,980	        1,799
+Total so far	              13,877	    3,119
+
+2122  45
+2175  179
+2180  118
+2180  160
+2162  270
+2160  66
+2160  231
+2201  597
+2456  206
+2200  206

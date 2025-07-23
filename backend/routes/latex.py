@@ -67,9 +67,11 @@ async def compile_latex(
                     "-interaction=nonstopmode",
                     "-output-directory", temp_dir,
                     tex_file
-                ], capture_output=True, text=True, timeout=30)
+                ], capture_output=True, text=True, timeout=30, encoding='utf-8', errors='replace')
                 
-                log_output = result.stdout + result.stderr
+                stdout = result.stdout or ""
+                stderr = result.stderr or ""
+                log_output = stdout + stderr
                 
                 # Check if PDF was generated
                 pdf_file = os.path.join(temp_dir, f"{file_id}.pdf")
@@ -77,7 +79,7 @@ async def compile_latex(
                     # Create meaningful filename (clean for HTTP header)
                     meaningful_filename = create_pdf_filename_from_title(request.resume_title) if request.resume_title else "resume"
                     # Ensure filename is ASCII safe for headers
-                    safe_filename = re.sub(r'[^\w\-_.]', '_', meaningful_filename)
+                    safe_filename = safe_ascii(meaningful_filename)
                     
                     # Read PDF content into memory
                     with open(pdf_file, 'rb') as f:
@@ -88,7 +90,7 @@ async def compile_latex(
                         iter([pdf_content]),
                         media_type="application/pdf",
                         headers={
-                            "Content-Disposition": f"inline; filename=\"{safe_filename}.pdf\"",
+                            "Content-Disposition": f'inline; filename="{safe_filename}.pdf"',
                             "X-Filename": f"{safe_filename}.pdf",
                             "X-Success": "true"
                         }
@@ -102,7 +104,7 @@ async def compile_latex(
                         media_type="application/pdf",
                         headers={
                             "X-Success": "false",
-                            "X-Error": "PDF_generation_failed"
+                            "X-Error": safe_ascii("PDF_generation_failed")
                         }
                     )
                     
@@ -113,7 +115,7 @@ async def compile_latex(
                     media_type="application/pdf",
                     headers={
                         "X-Success": "false",
-                        "X-Error": "Compilation_timeout"
+                        "X-Error": safe_ascii("Compilation_timeout")
                     }
                 )
             except Exception as e:
@@ -121,7 +123,7 @@ async def compile_latex(
                 tb = traceback.format_exc()
                 print("[LaTeX Compile Exception]", tb)
                 # Clean error message for header safety
-                safe_error = re.sub(r'[^\w\s\-_.]', '_', str(e))[:100]
+                safe_error = safe_ascii(str(e))[:100]
                 return StreamingResponse(
                     iter([b""]),
                     media_type="application/pdf",
@@ -136,7 +138,7 @@ async def compile_latex(
         import traceback
         tb = traceback.format_exc()
         print("[Function Exception]", tb)
-        safe_error = re.sub(r'[^\w\s\-_.]', '_', str(e))[:100]
+        safe_error = safe_ascii(str(e))[:100]
         return StreamingResponse(
             iter([b""]),
             media_type="application/pdf",
@@ -377,3 +379,6 @@ async def validate_latex(
         "errors": errors,
         "warnings": warnings
     } 
+
+def safe_ascii(s):
+    return re.sub(r'[^\x00-\x7F]+', '_', s) 

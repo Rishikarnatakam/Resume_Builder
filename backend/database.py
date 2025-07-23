@@ -1,15 +1,24 @@
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
-from sqlalchemy import String, DateTime, Text, Boolean
+from sqlalchemy import String, DateTime, Text, Boolean, Integer, UniqueConstraint, select, cast
+from sqlalchemy.dialects.postgresql import UUID
 from datetime import datetime
 import os
 from utils.config import config
+import uuid
 
 # Database URL - read from environment
 DATABASE_URL = config.DATABASE_URL
 
 # Create async engine
-engine = create_async_engine(DATABASE_URL, echo=True, pool_recycle=300, pool_pre_ping=True)
+engine = create_async_engine(
+    DATABASE_URL,
+    # echo=True,  # Commented out to reduce SQL logging clutter. Uncomment to enable.
+    pool_recycle=300,
+    pool_pre_ping=True,
+    pool_size=15,
+    max_overflow=20
+)
 SessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 class Base(DeclarativeBase):
@@ -47,6 +56,71 @@ class AIChatSession(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+def _ensure_uuid(val):
+    if isinstance(val, uuid.UUID):
+        return val
+    # Handle asyncpg.pgproto.pgproto.UUID (has 'uuid' attribute)
+    if hasattr(val, 'uuid'):
+        return val.uuid
+    return uuid.UUID(str(val))
+
+class UserSubscription(Base):
+    __tablename__ = "user_subscriptions"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), index=True)
+    razorpay_order_id: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)  # renamed
+    plan_id: Mapped[str] = mapped_column(String(50), nullable=False)
+    messages_used: Mapped[int] = mapped_column(Integer, default=0)
+    message_quota: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    __table_args__ = (UniqueConstraint('user_id', name='_user_id_uc'),)
+
+async def get_user_subscription(user_id: str, db: AsyncSession) -> UserSubscription | None:
+    user_id_uuid = _ensure_uuid(user_id)
+    stmt = select(UserSubscription).where(
+        UserSubscription.user_id == user_id_uuid
+    )
+    result = await db.execute(stmt)
+    return result.scalar_one_or_none()
+
+async def create_user_subscription(
+    db: AsyncSession,
+    user_id: str,
+    razorpay_order_id: str,
+    plan_id: str,
+    message_quota: int,
+) -> UserSubscription:
+    user_id_uuid = _ensure_uuid(user_id)
+    new_subscription = UserSubscription(
+        user_id=user_id_uuid,
+        razorpay_order_id=razorpay_order_id,
+        plan_id=plan_id,
+        message_quota=message_quota
+    )
+    db.add(new_subscription)
+    await db.commit()
+    await db.refresh(new_subscription)
+    return new_subscription
+
+async def update_user_subscription(
+    db: AsyncSession,
+    subscription_id: str,
+    **kwargs
+) -> UserSubscription | None:
+    sub_id_uuid = _ensure_uuid(subscription_id)
+    stmt = select(UserSubscription).where(UserSubscription.id == sub_id_uuid)
+    result = await db.execute(stmt)
+    subscription = result.scalar_one_or_none()
+
+    if subscription:
+        for key, value in kwargs.items():
+            setattr(subscription, key, value)
+        await db.commit()
+        await db.refresh(subscription)
+    return subscription
 
 # Dependency to get database session
 async def get_db():

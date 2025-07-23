@@ -13,7 +13,7 @@ import {
   CheckIcon
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../hooks/useAuth';
-import { apiConfig, apiRequest } from '../config/api';
+import { apiConfig, apiRequest, getCurrentSubscription } from '../config/api';
 import Logo from '../components/Logo';
 
 interface Resume {
@@ -31,10 +31,12 @@ const Dashboard: React.FC = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState('');
   const [templates, setTemplates] = useState<any[]>([]);
+  const [messagesRemaining, setMessagesRemaining] = useState<number | null>(null);
 
   useEffect(() => {
     fetchResumes();
     fetchTemplates();
+    fetchMessageBalance();
   }, []);
 
   const fetchTemplates = async () => {
@@ -121,6 +123,17 @@ const Dashboard: React.FC = () => {
     }
   };
 
+  const fetchMessageBalance = async () => {
+    try {
+      const sub = await getCurrentSubscription();
+      const used = sub?.messages_used || 0;
+      const quota = sub?.message_quota || 0;
+      setMessagesRemaining(quota - used);
+    } catch (err) {
+      setMessagesRemaining(null);
+    }
+  };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -150,10 +163,21 @@ const Dashboard: React.FC = () => {
           </div>
 
           <div className="flex items-center space-x-6">
-            <div className="flex items-center space-x-2 text-sm text-gray-400">
+            <span className="flex items-center space-x-2 text-sm text-gray-400">
               <UserIcon className="w-4 h-4" />
-              <span className="full-name-text">{user?.full_name}</span>
-            </div>
+              <span className="full-name-text hover:text-white transition-colors">{user?.full_name}</span>
+            </span>
+            {messagesRemaining !== null && (
+              <span className={`text-base font-semibold ${messagesRemaining > 6 ? 'text-green-400' : messagesRemaining > 3 ? 'text-yellow-400' : 'text-red-400'}`}>AI messages left: {messagesRemaining}</span>
+            )}
+            <Link
+              to="/billing"
+              className="px-4 py-2 rounded-3xl text-sm transition-colors text-gray-400 hover:text-white"
+              style={{ backgroundColor: '#000000' }}
+              title="Go to Billing to buy more messages"
+            >
+              Billing
+            </Link>
             <button
               onClick={logout}
               className="text-gray-400 hover:text-white transition-colors text-sm"
@@ -176,10 +200,6 @@ const Dashboard: React.FC = () => {
           </div>
           
           <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-2 text-gray-400 bg-gray-800/30 px-6 py-3 rounded-3xl">
-              <DocumentTextIcon className="w-5 h-5" />
-              <span className="font-medium">{resumes.length} resume{resumes.length !== 1 ? 's' : ''}</span>
-            </div>
             <Link
               to="/create"
               className="text-white px-6 py-3 rounded-3xl font-medium hover:opacity-90 transition-all flex items-center space-x-2"

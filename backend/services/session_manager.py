@@ -8,6 +8,10 @@ import json
 from datetime import datetime
 from typing import Dict, Any, Optional, AsyncGenerator
 import google.generativeai as genai
+import os
+# Set the global API key for GenerativeModel API
+API_KEY = os.getenv("GEMINI_API_KEY")
+genai.configure(api_key=API_KEY)
 from sqlalchemy.ext.asyncio import AsyncSession
 import base64
 
@@ -23,6 +27,7 @@ class ChatSessionManager:
     def __init__(self):
         self.model_name = get_gemini_model()
         self.active_chats = {}  # Store active chat sessions
+        self.active_models = {}  # Store model instances for each session
         
     async def create_session(
         self, 
@@ -36,13 +41,14 @@ class ChatSessionManager:
         template_name: str = None  # Add template_name as explicit argument
     ) -> str:
         """Create chat session with context set ONCE"""
-        logger.info(f"🚀 SESSION: Creating chat session for resume {resume_id}")
+        # Commented out to reduce terminal clutter. Uncomment for debugging.
+        # logger.info(f"🚀 SESSION: Creating chat session for resume {resume_id}")
         
         # Use the template_name passed from the frontend (trust the client)
         if not template_name:
             logger.error(f"❌ SESSION: No template_name provided!")
             raise Exception("No template_name provided for session creation")
-        logger.info(f"✅ SESSION: Using template_name from request: {template_name}")
+        # logger.info(f"✅ SESSION: Using template_name from request: {template_name}")
         
         # Build initial context using prompt composer
         initial_context = self._build_initial_context(
@@ -71,6 +77,7 @@ class ChatSessionManager:
         
         # Store chat session in memory
         self.active_chats[session_id] = chat
+        self.active_models[session_id] = model
         
         # Store session in database
         session = AIChatSession(
@@ -88,7 +95,7 @@ class ChatSessionManager:
         db.add(session)
         await db.commit()
         
-        logger.info(f"✅ SESSION: Created session {session_id}")
+        # logger.info(f"✅ SESSION: Created session {session_id}")
         return session_id
 
     async def send_message(
@@ -101,7 +108,7 @@ class ChatSessionManager:
         pdf_data: Optional[str] = None
     ) -> Dict[str, Any]:
         """Send message using native chat session - NO massive context!"""
-        logger.info(f"💬 SESSION: Processing message in session {session_id}")
+        # logger.info(f"💬 SESSION: Processing message in session {session_id}")
         
         # Get session from database
         session = await self._get_session(db, session_id)
@@ -110,10 +117,14 @@ class ChatSessionManager:
         
         # Get chat from memory
         chat = self.active_chats.get(session_id)
+        model = self.active_models.get(session_id)
         if not chat:
             # Reconstruct chat from conversation history if needed
             chat = await self._reconstruct_chat(session)
             self.active_chats[session_id] = chat
+            # Also reconstruct the model
+            model = genai.GenerativeModel(self.model_name)
+            self.active_models[session_id] = model
         
         # Build simple prompt - just the essentials!
         simple_prompt = self._build_simple_prompt(current_latex, user_message)
@@ -126,21 +137,26 @@ class ChatSessionManager:
                 # Process image
                 processed_image = await self._process_image_attachment(image_data)
                 message_parts.append(processed_image)
-                logger.info("📸 SESSION: Added image to message")
+                # logger.info("📸 SESSION: Added image to message")
             
             if pdf_data:
                 # Process PDF  
                 processed_pdf = await self._process_pdf_attachment(pdf_data)
                 if processed_pdf:
                     message_parts.append(processed_pdf)
-                logger.info("📄 SESSION: Added PDF to message")
+                # logger.info("📄 SESSION: Added PDF to message")
             
+            # Print the exact prompt sent to Gemini for chat messages
+            print("==== GEMINI CHAT PROMPT START ====")
+            print(simple_prompt)
+            print("==== GEMINI CHAT PROMPT END ====")
             # Send to chat session - AI remembers all previous context!
             response = chat.send_message(message_parts)
-            
-            # Parse AI response - always expect JSON patch format
             response_text = response.text.strip()
-
+            print("==== GEMINI CHAT RESPONSE START ====")
+            print(response_text)
+            print("==== GEMINI CHAT RESPONSE END ====")
+            
             # --- Token/Word Count Logging ---
             def simple_token_word_count(text):
                 cleaned = text.replace('\n', ' ').replace('\r', ' ').strip()
@@ -154,61 +170,45 @@ class ChatSessionManager:
             simple_token_word_count(response_text)
             # --- End Logging ---
 
-            logger.info(f"🔍 SESSION: AI response preview: {response_text[:100]}...")
-            
-            # Always try to parse as JSON patch (unified approach)
-            try:
-                import json
-                import re
-                
-                # Clean up response text - remove markdown formatting if present
-                clean_response = response_text
-                if clean_response.startswith('```json'):
-                    clean_response = re.sub(r'^```json\s*', '', clean_response)
-                    clean_response = re.sub(r'\s*```$', '', clean_response)
-                elif clean_response.startswith('```'):
-                    clean_response = re.sub(r'^```\s*', '', clean_response)
-                    clean_response = re.sub(r'\s*```$', '', clean_response)
-                
-                # Extract JSON content
-                start_idx = clean_response.find('{')
-                end_idx = clean_response.rfind('}') + 1
-                if start_idx != -1 and end_idx > start_idx:
-                    json_content = clean_response[start_idx:end_idx]
-                    logger.info(f"🔍 SESSION: Extracted JSON content: {json_content}")
-                    
-                    # Parse the JSON patch
-                    patch_data = json.loads(json_content)
-                    if patch_data.get('type') == 'patch':
-                        operations = patch_data.get('operations', [])
-                        message = patch_data.get('message', 'Task completed')
-                        
-                        logger.info(f"✅ SESSION: Received JSON patch with {len(operations)} operations")
-                        
-                        # Update conversation history in database
-                        await self._update_conversation_history(db, session, user_message, message)
-                        
-                        return {
-                            "success": True,
-                            "response": message,
-                            "patch_data": patch_data
-                        }
-                    else:
-                        logger.warning(f"⚠️ SESSION: Invalid patch format - missing 'type': {patch_data}")
-                        
-            except (json.JSONDecodeError, KeyError, ValueError) as e:
-                logger.error(f"❌ SESSION: Failed to parse JSON patch: {e}")
-                logger.error(f"❌ SESSION: Raw response: {response_text}")
-                
-                # Fallback: return error message asking AI to follow format
+            # --- Robust JSON Extraction ---
+            import re
+            import json
+            def escape_backslashes(s):
+                # Replace single backslashes not already doubled or part of an escape
+                return re.sub(r'(?<!\\)\\(?![\\"/bfnrtu])', r'\\\\', s)
+            clean_response = response_text.strip()
+            # Remove code block markers if present
+            clean_response = re.sub(r'^```json\s*', '', clean_response, flags=re.IGNORECASE)
+            clean_response = re.sub(r'^```\s*', '', clean_response)
+            clean_response = re.sub(r'\s*```$', '', clean_response)
+            # Extract the first JSON object in the string
+            match = re.search(r'\{.*\}', clean_response, re.DOTALL)
+            if match:
+                json_content = match.group(0)
+                json_content = escape_backslashes(json_content)
+                patch_data = json.loads(json_content)
+                # ... continue as before (existing logic for patch_data)
+                if patch_data.get('type') == 'patch':
+                    operations = patch_data.get('operations', [])
+                    message = patch_data.get('message', 'Task completed')
+                    await self._update_conversation_history(db, session, user_message, message)
+                    return {
+                        "success": True,
+                        "response": message,
+                        "patch_data": patch_data
+                    }
+                else:
+                    pass  # Invalid patch format, fallback below
+            else:
+                # Fallback: return error
                 return {
                     "success": False,
                     "response": "I had trouble understanding that request. Please try rephrasing it, and I'll respond in the proper format.",
-                    "error": f"JSON parsing failed: {str(e)}"
+                    "error": "No valid JSON object found in AI response."
                 }
             
             # If we get here, no valid JSON was found
-            logger.error(f"❌ SESSION: No valid JSON patch found in response")
+            # logger.error(f"❌ SESSION: No valid JSON patch found in response")
             return {
                 "success": False,
                 "response": "I had trouble formatting my response correctly. Please try your request again.",
@@ -216,7 +216,9 @@ class ChatSessionManager:
             }
             
         except Exception as e:
-            logger.error(f"❌ SESSION: Error processing message: {str(e)}")
+            print("==== GEMINI CHAT ERROR ====")
+            print(repr(e))
+            print("==== GEMINI CHAT ERROR END ====")
             return {
                 "success": False,
                 "response": "I encountered an error processing your request. Please try again.",
@@ -260,7 +262,12 @@ class ChatSessionManager:
             "I'll send you current LaTeX code and requests, and you should help me edit accordingly."
         ])
         
-        return "\n".join(context_parts)
+        initial_context = "\n".join(context_parts)
+        # Add Gemini prompt/context prints for session initialization
+        print("==== GEMINI SESSION INIT PROMPT START ====")
+        print(initial_context)
+        print("==== GEMINI SESSION INIT PROMPT END ====")
+        return initial_context
 
     def _build_simple_prompt(self, current_latex: str, user_message: str) -> str:
         """Build simple prompt - always request patch format for consistency"""
@@ -359,7 +366,7 @@ Return ONLY the JSON, nothing else."""
                 "data": decoded_pdf
             }
             
-            logger.info(f"✅ SESSION: PDF processed successfully for Gemini - Size: {len(decoded_pdf)} bytes")
+            # logger.info(f"✅ SESSION: PDF processed successfully for Gemini - Size: {len(decoded_pdf)} bytes")
             return pdf_part
                 
         except Exception as e:
@@ -368,7 +375,7 @@ Return ONLY the JSON, nothing else."""
 
     async def _reconstruct_chat(self, session: AIChatSession) -> genai.ChatSession:
         """Reconstruct chat session from conversation history if needed"""
-        logger.info(f"🔄 SESSION: Reconstructing chat session {session.id}")
+        # logger.info(f"🔄 SESSION: Reconstructing chat session {session.id}")
         
         # Get conversation history
         history = json.loads(session.conversation_history)

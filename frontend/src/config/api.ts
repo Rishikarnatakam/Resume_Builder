@@ -46,6 +46,12 @@ export const apiConfig = {
     latex: {
       compileForAnalysis: '/latex/compile-for-analysis',
     },
+    subscriptions: {
+      listPlans: '/subscriptions/plans',
+      createSubscription: '/subscriptions/subscribe',
+      getCurrentSubscription: '/subscriptions/current-subscription',
+      cancelSubscription: '/subscriptions/cancel-subscription',
+    },
   },
 };
 
@@ -73,6 +79,49 @@ export const apiRequest = async (endpoint: string, options: RequestInit = {}) =>
       ...options.headers,
     },
   });
+};
+
+export const getSubscriptionPlans = async () => {
+  const response = await apiRequest(apiConfig.endpoints.subscriptions.listPlans);
+  if (!response.ok) {
+    throw new Error('Failed to fetch subscription plans');
+  }
+  return response.json();
+};
+
+export const createSubscription = async (planId: string) => {
+  const response = await apiRequest(apiConfig.endpoints.subscriptions.createSubscription, {
+    method: 'POST',
+    body: JSON.stringify({ plan_id: planId }),
+  });
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.detail || 'Failed to create subscription');
+  }
+  return response.json();
+};
+
+export const getCurrentSubscription = async () => {
+  const response = await apiRequest(apiConfig.endpoints.subscriptions.getCurrentSubscription);
+  if (!response.ok) {
+    // If no subscription is found, the backend might return a specific status or empty data
+    // Handle this gracefully based on backend implementation
+    const errorData = await response.json();
+    throw new Error(errorData.detail || 'Failed to fetch current subscription');
+  }
+  return response.json();
+};
+
+export const cancelSubscription = async (cancelAtCycleEnd: boolean = true) => {
+  const response = await apiRequest(apiConfig.endpoints.subscriptions.cancelSubscription, {
+    method: 'POST',
+    body: JSON.stringify({ cancel_at_cycle_end: cancelAtCycleEnd }),
+  });
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.detail || 'Failed to cancel subscription');
+  }
+  return response.json();
 };
 
 export default apiConfig; 

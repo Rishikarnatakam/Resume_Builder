@@ -14,7 +14,7 @@ asyncpg==0.30.0
 
 # == Authentication & Security ==
 # PyJWT is used for Supabase token verification.
-PyJWT==2.8.0
+PyJWT
 
 # == AI & Machine Learning ==
 # NOTE: Using v0.3.1 to match the 'from google import genai' statement in the code.
@@ -33,6 +33,4 @@ python-dotenv==1.0.1
 anyio==4.9.0
 structlog==24.4.0
 
-# == Deployment (Optional) ==
-# gunicorn is a common production server for Python web apps.
-# gunicorn 
+razorpay

@@ -16,7 +16,7 @@ backend_dir = Path(__file__).parent
 if str(backend_dir) not in sys.path:
     sys.path.insert(0, str(backend_dir))
 
-from routes import auth, resumes, latex, users, templates, ai_chat
+from routes import auth, resumes, latex, users, templates, ai_chat, subscriptions
 from database import init_db
 from utils.config import config
 
@@ -71,6 +71,7 @@ app.include_router(resumes.router, prefix="/api/resumes", tags=["Resumes"])
 app.include_router(latex.router, prefix="/api", tags=["LaTeX"])  # latex router already has /latex prefix
 app.include_router(templates.router, prefix="/api/templates", tags=["Templates"])
 app.include_router(ai_chat.router, prefix="/api/ai", tags=["AI Chat (Session-based)"])
+app.include_router(subscriptions.router, prefix="/api/subscriptions", tags=["Subscriptions"])
 
 @app.get("/api/health")
 async def health_check():
