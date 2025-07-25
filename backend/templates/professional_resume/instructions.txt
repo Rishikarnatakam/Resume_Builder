@@ -1,20 +1,87 @@
 TEMPLATE: Professional Resume
 
-## Layout
-- Single column layout with clean, traditional structure
-- Use \rSection{} for all main sections
-- Use \rSubsection{} for subsections within main sections
+## QUICK START
+- **Layout:** Single column, clean, traditional
+- **Main commands:**
+  - \rSection{Section} — Section header
+  - \begin{rSubsection}{Company}{Date}{Title}{Location} ... \end{rSubsection} — Experience entry
+  - \begin{rAward}{Title}{Org}{Date} ... \end{rAward} — Award entry
+  - \begin{rCertification}{Name}{Issuer}{Date} ... \end{rCertification} — Certification entry
+- **Section order:** Header → Summary/Objective → Experience → Education → Skills → Projects
+- **Margins:** Default 0.75in (can be overridden)
+- **Skills:** Group by category (see example below)
 
-## Template Commands
-- \rSection{Section Name} for main section headers
-- \rSubsection{Company}{Position}{Date}{Location} for experiences
-- Consistent formatting throughout document
+---
 
-## Section Organization
-- Typical order: Header, Summary/Objective, Experience, Education, Skills, Projects
-- Organize sections vertically in single column
-- Use bullet points for achievement descriptions
+## COMMAND USAGE EXAMPLES
+- Section header: `\rSection{Experience}`
+- Experience: `\begin{rSubsection}{Company}{2022--2024}{Software Engineer}{City}` ... `\end{rSubsection}`
+- Award: `\begin{rAward}{Best Developer}{Org}{2023}` ... `\end{rAward}`
+- Certification: `\begin{rCertification}{AWS}{Amazon}{2023}` ... `\end{rCertification}`
 
-## Skills Section
-- Group skills into logical categories with clear labels
-- Use professional formatting appropriate for single-column layout 
+---
+
+## MINIMAL WORKING EXAMPLE
+```latex
+\documentclass{professional_resume}
+\begin{document}
+\name{Jane Doe}
+\rSection{Summary}
+Results-driven software engineer with 3+ years of experience.
+\rSection{Experience}
+\begin{rSubsection}{Tech Corp}{2022--2024}{Software Engineer}{Remote}
+  \item Developed scalable web apps
+  \item Led a team of 5
+\end{rSubsection}
+\rSection{Education}
+BSc Computer Science, University, 2020--2024
+\rSection{Skills}
+Programming Languages: Python, JavaScript\\
+Frameworks: React, Flask\\
+Tools: Git, Docker
+\end{document}
+```
+
+---
+
+## CRITICAL DO'S AND DON'TS
+| Do | Don’t |
+|----|-------|
+| Use only current template commands | Change \documentclass |
+| Group skills by category | List skills flat or randomly |
+| Use bullet points for achievements | Use plain text for lists |
+| Omit empty sections | Add fake/placeholder info |
+| Use \href{url}{text} for links | Add comments in LaTeX |
+
+---
+
+## SKILLS GROUPING EXAMPLE
+**Good:**
+```
+Programming Languages: Python, JavaScript, Java
+Frameworks: React, Flask, Django
+Tools: Git, Docker, AWS
+Databases: MySQL, PostgreSQL
+```
+**Bad:**
+```
+Python, JavaScript, Java, React, Flask, Django, Git, Docker, AWS, MySQL, PostgreSQL
+```
+
+---
+
+## TROUBLESHOOTING / FAQ
+- **Section missing?** Add it in logical order.
+- **Missing command?** Define it based on template patterns.
+- **Skills not grouped?** Use common categories: Programming Languages, Frameworks, Tools, Databases, Cloud.
+- **Output not compiling?** Check for unmatched \begin/\end and section environments.
+
+---
+
+## DETAILED RULES (REFERENCE)
+- Use \rSection{} for all main sections.
+- Use \begin{rSubsection}...\end{rSubsection} for each experience entry.
+- Use bullet points for achievements and descriptions.
+- Group skills by category with clear labels.
+- Never output comments or explanations in LaTeX code.
+- Maintain professional formatting and ATS-friendly structure. 

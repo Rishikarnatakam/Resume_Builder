@@ -321,7 +321,26 @@ export const EditorStateProvider: React.FC<EditorStateProviderProps> = ({ childr
     return lines.join('\n');
   }, []);
 
-  // Receive AI patch response and apply it
+  // Utility: Convert JSON patch to diff-match-patch patch
+  const jsonPatchToDmpPatch = useCallback((originalLatex: string, operations: any[]): string => {
+    // Apply JSON patch to get the new LaTeX
+    const patchedLatex = applyPatchToLatex(originalLatex, operations);
+    // Generate dmp patch
+    const dmp = new diff_match_patch();
+    const diff = dmp.diff_main(originalLatex, patchedLatex);
+    dmp.diff_cleanupSemantic(diff);
+    const patch = dmp.patch_make(originalLatex, diff);
+    return dmp.patch_toText(patch);
+  }, [applyPatchToLatex]);
+
+  // Apply dmp patch to LaTeX content
+  const applyDmpPatchToLatex = useCallback((originalLatex: string, dmpPatchText: string): string => {
+    const dmp = new diff_match_patch();
+    const [newLatex, results] = dmp.patch_apply(dmp.patch_fromText(dmpPatchText), originalLatex);
+    return newLatex;
+  }, []);
+
+  // Receive AI patch response and apply it (now using dmp patching)
   const receiveAIPatch = useCallback((patchData: any) => {
     if (!aiOperationInProgress.current) {
       console.log('🚫 Received AI patch but no operation in progress');
@@ -332,22 +351,26 @@ export const EditorStateProvider: React.FC<EditorStateProviderProps> = ({ childr
       console.log('📥 PATCH: Received patch data:', patchData);
       console.log('📥 PATCH: Operations count:', patchData.operations?.length || 0);
       console.log('📥 PATCH: Original LaTeX length:', state.originalLatex.length);
-      
-      // Apply patch to original LaTeX
-      const patchedLatex = applyPatchToLatex(state.originalLatex, patchData.operations || []);
-      
+
+      // 1. Convert JSON patch to dmp patch
+      const dmpPatchText = jsonPatchToDmpPatch(state.originalLatex, patchData.operations || []);
+      // Print the dmp patch to the console for inspection
+      console.log('📄 DMP PATCH TEXT:\n' + dmpPatchText);
+      // 2. Apply dmp patch
+      const patchedLatex = applyDmpPatchToLatex(state.originalLatex, dmpPatchText);
+
       console.log('📥 PATCH: Patched LaTeX length:', patchedLatex.length);
       console.log('📥 PATCH: Patched LaTeX preview:', patchedLatex.substring(0, 200) + '...');
-      
+
       // Now use existing diff logic to show visual comparison
       receiveAIResponse(patchedLatex);
-      
-      console.log(`✅ Applied ${patchData.operations?.length || 0} patch operations`);
+
+      console.log(`✅ Applied dmp patch (converted from JSON patch)`);
     } catch (error) {
       console.error('❌ Error applying patch:', error);
       completeAIOperation();
     }
-  }, [state.originalLatex, applyPatchToLatex, receiveAIResponse, completeAIOperation]);
+  }, [state.originalLatex, applyDmpPatchToLatex, jsonPatchToDmpPatch, receiveAIResponse, completeAIOperation]);
 
   // Accept AI changes
   const acceptAIChanges = useCallback(() => {

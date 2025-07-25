@@ -1,135 +1,103 @@
 TEMPLATE: AltaCV
 
-LAYOUT: 2 column layout   
-STYLE: Modern, professional, clean, structured
-ATS: Maximum compatibility - scannable formatting
+## QUICK START
+- **Layout:** 2-column, modern, professional, clean
+- **Main commands:**
+  - \cvsection{Section} — Section header
+  - \cvevent{Title}{Org}{Date}{Location} — Experience/education entry
+  - \cvtag{Skill} — Tag for project technologies
+  - \begin{paracol}{2} ... \end{paracol} — Two-column layout
+  - \switchcolumn — Move to right column
+  - \makecvheader — Header (inside document)
+- **Section order:** Header → Education → Certifications → [switch column] → Projects → Skills
+- **Margins:** Always use \geometry{margin=0.5in} after \documentclass{altacv}
+- **Skills:** Group by category (see example below)
 
-CORE PRINCIPLES:
-• Modern resume with 2 column layout - professional and clean
-• Color-coded sections with modern typography
-• Clean, professional formatting for ATS systems
-• Structured organization with clear section hierarchy
-• Smart pagination: Complete sections should not break across pages
+---
 
-LAYOUT FUNDAMENTALS:
-• Use \begin{paracol}{2} and \end{paracol} for two-column layout
-• Header (\makecvheader) must be within document environment for proper font rendering
-• Use \switchcolumn to move between columns ONLY after the left column is fully complete
-• Use \newpagestart or \newpage\end{paracol}\begin{paracol}{2} for new pages
-• Keep sections intact - NEVER break, split, or interleave sections across columns or pages unless absolutely necessary
-• NEVER start a new section until the previous section is fully finished and closed
-• If a section won’t fit, start it on a new page (left column)
-• The summary section must also be inside the 2-column paracol environment (after \begin{paracol}{2})
-• Do NOT use the {quote} environment for the summary unless the user specifically requests it
+## COMMAND USAGE EXAMPLES
+- Section header: `\cvsection{Projects}`
+- Experience: `\cvevent{Software Engineer}{Company}{2022--2024}{Remote}`
+- Project technologies: `\cvtag{React}`
+- Two-column start: `\begin{paracol}{2}`
+- Switch column: `\switchcolumn`
+- End columns: `\end{paracol}`
 
-MARGIN REQUIREMENTS:
-• ALWAYS use exactly 0.5 inch margins for all sides (top, bottom, left, right) unless user requests otherwise
-• Use \geometry{margin=0.5in} AFTER \documentclass{altacv}
-• Use consistent 0.5 inch margins for maximum content space while maintaining readability
-• Use \raggedbottom to prevent footer expansion
+---
 
-CONTENT ORGANIZATION:
-• Use \cvsection{} for section headers
-• ALWAYS add an empty line after every \cvsection{} command
-• Use \cvevent{}{}{}{} for experiences, projects, education
-• Project details must always be formatted as bullet points using the template’s default point style (e.g., \begin{itemize} ... \item ... \end{itemize}) or any other point-based environment defined in the template. Never use plain text for project descriptions.
-• Include relevant technologies and achievements
-• Add links using \href{url}{text} when available
-• Group related content logically
-• NO PHOTOS: Do not include any photo commands (\photoR, \photoL, \photo) unless user explicitly provides a photo and requests it to be added
-
-INTELLIGENT SPACING:
-• Add small spacing after \makecvheader for visual separation (\smallskip or \vspace{0.1in})
-• Add empty line after every \cvsection{} command
-• Use good visual spacing between sections for readability
-• Sections automatically have proper spacing built into the template
-
-SKILLS FORMATTING:
-• Skills section: Use grouped text format, NOT \cvtag boxes
-• AUTOMATICALLY GROUP skills from user's flat list into logical categories
-• Use category names that make sense for the skills (Programming Languages, Frameworks, Tools, Databases, Cloud, etc.)
-• Example: "Programming Languages : Python, JavaScript, Java
-            Frameworks : React, Flask, Django
-            Tools : Git, Docker, AWS
-            Databases : MySQL, PostgreSQL"
-• Intelligently categorize skills - don't just list them randomly
-• Project technologies: Continue using \cvtag{} boxes for individual technologies
-• Group similar skills together logically (e.g., all programming languages together, all frameworks together)
-
-COMMAND DEPENDENCY REQUIREMENTS:
-• When customizing \makecvheader, ensure \namefont, \taglinefont, \personalinfofont are defined
-• When using color commands, verify base colors exist
-• All custom redefinitions must be complete and self-contained
-• Include fallback definitions for commonly customized commands
-• Maintain visual hierarchy: name > sections > content > details
-
-INTELLIGENT FLOW:
-• Assess space before placing sections
-• If section won't fit completely, start on new page
-• Use remaining space efficiently with flexible content
-• Balance columns naturally
-• Prioritize readability over maximum density
-• Use \switchcolumn once to move from left to right column (after left is complete)
-
-DOCUMENT STRUCTURE REQUIREMENTS:
-• Complete LaTeX document: \documentclass{altacv} ... \begin{document} ... \end{document}
-• Header commands (\makecvheader) must be within document environment for proper rendering
-• Logical content flow: header → spacing → content sections
-• Clean LaTeX code only - absolutely NO comments or explanatory text
-• Generated code must be pure LaTeX without any % comments
-• Professional spacing and formatting
-• ATS-friendly formatting
-• Compile with pdflatex
-• Maintain section integrity
-
-TRUST THE AI:
-• Make intelligent decisions about content placement, but always follow these strict structure rules
-• Organize sections logically based on user data
-• Create appropriate sections as needed
-• Balance visual appeal with information density
-• Adapt layout to content rather than forcing rigid structure
-
-ADAPTIVE COMMAND HANDLING:
-• AI should analyze user customizations and include required definitions
-• When overriding header/section commands, preserve all functionality
-• Auto-generate missing command definitions based on template patterns
-• Ensure font size hierarchy: name (\Huge) > sections (\large) > content (\normalsize) > details (\small)
-• Validate all referenced commands have corresponding definitions
-
-SIMPLE COLUMN RULES:
-• Each section appears only once in the document
-• Use \switchcolumn once to move from left to right column (after left is complete)
-• Left column: Personal and educational information
-• Right column: Technical skills and project details
-• Never create duplicate sections
-
-=== CRITICAL FORMATTING RULES ===
-🚨 SKILLS: NEVER list skills individually - ALWAYS group them intelligently into categories
-✅ CORRECT:"Programming Languages : Python, JavaScript, Java
-            Frameworks : React, Flask, Django
-            Tools : Git, Docker, AWS
-            Databases : MySQL, PostgreSQL"(example only)
-❌ WRONG: Individual skill items or unorganized lists or cramped sections
-💡 AI MUST add proper spacing between sections and group skills logically
-
-=== SECTION INTEGRITY & STRUCTURE RULES ===
-• NEVER break, split, or interleave sections across columns or pages unless absolutely necessary
-• NEVER start a new section until the previous section is fully finished and closed
-• Each section (e.g., Education, Projects) must be a single, contiguous block. Do not split a section’s content between columns or pages unless unavoidable
-• NEVER start a new section in the middle of another section
-• NEVER interleave content from different sections
-• If a section won’t fit, start it on a new page (left column)
-
-=== MINIMAL CORRECT STRUCTURE EXAMPLE ===
+## MINIMAL WORKING EXAMPLE
+```latex
+\documentclass{altacv}
+\geometry{margin=0.5in}
+\begin{document}
+\makecvheader
 \begin{paracol}{2}
 % Left column
 \cvsection{Education}
-...all education...
+\cvevent{BSc Computer Science}{Uni}{2020--2024}{City}
 \cvsection{Certifications}
-...all certifications...
+...certifications...
 \switchcolumn
 % Right column
 \cvsection{Projects}
-...all projects...
+\cvevent{Resume Builder}{Self}{2023}{Remote}
+\begin{itemize}
+  \item Built a resume app
+\end{itemize}
+\cvsection{Skills}
+Programming Languages: Python, JavaScript\\
+Frameworks: React, Flask\\
+Tools: Git, Docker
 \end{paracol}
+\end{document}
+```
+
+---
+
+## CRITICAL DO'S AND DON'TS
+| Do | Don’t |
+|----|-------|
+| Use only current template commands | Change \documentclass |
+| Group skills by category | List skills flat or randomly |
+| Keep sections contiguous | Split/interleave sections |
+| Use \switchcolumn once | Switch columns multiple times |
+| Omit empty sections | Add fake/placeholder info |
+| Use \href{url}{text} for links | Add comments in LaTeX |
+
+---
+
+## SKILLS GROUPING EXAMPLE
+**Good:**
+```
+Programming Languages: Python, JavaScript, Java
+Frameworks: React, Flask, Django
+Tools: Git, Docker, AWS
+Databases: MySQL, PostgreSQL
+```
+**Bad:**
+```
+Python, JavaScript, Java, React, Flask, Django, Git, Docker, AWS, MySQL, PostgreSQL
+```
+
+---
+
+## TROUBLESHOOTING / FAQ
+- **Section won’t fit?** Start it on a new page (left column).
+- **Missing command?** Define it based on template patterns.
+- **Skills not grouped?** Use common categories: Programming Languages, Frameworks, Tools, Databases, Cloud.
+- **Output not compiling?** Check for unmatched \begin/\end and section environments.
+- **No photos:** Only add photo commands if user provides a photo and requests it.
+
+---
+
+## DETAILED RULES (REFERENCE)
+- Use \makecvheader inside document for header.
+- Add empty line after every \cvsection{}.
+- Use bullet points for project details (\begin{itemize} ... \end{itemize}).
+- Never break, split, or interleave sections across columns/pages unless absolutely necessary.
+- Each section must be a single, contiguous block.
+- Never output comments or explanations in LaTeX code.
+- Compile with pdflatex.
+- Maintain section integrity and professional spacing.
+- ATS-friendly formatting throughout.
 

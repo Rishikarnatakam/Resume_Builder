@@ -17,7 +17,7 @@ TOPUP_PACKS = {
         "id": "ultra",
         "name": "Ultra",
         "price": 9900,
-        "messages": 10,
+        "messages": 30,
         "description": "300 AI messages"
     }
 }
