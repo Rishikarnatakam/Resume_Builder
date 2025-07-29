@@ -6,10 +6,14 @@ from google import genai
 from google.genai.types import HarmCategory, HarmBlockThreshold, GenerateContentConfig
 from utils.config import Config
 from utils.prompt_composer import prompt_composer
+from pydantic import BaseModel
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+class LatexOutput(BaseModel):
+    latex: str
 
 class AILatexGenerator:
     """
@@ -18,16 +22,13 @@ class AILatexGenerator:
     
     def __init__(self):
         self.config = Config()
-        
-        # Use model from environment variable
         self.model_name = self.config.get_gemini_model()
         self.generation_config = {
-            'temperature': 0.1,
+            'temperature': 0.3,
             'top_k': 30,
+            'top_p': 0.85,
             'max_output_tokens': 12288,
         }
-        
-        # Simple safety settings
 
     def generate_latex(self, 
                       template_name: str, 
@@ -37,67 +38,52 @@ class AILatexGenerator:
         Generate LaTeX using the new modular prompt system
         """
         try:
-            # Commented out to reduce terminal clutter. Uncomment for debugging.
-            # logger.info(f"🚀 Generating LaTeX for template: {template_name}")
-            
-            # Use prompt composer to build clean, modular prompt
-            prompt = prompt_composer.build_generation_prompt(
+            prompt_json = prompt_composer.build_generation_prompt(
                 template_name=template_name,
                 user_data=resume_data,
                 job_description=job_description
             )
-            # Use new genai.Client for generation
+            prompt_str = json.dumps(prompt_json, ensure_ascii=False, indent=2)
+            print("==== GEMINI LATEX PROMPT SENT TO AI START ====")
+            print(prompt_str)
+            print("==== GEMINI LATEX PROMPT SENT TO AI END ====")
             client = genai.Client(api_key=self.config.GEMINI_API_KEY)
             response = client.models.generate_content(
                 model=f"models/{self.model_name}",
-                contents=prompt,
+                contents=[prompt_str],  # Pass as a list of strings
                 config=GenerateContentConfig(
-                    temperature=0.1,
+                    temperature=0.3,
                     top_k=30,
-                    max_output_tokens=12288
+                    top_p=0.85,
+                    max_output_tokens=12288,
+                    response_mime_type="application/json",
+                    response_schema=LatexOutput,
+                    system_instruction="Return only valid LaTeX in the 'latex' field. NEVER duplicate sections, NEVER nest environments incorrectly, ALWAYS match \\begin/\\end pairs, NEVER use \\item outside proper environments, NEVER put content after \\end{document}, ALWAYS use template commands (\\rSection, \\rSubsection, \\rAward, \\rCertification, \\rSkills), ALWAYS use template-specific skills formatting - check template instructions."
                 )
             )
-            # Log input and output token counts
+            print("==== GEMINI RAW AI RESPONSE START ====")
+            print(response)
+            print("==== GEMINI RAW AI RESPONSE END ====")
             usage = getattr(response, 'usage_metadata', None)
             if usage:
-                # Only leave Gemini token count prints
                 print(f"GEMINI INPUT TOKEN COUNT: {usage.prompt_token_count}")
                 print(f"GEMINI OUTPUT TOKEN COUNT: {usage.candidates_token_count}")
             else:
                 print("GEMINI USAGE METADATA NOT AVAILABLE")
-            # Clean and return the response
-            latex_code = self._clean_response(response.text)
-            # logger.info("✅ LaTeX generation successful")
+            latex_code = response.parsed.latex if hasattr(response, 'parsed') and response.parsed else ""
+            print("==== GEMINI PARSED LATEX CODE START ====")
+            print(latex_code)
+            print("==== GEMINI PARSED LATEX CODE END ====")
+            # Only validate that the result is a full LaTeX document
+            if not latex_code.strip().startswith('\\documentclass'):
+                logger.error("❌ AI did not return a valid LaTeX document!")
+                raise ValueError("AI did not return a valid LaTeX document. Please retry.")
+            if not latex_code:
+                raise ValueError("No LaTeX code returned by AI.")
             return latex_code
         except Exception as e:
-            # logger.error(f"❌ LaTeX generation failed: {str(e)}")
-            # logger.error(f"AI LaTeX generation failed: {e}")
-            # logger.info("🧠 Used AI LaTeX generation")
-            raise Exception(f"Failed to generate LaTeX: {str(e)}")
-
-    def _clean_response(self, response_text: str) -> str:
-        """
-        Clean AI response to get just the LaTeX code
-        """
-        if not response_text:
-            raise ValueError("Empty response from AI")
-        
-        # Remove markdown code blocks if present
-        if "```latex" in response_text:
-            start = response_text.find("```latex") + 8
-            end = response_text.find("```", start)
-            if end != -1:
-                response_text = response_text[start:end].strip()
-        elif "```" in response_text:
-            start = response_text.find("```") + 3
-            end = response_text.find("```", start)
-            if end != -1:
-                response_text = response_text[start:end].strip()
-        
-        # Clean up the response
-        latex_code = response_text.strip()
-        
-        return latex_code
+            logger.error(f"❌ LaTeX generation failed: {str(e)}")
+            return ""  # Fallback: return empty string
 
 # Global instance
 ai_latex_generator = AILatexGenerator() 

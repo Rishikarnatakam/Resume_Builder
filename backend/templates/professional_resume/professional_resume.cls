@@ -5,6 +5,7 @@
 \LoadClass[11pt,letterpaper]{article} % Font size and paper type
 
 \usepackage[parfill]{parskip} % Remove paragraph indentation
+\usepackage{anyfontsize} % Allow custom font sizes beyond standard LaTeX sizes
 \usepackage{array} % Required for boldface (\bf and \bfseries) tabular columns
 \usepackage{geometry}
 \geometry{margin=0.75in} % Default margin - can be overridden
@@ -87,11 +88,14 @@
 % Defines the rSection environment for the large sections within the CV
 \newenvironment{rSection}[1]{ % 1 input argument - section name
   \sectionskip
-  \MakeUppercase{{\bf #1}} % Section title
+  \textcolor{black}{\MakeUppercase{{\bf #1}}} % Section title - black color
   \sectionlineskip
-  \hrule % Horizontal line
+  \textcolor{black}{\hrule} % Horizontal line - black color
+  \vspace{0.5em} % Add extra space after the horizontal line
   \begin{list}{}{ % List for each individual item in the section
     \setlength{\leftmargin}{0em} % Margin within the section
+    \setlength{\itemsep}{0.25em} % Consistent spacing between items
+    \setlength{\parsep}{0em} % No extra paragraph spacing
   }
   \item[]
 }{
@@ -103,16 +107,32 @@
 %----------------------------------------------------------------------------------------
 
 \newenvironment{rSubsection}[4]{ % 4 input arguments - company name, year(s) employed, job title and location
- {\bf #1} \hfill {#2} % Bold company name and date on the right
+ {\bf\textcolor{black}{#1}} \hfill {#2} % Bold black company name and date on the right
  \ifthenelse{\equal{#3}{}}{}{ % If the third argument is not specified, don't print the job title and location line
   \\
   {\em #3} \hfill {\em #4} % Italic job title and location
-  }\smallskip
+  }\medskip
   \begin{list}{$\cdot$}{\leftmargin=0em} % \cdot used for bullets, no indentation
-   \itemsep -0.5em \vspace{-0.5em} % Compress items in list together for aesthetics
+   \setlength{\itemsep}{0.25em} % Consistent spacing between bullet points
+   \setlength{\parsep}{0em} % No extra paragraph spacing
   }{
   \end{list}
   \vspace{0.5em} % Some space after the list of bullet points
+}
+
+%----------------------------------------------------------------------------------------
+%	SKILLS FORMATTING
+%----------------------------------------------------------------------------------------
+
+% New environment for skills with bulleted categories
+\newenvironment{rSkills}{
+  \begin{list}{}{ % List for skill categories
+    \setlength{\leftmargin}{0em} % No indentation
+    \setlength{\itemsep}{0.25em} % Consistent spacing between skill categories
+    \setlength{\parsep}{0em} % No extra paragraph spacing
+  }
+}{
+  \end{list}
 }
 
 %----------------------------------------------------------------------------------------
@@ -120,10 +140,11 @@
 %----------------------------------------------------------------------------------------
 
 \newenvironment{rAward}[3]{ % 3 input arguments - award title, organization, and date
- {\bf #1}, #2 \hfill {#3} % Bold award title, organization, and date on the right
+ {\bf\textcolor{black}{#1}} \hfill {#3} % Bold black award title and date on the right
  \smallskip
  \begin{list}{$\cdot$}{\leftmargin=0em} % \cdot used for bullets, no indentation
-  \itemsep -0.5em \vspace{-0.5em} % Compress items in list together for aesthetics
+  \setlength{\itemsep}{0.25em} % Consistent spacing between bullet points
+  \setlength{\parsep}{0em} % No extra paragraph spacing
  }{
  \end{list}
  \vspace{0.5em} % Some space after the list of bullet points
@@ -134,10 +155,11 @@
 %----------------------------------------------------------------------------------------
 
 \newenvironment{rCertification}[3]{ % 3 input arguments - certification name, issuer, and date
- {\bf #1}, #2 \hfill {#3} % Bold certification name, issuer, and date on the right
+ {\bf\textcolor{black}{#1}}, #2 \hfill {#3} % Bold black certification name, issuer, and date on the right
  \smallskip
  \begin{list}{$\cdot$}{\leftmargin=0em} % \cdot used for bullets, no indentation
-  \itemsep -0.5em \vspace{-0.5em} % Compress items in list together for aesthetics
+  \setlength{\itemsep}{0.25em} % Consistent spacing between bullet points
+  \setlength{\parsep}{0em} % No extra paragraph spacing
  }{
  \end{list}
  \vspace{0.5em} % Some space after the list of bullet points
@@ -148,8 +170,15 @@
 %----------------------------------------------------------------------------------------
 
 % The below commands define the whitespace after certain things in the document - they can be \smallskip, \medskip or \bigskip
-\def\namesize{\LARGE} % Size of the name at the top of the document
-\def\addressskip{\smallskip} % The space between the two address (or phone/email) lines
+
+% Custom font sizes larger than standard LaTeX sizes
+\newcommand{\HUGE}{\fontsize{34.4}{41}\selectfont}
+\newcommand{\GIGANTIC}{\fontsize{41.3}{50}\selectfont}
+\newcommand{\MASSIVE}{\fontsize{49.6}{60}\selectfont}
+\newcommand{\ENORMOUS}{\fontsize{59.5}{72}\selectfont}
+
+\providecommand{\namesize}{\LARGE} % Size of the name at the top of the document (user-overridable)
+\def\addressskip{\medskip} % The space between the two address (or phone/email) lines
 \def\sectionlineskip{\medskip} % The space above the horizontal line for each section 
 \def\nameskip{\medskip} % The space after your name at the top
 \def\sectionskip{\medskip} % The space after the heading section 

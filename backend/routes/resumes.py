@@ -73,21 +73,21 @@ class Certification(BaseModel):
 
 class ResumeData(BaseModel):
     personalInfo: PersonalInfo
-    summary: str
-    experience: List[Experience]
-    education: List[Education]
-    skills: List[str]
-    projects: List[Project]
-    awards: List[Award]
-    certifications: List[Certification]
-    languages: List[str]
-    publications: List[dict] = []
-    volunteering: List[dict] = []
-    speaking: List[dict] = []
-    military: List[dict] = []
-    references: str = ""
-    hobbies: List[str] = []
-    additional_sections: List[dict] = []
+    summary: Optional[str] = ""
+    experience: Optional[List[Experience]] = []
+    education: Optional[List[Education]] = []
+    skills: Optional[List[str]] = []
+    projects: Optional[List[Project]] = []
+    awards: Optional[List[Award]] = []
+    certifications: Optional[List[Certification]] = []
+    languages: Optional[List[str]] = []
+    publications: Optional[List[dict]] = []
+    volunteering: Optional[List[dict]] = []
+    speaking: Optional[List[dict]] = []
+    military: Optional[List[dict]] = []
+    references: Optional[str] = ""
+    hobbies: Optional[List[str]] = []
+    additional_sections: Optional[List[dict]] = []
 
 class ResumeCreateRequest(BaseModel):
     title: str
@@ -255,8 +255,7 @@ async def extract_pdf_data(
                 "endDate": exp.get("endDate", ""),
                 "location": exp.get("location", ""),
                 "description": exp.get("description", ""),
-                "current": exp.get("current", False),
-                "employmentType": exp.get("employmentType", "")
+                "current": exp.get("current", False)
             })
         
         # Transform education data
@@ -269,9 +268,7 @@ async def extract_pdf_data(
                 "startDate": edu.get("startDate", ""),
                 "endDate": edu.get("endDate", ""),
                 "location": edu.get("location", ""),
-                "gpa": edu.get("gpa", ""),
-                "honors": edu.get("honors", ""),
-                "coursework": edu.get("coursework", []) if isinstance(edu.get("coursework"), list) else []
+                "gpa": edu.get("gpa", "")
             })
         
         # Transform projects data if available
@@ -284,9 +281,7 @@ async def extract_pdf_data(
                 "startDate": proj.get("startDate", ""),
                 "endDate": proj.get("endDate", ""),
                 "url": proj.get("url", ""),
-                "github": proj.get("github", ""),
-                "role": proj.get("role", ""),
-                "teamSize": proj.get("teamSize", "")
+                "github": proj.get("github", "")
             })
         
         # Transform awards data
@@ -296,16 +291,14 @@ async def extract_pdf_data(
                     "id": str(i + 1),
                     "title": award,
                     "description": "",
-                    "date": "",
-                    "issuer": ""
+                    "date": ""
                 })
             elif isinstance(award, dict):
                 resume_data["awards"].append({
                     "id": str(i + 1),
                     "title": award.get("title", award.get("name", "Award")),
                     "description": award.get("description", ""),
-                    "date": award.get("date", ""),
-                    "issuer": award.get("issuer", "")
+                    "date": award.get("date", "")
                 })
         
         # Transform certifications data
@@ -315,18 +308,14 @@ async def extract_pdf_data(
                     "id": str(i + 1),
                     "name": cert,
                     "issuer": "",
-                    "date": "",
-                    "expiryDate": "",
-                    "credentialId": ""
+                    "date": ""
                 })
             elif isinstance(cert, dict):
                 resume_data["certifications"].append({
                     "id": str(i + 1),
                     "name": cert.get("name", cert.get("title", "Certification")),
                     "issuer": cert.get("issuer", cert.get("organization", "")),
-                    "date": cert.get("date", ""),
-                    "expiryDate": cert.get("expiryDate", ""),
-                    "credentialId": cert.get("credentialId", "")
+                    "date": cert.get("date", "")
                 })
         
         # Transform publications data

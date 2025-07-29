@@ -14,10 +14,17 @@ DATABASE_URL = config.DATABASE_URL
 engine = create_async_engine(
     DATABASE_URL,
     # echo=True,  # Commented out to reduce SQL logging clutter. Uncomment to enable.
-    pool_recycle=300,
+    pool_recycle=180,  # Reduced for ngrok scenarios
     pool_pre_ping=True,
-    pool_size=15,
-    max_overflow=20
+    pool_size=1,  # Supabase free tier: 1 persistent connection
+    max_overflow=2,  # Reduced for ngrok (total 3 connections)
+    pool_timeout=15,  # Reduced timeout for ngrok
+    connect_args={
+        "command_timeout": 20,  # Reduced query timeout for ngrok
+        "server_settings": {
+            "application_name": "resume_builder_backend"
+        }
+    }
 )
 SessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
@@ -124,11 +131,23 @@ async def update_user_subscription(
 
 # Dependency to get database session
 async def get_db():
-    async with SessionLocal() as session:
-        try:
-            yield session
-        finally:
-            await session.close()
+    try:
+        async with SessionLocal() as session:
+            try:
+                yield session
+            finally:
+                await session.close()
+    except Exception as e:
+        print(f"❌ Database connection error: {e}")
+        # For connection issues, try to reconnect
+        if "connection was closed" in str(e) or "ConnectionDoesNotExistError" in str(e):
+            print("🔄 Attempting to reconnect to database...")
+            # Force cleanup for ngrok scenarios
+            try:
+                await engine.dispose()
+            except:
+                pass
+        raise
 
 # Initialize database
 async def init_db():

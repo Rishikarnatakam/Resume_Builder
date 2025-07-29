@@ -113,7 +113,7 @@ async def start_chat_session(
         # Get template content and instructions
         logger.info(f"🔍 AI_CHAT: Using template name from request: {request.template_name}")
         template_content = await _get_template_content(request.template_name)
-        template_instructions = await _get_template_instructions(request.template_name)
+        # Remove unnecessary template instructions loading - it's handled by prompt_composer
         
         # Create session with context caching
         session_id = await session_manager.create_session(
@@ -122,8 +122,6 @@ async def start_chat_session(
             user_id=current_user['id'],
             form_data=request.form_data,
             template_name=request.template_name,
-            template_content=template_content,
-            template_instructions=template_instructions,
             job_description=request.job_description
         )
         
@@ -353,8 +351,7 @@ async def get_ai_status():
         }
 
 async def _get_template_content(template_name: str) -> str:
-    """Get template content from file system"""
-    import os
+    """Get template content from .cls file"""
     from pathlib import Path
     
     try:
@@ -368,35 +365,11 @@ async def _get_template_content(template_name: str) -> str:
         
         # Read template content
         with open(template_file, 'r', encoding='utf-8') as f:
-            content = f.read()
+            content = f.read().strip()
         
         logger.info(f"✅ Template loaded: {template_name} ({len(content)} chars)")
         return content
         
     except Exception as e:
         logger.error(f"❌ Error loading template {template_name}: {str(e)}")
-        return f"% Error loading template {template_name}: {str(e)}"
-
-async def _get_template_instructions(template_name: str) -> str:
-    """Get template-specific instructions from instructions.txt file"""
-    from pathlib import Path
-    
-    try:
-        # Get template directory path
-        template_dir = Path(__file__).parent.parent / "templates" / template_name
-        instructions_file = template_dir / "instructions.txt"
-        
-        if not instructions_file.exists():
-            logger.warning(f"Template instructions not found: {instructions_file}")
-            return "No specific template instructions available. Use template commands appropriately."
-        
-        # Read instructions content
-        with open(instructions_file, 'r', encoding='utf-8') as f:
-            content = f.read()
-        
-        logger.info(f"📋 Template instructions loaded: {template_name} ({len(content)} chars)")
-        return content
-        
-    except Exception as e:
-        logger.error(f"❌ Error loading template instructions {template_name}: {str(e)}")
-        return "No specific template instructions available. Use template commands appropriately." 
+        return f"% Error loading template {template_name}: {str(e)}" 

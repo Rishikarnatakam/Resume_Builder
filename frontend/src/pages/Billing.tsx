@@ -3,7 +3,7 @@ import { getCurrentSubscription, apiRequest } from '../config/api';
 import { formatCurrency } from '../lib/utils';
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
-import { UserIcon } from '@heroicons/react/24/outline';
+import { UserIcon, CheckCircleIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '../hooks/useAuth';
 import Logo from '../components/Logo';
@@ -28,6 +28,7 @@ const Billing: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [topupLoading, setTopupLoading] = useState(false);
   const [packs, setPacks] = useState<TopupPack[]>([]);
+  const [showToast, setShowToast] = useState(false);
 
   const fetchSubscriptionData = useCallback(async () => {
     try {
@@ -80,10 +81,11 @@ const Billing: React.FC = () => {
         currency: res.currency,
         name: 'ResumeCraft',
         description: pack ? `Top-up for ${pack.messages} messages` : 'Top-up',
-        image: '/resumecraft-icon.svg',
         handler: async (response: any) => {
-          alert('Top-up successful! Your message balance will update shortly.');
+          setShowToast(true);
           await fetchSubscriptionData();
+          // Auto-hide toast after 3 seconds
+          setTimeout(() => setShowToast(false), 3000);
         },
         prefill: {},
         notes: {},
@@ -114,13 +116,13 @@ const Billing: React.FC = () => {
             <div className="flex items-center space-x-6">
               <Logo size="md" />
               <Link to="/dashboard" className="flex items-center space-x-2 text-white hover:text-gray-300 transition-colors">
-                <ArrowLeftIcon className="w-5 h-5" />
+                <ArrowLeftIcon className="w-5 h-5 flex-shrink-0" />
                 <span>Back to Dashboard</span>
               </Link>
             </div>
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2">
-                <UserIcon className="w-5 h-5 text-gray-400" />
+                <UserIcon className="w-5 h-5 text-gray-400 flex-shrink-0" />
                 <span className="text-sm text-gray-400">{user?.full_name}</span>
               </div>
               <button
@@ -200,6 +202,25 @@ const Billing: React.FC = () => {
           })}
         </div>
       </div>
+      
+      {/* Professional Toast Notification */}
+      {showToast && (
+        <div className="fixed top-4 right-4 z-50 transition-all duration-300 ease-in-out transform translate-x-0 opacity-100">
+          <div className="bg-green-600 border border-green-500 text-white px-6 py-4 rounded-2xl shadow-lg flex items-center space-x-3">
+            <CheckCircleIcon className="w-6 h-6 text-green-100 flex-shrink-0" />
+            <div className="flex-1">
+              <p className="font-semibold">Success!</p>
+              <p className="text-sm text-green-100">Your message balance has been updated.</p>
+            </div>
+            <button
+              onClick={() => setShowToast(false)}
+              className="text-green-100 hover:text-white transition-colors"
+            >
+              <XMarkIcon className="w-5 h-5 flex-shrink-0" />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

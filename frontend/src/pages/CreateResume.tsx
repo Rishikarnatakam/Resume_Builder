@@ -26,6 +26,25 @@ interface Template {
   preview_url?: string;
 }
 
+function normalizeStrings(obj: any): any {
+  if (Array.isArray(obj)) {
+    return obj.map(normalizeStrings);
+  } else if (obj && typeof obj === "object") {
+    const out: any = {};
+    for (const [k, v] of Object.entries(obj)) {
+      if (typeof v === "string" || typeof v === "undefined") {
+        out[k] = v ?? "";
+      } else if (v === null) {
+        out[k] = "";
+      } else {
+        out[k] = normalizeStrings(v);
+      }
+    }
+    return out;
+  }
+  return obj;
+}
+
 const CreateResume: React.FC = () => {
   const { user, logout, token } = useAuth();
   const navigate = useNavigate();
@@ -108,7 +127,7 @@ const CreateResume: React.FC = () => {
       const payload = {
         title: `${resumeData.personalInfo.name}'s Resume`,
         template_name: selectedTemplate, // This is now template.id which matches backend expectation
-        resume_data: resumeData,
+        resume_data: normalizeStrings(resumeData),
         job_description: jobDescription || undefined,
       };
 

@@ -28,9 +28,11 @@ pdfplumber==0.11.4
 reportlab==4.4.1
 Pillow==11.0.0
 
+
 # == Utilities ==
 python-dotenv==1.0.1
 anyio==4.9.0
 structlog==24.4.0
 
 razorpay
+setuptools

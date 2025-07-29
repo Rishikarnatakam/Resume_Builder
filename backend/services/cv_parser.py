@@ -573,8 +573,8 @@ CRITICAL ATS-FRIENDLY INSTRUCTIONS:
             model=f'models/{get_gemini_model()}',
             contents=prompt,
             config=types.GenerateContentConfig(
-                temperature=0.0,  # Deterministic for text parsing
-                top_p=0.95,  # High precision for structured data
+                temperature=0.3,  # Deterministic for text parsing
+                top_p=0.85,  # High precision for structured data
                 top_k=20,  # Limited vocabulary for JSON consistency
                 max_output_tokens=12288,  # Higher limit for comprehensive data
                 response_mime_type="application/json",  # Ensure JSON output

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import Editor from '@monaco-editor/react';
+import Editor, { DiffEditor } from '@monaco-editor/react';
 import { useAuth } from '../hooks/useAuth';
 import { useResume } from '../context/ResumeContext';
 import { useEditorState } from '../hooks/useEditorState';
@@ -9,6 +9,7 @@ import AIChat, { AIChatRef } from '../components/AIChat';
 import ThreePanelSplitter from '../components/ThreePanelSplitter';
 import { apiConfig, supabase } from '../config/api';
 import Logo from '../components/Logo';
+import { UserIcon } from '@heroicons/react/24/outline';
 
 const LaTeXEditor: React.FC = () => {
   const { resumeId } = useParams<{ resumeId?: string }>();
@@ -23,14 +24,18 @@ const LaTeXEditor: React.FC = () => {
   const [isCompiling, setIsCompiling] = useState(false);
   const [compileLog, setCompileLog] = useState<string>('');
   const [showJobForm, setShowJobForm] = useState(false);
-
   const [isDownloading, setIsDownloading] = useState(false);
+  const [messagesRemaining, setMessagesRemaining] = useState<number | null>(null);
   
   const editorRef = useRef<any>(null);
+  const diffEditorRef = useRef<any>(null);
   const aiChatRef = useRef<AIChatRef>(null);
   const latestLatexContent = useRef(editorState.currentLatex);
   const isInitialMount = useRef(true);
   const decorations = useRef<string[]>([]);
+
+  // State for diff mode
+  const [isDiffMode, setIsDiffMode] = useState(false);
 
   // Keep a ref to the latest latex content to avoid stale closures
   useEffect(() => {
@@ -67,7 +72,21 @@ const LaTeXEditor: React.FC = () => {
   // Debug logging for inline changes state
   useEffect(() => {
     console.log('🔍 EDITOR: showInlineChanges changed to:', editorState.showInlineChanges, 'proposedLatex length:', editorState.proposedLatex.length);
-  }, [editorState.showInlineChanges, editorState.proposedLatex]);
+    console.log('🔍 EDITOR: diffMode =', editorState.diffMode);
+  }, [editorState.showInlineChanges, editorState.proposedLatex, editorState.diffMode]);
+
+  // Auto-switch to diff mode when AI changes are available
+  useEffect(() => {
+    if (editorState.showInlineChanges && editorState.proposedLatex && editorState.proposedLatex !== editorState.originalLatex) {
+      setIsDiffMode(true);
+    } else if (!editorState.showInlineChanges) {
+      // Add a small delay to prevent rapid unmounting
+      const timer = setTimeout(() => {
+        setIsDiffMode(false);
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [editorState.showInlineChanges, editorState.proposedLatex, editorState.originalLatex]);
 
   // Apply Monaco decorations when they change
   useEffect(() => {
@@ -78,6 +97,42 @@ const LaTeXEditor: React.FC = () => {
       );
     }
   }, [editorState.editorDecorations]);
+
+  // Fetch AI message balance
+  const fetchMessageBalance = async () => {
+    try {
+      const session = await supabase.auth.getSession();
+      if (!session.data.session) return;
+
+      const response = await fetch(`${apiConfig.baseUrl}/subscriptions/current-subscription`, {
+        headers: {
+          'Authorization': `Bearer ${session.data.session.access_token}`,
+          'ngrok-skip-browser-warning': 'true'
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const remaining = data.message_quota - data.messages_used;
+        setMessagesRemaining(remaining);
+      }
+    } catch (error) {
+      console.error('Error fetching message balance:', error);
+    }
+  };
+
+  // Fetch message balance on mount
+  useEffect(() => {
+    fetchMessageBalance();
+  }, []);
+
+  // Refresh message balance after AI operations complete
+  useEffect(() => {
+    if (!editorState.aiOperationInProgress) {
+      // Refresh message balance when AI operation completes
+      fetchMessageBalance();
+    }
+  }, [editorState.aiOperationInProgress]);
 
   // Load PDF from browser storage if available
   useEffect(() => {
@@ -358,78 +413,55 @@ Tailor the content to match this specific role while maintaining professional, s
 
   // Apply red/green styling based on line content - now uses context
   const applyDiffStyling = (content: string) => {
-    if (!editorRef.current) return;
-    
-    const lines = content.split('\n');
-    const decorations: any[] = [];
-    
-    lines.forEach((line, index) => {
-      if (line.trim().startsWith('%%')) {
-        // Red styling for old content (commented lines)
-        decorations.push({
-          range: { startLineNumber: index + 1, startColumn: 1, endLineNumber: index + 1, endColumn: 1000 },
-          options: {
-            isWholeLine: true,
-            className: 'diff-line-red',
-            minimap: { color: '#ef4444', position: 2 }
-          }
-        });
-      } else if (isNewContentLine(line, index, lines)) {
-        // Green styling for new content
-        decorations.push({
-          range: { startLineNumber: index + 1, startColumn: 1, endLineNumber: index + 1, endColumn: 1000 },
-          options: {
-            isWholeLine: true,
-            className: 'diff-line-green',
-            minimap: { color: '#22c55e', position: 2 }
-          }
-        });
-      }
-    });
-    
-    editorState.setEditorDecorations(decorations);
-    editorRef.current.deltaDecorations([], decorations);
+    // This function is no longer needed with Monaco diff editor
+    return;
   };
 
   // Helper to detect if a line is new content (follows a %% line or is substantially different)
   const isNewContentLine = (line: string, index: number, allLines: string[]) => {
-    if (line.trim() === '' || line.trim().startsWith('%%')) return false;
-    
-    // Check if previous line was a comment (indicating this is replacement content)
-    if (index > 0 && allLines[index - 1].trim().startsWith('%%')) {
-      return true;
-    }
-    
-    // For now, we'll be conservative and only highlight lines that follow %% comments
+    // This function is no longer needed with Monaco diff editor
     return false;
   };
 
   // Handle individual line clicks for accept/reject - simplified since context handles state
   const handleLineClick = (lineNumber: number) => {
-    // Individual line handling is complex and not essential for the fix
-    // We'll keep the bulk accept/reject for now
-    console.log('🖱️ Clicked line:', lineNumber, '- Use Accept All/Reject All buttons');
+    // This function is no longer needed with Monaco diff editor
+    return;
   };
 
-  // Accept the AI suggested changes - now uses context
-  const handleAcceptChanges = () => {
-    console.log('🔄 EDITOR: Accepting AI changes');
-    editorState.acceptAIChanges();
-    
-    // Auto-compile with the new content
-    setTimeout(() => {
-      const cleanContent = editorState.currentLatex
-      .split('\n')
-        .filter((line: string) => !line.trim().startsWith('%%'))
-      .join('\n');
-      compileLatexWithContent(cleanContent);
-    }, 500);
-  };
-
-  // Reject the AI suggested changes - now uses context
   const handleRejectChanges = () => {
-    console.log('🔄 EDITOR: Rejecting AI changes');
     editorState.rejectAIChanges();
+    setIsDiffMode(false);
+  };
+
+  const handleAcceptChanges = () => {
+    editorState.acceptAIChanges();
+    setIsDiffMode(false);
+  };
+
+  // Cleanup function for DiffEditor
+  const cleanupDiffEditor = () => {
+    if (diffEditorRef.current) {
+      try {
+        diffEditorRef.current.dispose();
+      } catch (error) {
+        console.warn('DiffEditor cleanup error:', error);
+      }
+      diffEditorRef.current = null;
+    }
+  };
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      cleanupDiffEditor();
+    };
+  }, []);
+
+  const handleToggleDiffMode = () => {
+    if (editorState.showInlineChanges && editorState.proposedLatex) {
+      setIsDiffMode(!isDiffMode);
+    }
   };
 
   // Create the LaTeX editor content
@@ -445,59 +477,88 @@ Tailor the content to match this specific role while maintaining professional, s
           </div>
           
           <div className="flex-1 relative">
-            <Editor
-              height="100%"
-              defaultLanguage="latex"
-              value={editorState.currentLatex}
-              onChange={(value) => editorState.updateLatexFromUser(value || '')}
-              theme="vs-dark"
-              onMount={(editor) => {
-                editorRef.current = editor;
-                
-                // Add click handler for individual change acceptance/rejection
-                editor.onDidChangeModelContent(() => {
-                  // Detect if content changed due to our diff operations
-                  if (editorState.showInlineChanges) {
-                    setTimeout(() => applyDiffStyling(editorState.currentLatex), 50);
-                  }
-                });
-                
-                // Use mouse up instead of mouse down for better click detection
-                editor.onMouseUp((e) => {
-                  if (editorState.showInlineChanges && e.target.position) {
-                    const lineNumber = e.target.position.lineNumber;
-                    const lines = editorState.currentLatex.split('\n');
-                    const clickedLine = lines[lineNumber - 1];
-                    
-                    // Check if clicking on a diff line (red or green)
-                    if (clickedLine && (
-                      clickedLine.trim().startsWith('%%') || 
-                      isNewContentLine(clickedLine, lineNumber - 1, lines)
-                    )) {
-                      handleLineClick(lineNumber);
-                    }
-                  }
-                });
-              }}
-              options={{
-                minimap: { enabled: false },
-                fontSize: 14,
-                lineNumbers: 'on',
-                wordWrap: 'on',
-                automaticLayout: true,
-                scrollBeyondLastLine: false,
-                padding: { top: 16, bottom: 16 },
-                readOnly: editorState.showInlineChanges, // Make read-only when showing changes
-                selectOnLineNumbers: false, // Disable line number selection in diff mode
-                selectionHighlight: !editorState.showInlineChanges, // Disable selection highlight in diff mode
-              }}
-            />
+            {isDiffMode && editorState.showInlineChanges && editorState.proposedLatex ? (
+              <div className="h-full w-full">
+                <DiffEditor
+                  key={`diff-${editorState.showInlineChanges}`}
+                  height="100%"
+                  language="latex"
+                  original={editorState.originalLatex}
+                  modified={editorState.proposedLatex}
+                  theme="vs-dark"
+                  onMount={(editor) => {
+                    diffEditorRef.current = editor;
+                  }}
+                  options={{
+                    minimap: { enabled: false },
+                    fontSize: 14,
+                    lineNumbers: 'on',
+                    wordWrap: 'on',
+                    automaticLayout: true,
+                    scrollBeyondLastLine: false,
+                    padding: { top: 16, bottom: 16 },
+                    readOnly: true,
+                    renderSideBySide: false,
+                    enableSplitViewResizing: false,
+                    renderOverviewRuler: false,
+                    overviewRulerBorder: false,
+                    overviewRulerLanes: 0,
+                    scrollbar: {
+                      vertical: 'visible',
+                      horizontal: 'visible',
+                      verticalScrollbarSize: 14,
+                      horizontalScrollbarSize: 14,
+                      useShadows: false,
+                      verticalHasArrows: false,
+                      horizontalHasArrows: false,
+                    },
+                    folding: false,
+                    foldingStrategy: 'indentation',
+                    showFoldingControls: 'never',
+                    lineDecorationsWidth: 10,
+                    lineNumbersMinChars: 3,
+                    glyphMargin: false,
+                    contextmenu: false,
+                    quickSuggestions: false,
+                    parameterHints: {
+                      enabled: false,
+                    },
+                    suggestOnTriggerCharacters: false,
+                    acceptSuggestionOnEnter: 'off',
+                    tabCompletion: 'off',
+                  }}
+                />
+              </div>
+            ) : (
+              <Editor
+                height="100%"
+                defaultLanguage="latex"
+                value={editorState.currentLatex}
+                onChange={(value) => editorState.updateLatexFromUser(value || '')}
+                theme="vs-dark"
+                onMount={(editor) => {
+                  editorRef.current = editor;
+                }}
+                options={{
+                  minimap: { enabled: false },
+                  fontSize: 14,
+                  lineNumbers: 'on',
+                  wordWrap: 'on',
+                  automaticLayout: true,
+                  scrollBeyondLastLine: false,
+                  padding: { top: 16, bottom: 16 },
+                  readOnly: editorState.showInlineChanges, // Make read-only when showing changes
+                  selectOnLineNumbers: false, // Disable line number selection in diff mode
+                  selectionHighlight: !editorState.showInlineChanges, // Disable selection highlight in diff mode
+                }}
+              />
+            )}
             
             {/* Inline Accept/Reject Controls */}
             {editorState.showInlineChanges && (
               <div className="absolute top-4 right-4 flex flex-col items-end space-y-2 z-10">
                 <div className="text-xs text-gray-400 bg-black/50 px-2 py-1 rounded">
-                  💡 Click red lines to reject • Click green lines to accept
+                  {isDiffMode ? '💡 Review changes in diff view' : '💡 Click red lines to reject • Click green lines to accept'}
                 </div>
                 <div className="flex items-center space-x-2">
                   <button
@@ -607,27 +668,8 @@ Tailor the content to match this specific role while maintaining professional, s
       {/* CSS for clean diff highlighting */}
       <style>
         {`
-          .diff-line-red {
-            background-color: rgba(239, 68, 68, 0.15) !important;
-            color: #ef4444 !important;
-            text-decoration: line-through !important;
-            border-left: 3px solid #ef4444 !important;
-            opacity: 0.8 !important;
-            cursor: pointer !important;
-          }
-          .diff-line-red:hover {
-            background-color: rgba(239, 68, 68, 0.25) !important;
-          }
-          .diff-line-green {
-            background-color: rgba(34, 197, 94, 0.15) !important;
-            color: #22c55e !important;
-            border-left: 3px solid #22c55e !important;
-            font-weight: 500 !important;
-            cursor: pointer !important;
-          }
-          .diff-line-green:hover {
-            background-color: rgba(34, 197, 94, 0.25) !important;
-          }
+          /* Monaco Diff Editor handles all styling automatically */
+          /* No custom CSS needed for diff highlighting */
         `}
       </style>
     <div className="h-screen text-white flex flex-col" style={{ backgroundColor: '#000000' }}>
@@ -725,8 +767,22 @@ Tailor the content to match this specific role while maintaining professional, s
             </div>
 
             {/* Right side */}
-            <div className="flex items-center space-x-4">
-              <span className="text-gray-400 text-sm full-name-text">{user?.full_name}</span>
+            <div className="flex items-center space-x-6">
+              <span className="flex items-center space-x-2 text-sm text-gray-400">
+                <UserIcon className="w-4 h-4" />
+                <span className="full-name-text hover:text-white transition-colors">{user?.full_name}</span>
+              </span>
+              {messagesRemaining !== null && (
+                <span className={`text-base font-semibold ${messagesRemaining > 6 ? 'text-green-400' : messagesRemaining > 3 ? 'text-yellow-400' : 'text-red-400'}`}>AI messages left: {messagesRemaining}</span>
+              )}
+              <Link
+                to="/billing"
+                className="px-4 py-2 rounded-3xl text-sm transition-colors text-gray-400 hover:text-white"
+                style={{ backgroundColor: '#000000' }}
+                title="Go to Billing to buy more messages"
+              >
+                Billing
+              </Link>
               <button
                 onClick={logout}
                 className="text-gray-400 hover:text-white transition-colors text-sm"
@@ -845,6 +901,7 @@ Tailor the content to match this specific role while maintaining professional, s
           minRightWidth={20}
         />
       </div>
+
 
 
     </div>

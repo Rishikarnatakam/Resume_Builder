@@ -25,9 +25,7 @@
 %% v1.4: Nope, academicons is unnecessary; fontawesome5 has \faOrcid.
 %% v1.7.3: Re backward compatibility we'll now load academicons automatically for \aiOrcid if ≤TL2019 i.e. if \faOrcid undefined
 \DeclareOption{academicons}{\ClassWarning{altacv}{academicons option is now obsolete and unnecessary.}}
-%% v1.1.3: Choice of round/square photo
-\newif\if@normalphoto
-\DeclareOption{normalphoto}{\@normalphototrue}
+
 \DeclareOption*{\PassOptionsToClass{\CurrentOption}{extarticle}}
 \newif\if@raggedtwoe
 \DeclareOption{ragged2e}{\@raggedtwoetrue}
@@ -49,62 +47,30 @@
   \let\\\space
 }
 \RequirePackage{xparse}
-\RequirePackage[margin=2cm]{geometry}
+\RequirePackage{geometry}
+\geometry{margin=0.75in}
 \RequirePackage[fixed]{fontawesome5}%[2020-01-15]
 
-% 1.7.3 For backward compatibility
-\providecommand\IfFormatAtLeastTF{\@ifl@t@r\fmtversion}
-\IfFormatAtLeastTF{2021-11-15}{}{\RequirePackage{scrlfile}}
-
-% v1.7.2 Add simpleicons to provide X icon
-% v1.7.3 But first check if the package files exist
-\IfFileExists{simpleiconsglyphs-pdftex.tex}{\RequirePackage{simpleicons}}{}
-
-% v1.7.3 Use iftex for easier access to \iftutex
-\RequirePackage{iftex}
-% ...but still check for backward compatibility
-\ifundef{\iftutex}{%
-  \newif\iftutex
-  \ifxetex\tutextrue
-  \else
-    \ifluatex\tutextrue\else\tutexfalse\fi
-  \fi
-}{}
-\iftutex 
-  \RequirePackage{fontspec}
-\else
-  %% v1.3.2 attempts to make ligatures
-  %% copy-paste as normal characters
-  \RequirePackage{cmap}
-  \RequirePackage[utf8]{inputenc}
-  \RequirePackage[T1]{fontenc}
-  \input{glyphtounicode}
-  \pdfglyphtounicode{f_f}{FB00}
-  \pdfglyphtounicode{f_f_i}{FB03}
-  \pdfglyphtounicode{f_f_l}{FB04}
-  \pdfglyphtounicode{f_i}{FB01}
-  \pdfgentounicode=1
-\fi
+% Simplified font handling
+\RequirePackage{cmap}
+\RequirePackage[utf8]{inputenc}
+\RequirePackage[T1]{fontenc}
 
 \if@raggedtwoe
   \RequirePackage[newcommands]{ragged2e}
 \fi
 
-% 1.7.3 For backward compatibility re hooks management
+% Simple hyperref setup
 \if@withhyper
-\IfFormatAtLeastTF{2020-10-01}{%
-  \AddToHook{begindocument/before}{\hypersetup{hidelinks}\urlstyle{same}}
-}{%
-  \AtBeginDocument{\hypersetup{hidelinks}\urlstyle{same}}
-}
+  \AtBeginDocument{\hypersetup{hidelinks,colorlinks=false}\urlstyle{same}}
 \fi
 
-\colorlet{accent}{black!60!white}
+\colorlet{accent}{black!80!white}
 \colorlet{emphasis}{black}
 \colorlet{heading}{black}
 \colorlet{headingrule}{black}
 \colorlet{subheading}{emphasis}
-\colorlet{body}{black!80!white}
+\colorlet{body}{black!75!white}
 \colorlet{name}{heading}
 \colorlet{tagline}{accent}
 % Renamed or added v1.7
@@ -223,67 +189,12 @@
 \NewInfoField{phone}{\faPhone}
 \NewInfoField{homepage}{\faGlobe}
 \NewInfoField{twitter}{\faTwitter}
-% v1.7.2 twitter.com is now X.com; v1.7.3 but only use the new icon if it's been defined
-\ifcsdef{simpleicon@xicon}
- {\NewInfoField{xtwitter}{\raisebox{-0.2ex}{\scalebox{0.95}{\simpleicon{x}}}\,}}
- {\let\xtwitter\twitter%
-  \pretocmd{\xtwitter}{\ClassWarning{altacv}{You tried to use \string\xtwitter, but the new X icon isn't available. Please ensure you have updated the `simpleicons' package. Falling back to \string\twitter\space icon for now}}{}{}%
- }
-\NewInfoField{linkedin}{\faLinkedin}
-\NewInfoField{github}{\faGithub}
-% v1.7.3 Backward compatibility for ORCiD icon
-\ifdef{\faOrcid}{
-  \NewInfoField{orcid}{\faOrcid}
-}{\iftutex
-    \RequirePackage{academicons}
-    \NewInfoField{orcid}{\aiOrcid\space}
-  \else
-    \ClassWarning{altacv}{ORCID icon for \string\orcid\space unavailable in pdflatex. Please compile with XeLaTeX or LuaLaTeX; or upgrade your LaTeX distribution and packages}
-    \NewInfoField{orcid}{\fbox{O?}\space}[https://orcid.org/]
-  \fi
-}
+\NewInfoField{linkedin}{\faLinkedin}[https://linkedin.com/in/]
+\NewInfoField{github}{\faGithub}[https://github.com/]
+\NewInfoField{orcid}{\faOrcid}
 \NewInfoField{location}{\cvLocationMarker}
 
-% v1.2: Support for multiple photos
-\newlength{\altacv@photos@width}
-\newlength{\altacv@photo@diam@left}
-\newlength{\altacv@photo@diam@right}
-\def\altacv@left@photos{}
-\def\altacv@right@photos{}
 
-\newcommand{\@makeaphoto}[2]{%
-  \begin{minipage}{#1}%
-    \if@normalphoto
-      \includegraphics[width=\linewidth]{#2}
-    \else
-      \tikz\path[fill overzoom image={#2}]circle[radius=0.5\linewidth];
-    \fi%
-  \end{minipage}%
-}
-
-\newcommand{\altacv@add@photo@left}[1]{%
-  \appto{\altacv@left@photos}{%
-    \@makeaphoto{\altacv@photo@diam@left}{#1}\hspace{1ex}%
-  }%
-  \addtolength{\altacv@photos@width}{\altacv@photo@diam@left}%
-  \addtolength{\altacv@photos@width}{1ex}%
-}
-\newcommand{\altacv@add@photo@right}[1]{%
-  \appto{\altacv@right@photos}{%
-    \@makeaphoto{\altacv@photo@diam@right}{#1}\hspace{1ex}%
-  }%
-  \addtolength{\altacv@photos@width}{\altacv@photo@diam@right}%
-  \addtolength{\altacv@photos@width}{1ex}%
-}
-\newcommand{\photoL}[2]{%
-  \setlength{\altacv@photo@diam@left}{#1}%
-  \forcsvlist{\altacv@add@photo@left}{#2}%
-}
-\newcommand{\photoR}[2]{%
-  \setlength{\altacv@photo@diam@right}{#1}%
-  \forcsvlist{\altacv@add@photo@right}{#2}%
-}
-\let\photo\photoR
 
 \newcommand{\namefont}{\Huge\bfseries}
 \newcommand{\taglinefont}{\large\bfseries}
@@ -293,16 +204,12 @@
 
 \newcommand{\makecvheader}{%
   \begingroup
-    \altacv@left@photos\hfill%
-    \begin{minipage}{\dimexpr\linewidth-\altacv@photos@width}%
     \raggedright%
     {\namefont\color{name}\MakeUppercase{\@name}\par}
     \medskip
     {\taglinefont\color{tagline}\@tagline\par}
     \medskip
     {\personalinfofont\@personalinfo\par}
-    \end{minipage}\hfill%
-    \altacv@right@photos\par%
   \endgroup\medskip
 }
 
@@ -338,12 +245,21 @@
   \medskip\normalsize
 }
 
-% v1.7: adds accsupp for the icon as well
+% Education-specific command with better formatting
+\newcommand{\cveducation}[4]{%
+  {\large\color{emphasis}#1% Degree name
+  \ifstrequal{#3}{}{}{\hfill{\small\raggedleft\BeginAccSupp{method=pdfstringdef,ActualText={\datename:}}\cvDateMarker\EndAccSupp{}~#3}}% Date pushed right
+  \par}%
+  \ifstrequal{#2}{}{}{%
+    {\color{accent}\textbf{#2}}\par}%
+  \ifstrequal{#4}{}{}{%
+    {\small\raggedright\textbf{#4}}\par}%
+  \smallskip\normalsize
+}
+
+% Simplified achievement command for awards
 \newcommand{\cvachievement}[3]{%
-  \begin{tabularx}{\linewidth}{@{}p{2em} @{\hspace{1ex}} >{\raggedright\arraybackslash}X@{}}
-  \multirow{2}{*}{\Large\color{accent}\BeginAccSupp{method=escape,ActualText={#1: }}#1\EndAccSupp{}} & \bfseries\textcolor{emphasis}{#2}\\
-  & #3
-  \end{tabularx}%
+  {\bfseries\textcolor{emphasis}{#2}} \hfill {\small #3}\par
   \smallskip
 }
 
@@ -364,61 +280,34 @@
   }\EndAccSupp{}\par%
 }
 
-% Adapted from @Jake's answer at http://tex.stackexchange.com/a/82729/226
-\newcommand{\wheelchart}[4][0]{%
-    \begingroup\centering
-    \def\innerradius{#3}%
-    \def\outerradius{#2}%
-    % Calculate total
-    \pgfmathsetmacro{\totalnum}{0}%
-    \foreach \value/\colour/\name in {#4} {%
-        \pgfmathparse{\value+\totalnum}%
-        \global\let\totalnum=\pgfmathresult%
-    }%
-    \begin{tikzpicture}
-
-      % Calculate the thickness and the middle line of the wheel
-      \pgfmathsetmacro{\wheelwidth}{\outerradius-\innerradius}
-      \pgfmathsetmacro{\midradius}{(\outerradius+\innerradius)/2}
-      \pgfmathsetmacro{\totalrot}{-90 + #1}
-
-      % Rotate so we start from the top
-      \begin{scope}[rotate=\totalrot]
-
-      % Loop through each value set. \cumnum keeps track of where we are in the wheel
-      \pgfmathsetmacro{\cumnum}{0}
-      \foreach \value/\width/\colour/\name in {#4} {
-            \pgfmathsetmacro{\newcumnum}{\cumnum + \value/\totalnum*360}
-
-            % Calculate the percent value
-            \pgfmathsetmacro{\percentage}{\value/\totalnum*100}
-            % Calculate the mid angle of the colour segments to place the labels
-            \pgfmathsetmacro{\midangle}{-(\cumnum+\newcumnum)/2}
-
-            % This is necessary for the labels to align nicely
-            \pgfmathparse{
-               (-\midangle>180?"west":"east")
-            } \edef\textanchor{\pgfmathresult}
-            \pgfmathparse{
-               (-\midangle>180?"flush left":"flush right")
-            } \edef\textalign{\pgfmathresult}
-            \pgfmathsetmacro\labelshiftdir{1-2*(-\midangle<180)}
-
-            % Draw the color segments. Somehow, the \midrow units got lost, so we add 'pt' at the end. Not nice...
-            \filldraw[draw=white,fill=\colour] (-\cumnum:\outerradius) arc (-\cumnum:-(\newcumnum):\outerradius) --
-            (-\newcumnum:\innerradius) arc (-\newcumnum:-(\cumnum):\innerradius) -- cycle;
-
-            % Draw the data labels
-            % v1.6: Use accsupp so that the numeric number is copied/pasted too
-            \draw  [*-,thin,emphasis] node [append after command={(\midangle:\midradius pt) -- (\midangle:\outerradius + 1ex) -- (\tikzlastnode)}] at (\midangle:\outerradius + 1ex) [xshift=\labelshiftdir*0.5cm,inner sep=1ex, outer sep=0pt, text width=\width,anchor=\textanchor,align=\textalign,font=\small,text=body]{\BeginAccSupp{method=pdfstringdef,ActualText={\name: \value}}\name\EndAccSupp{}};
-            % Set the old cumulated angle to the new value
-            \global\let\cumnum=\newcumnum
-        }
-      \end{scope}
-%      \draw[gray] (0,0) circle (\outerradius) circle (\innerradius);
-    \end{tikzpicture}\par
-    \endgroup
+% New skills environment for simple list format (like professional template)
+\newenvironment{cvSkills}{%
+  \begin{itemize}[leftmargin=0em,labelsep=0.5em,nosep,itemsep=0.25\baselineskip,after=\vspace{0.25\baselineskip}]%
+}{%
+  \end{itemize}%
 }
+
+
+
+% Project entry command with bullet point support (AltaCV compatible)
+\newenvironment{cvproject}[4]{%
+  {\large\color{emphasis}#1% Project name
+  \ifstrequal{#3}{}{}{\hfill{\small\raggedleft\BeginAccSupp{method=pdfstringdef,ActualText={\datename:}}\cvDateMarker\EndAccSupp{}~#3}}% Date pushed right
+  \par}%
+  \ifstrequal{#2}{}{}{%
+    {\color{accent}\textbf{#2}}\par}% Tech stack
+  \ifstrequal{#4}{}{}{%
+    {\small\raggedright\textbf{#4}}\par}% URL
+  \smallskip\normalsize
+  \begin{list}{\cvItemMarker}{\leftmargin=0em}%
+   \setlength{\itemsep}{0.25em}%
+   \setlength{\parsep}{0em}%
+}{%
+  \end{list}%
+  \vspace{0.5em}%
+}
+
+
 
 \newcommand{\cvref}[3]{%
   \smallskip
@@ -439,71 +328,22 @@
   \begin{paracol}{2}%
 }
 
+% Simple column switching commands
+\newcommand{\switchleft}{%
+  \switchcolumn[1]%
+}
+
+\newcommand{\switchright}{%
+  \switchcolumn[2]%
+}
+
 % v1.5 Move biblatex-related code to separate .cfg file
 % so that it's easier to change and customise the style for
 % publication lists
 
-% v1.1.2: make it easier to add a sidebar aligned with top of next page
-\RequirePackage{afterpage}
-\newcommand{\addsidebar}[2][]{\marginpar{%
-  \ifstrequal{#1}{}{}{\vspace*{#1}}%
-  \input{#2}}%
-}
-\newcommand{\addnextpagesidebar}[2][]{\afterpage{\addsidebar[#1]{#2}}}
-
-% v1.6.5 But provide for ability to highlight names in publication list
-\RequirePackage{pgffor}
-\def\my@namelist{}
-\newcommand{\mynames}[1]{\def\my@namelist{#1}}
-\newtoggle{boldname}
-% v1.7.3 For backward compatibility re hooks management
-\IfFormatAtLeastTF{2021-11-15}{%
-  \AddToHook{package/biblatex/after}{%
-    \typeout{OK AddToHook biblatex after works}
-    \altacv@makeboldnames
-  }%
-}{%
-  \AfterPackage{biblatex}{%
-    \typeout{OK AfterPackage biblatex after works}
-    \altacv@makeboldnames
-  }%
-}
-
-\newcommand{\altacv@makeboldnames}{%
-  \renewcommand*{\mkbibnamefamily}[1]{%
-    \global\togglefalse{boldname}%
-    \foreach \my@fname / \my@gname in \my@namelist {%
-      \ifboolexpr{ test {\ifdefstrequal{\namepartfamily}{\my@fname}}
-                   and
-                   test {\ifdefstrequal{\namepartgiven}{\my@gname}}}
-        {\global\toggletrue{boldname}\typeout{YES BOLD NAMES}}{}%
-    }%
-    \iftoggle{boldname}{\textbf{##1}}{##1}%
-  }%
-% 
-  \renewcommand*{\mkbibnamegiven}[1]{%
-    \global\togglefalse{boldname}%
-    \foreach \my@fname / \my@gname in \my@namelist{%
-      \ifboolexpr{ test {\ifdefstrequal{\namepartfamily}{\my@fname}}
-                   and
-                   test {\ifdefstrequal{\namepartgiven}{\my@gname}}}
-        {\global\toggletrue{boldname}\breakforeach}{}%
-    }%
-    \iftoggle{boldname}{\textbf{##1}}{##1}%
-  }
-}
-
-% 1.7.3 Backward compatibility for hooks management
-\IfFormatAtLeastTF{2020-10-01}{%
-  \AddToHook{begindocument/before}{%
-    \pagestyle{empty}%
-    \color{body}%
-    \raggedright%
-  }
-}{%
-  \AtBeginDocument{%
-    \pagestyle{empty}%
-    \color{body}%
-    \raggedright%
-  }
+% Simple document setup
+\AtBeginDocument{%
+  \pagestyle{empty}%
+  \color{body}%
+  \raggedright%
 }

@@ -123,7 +123,30 @@ const Landing: React.FC = () => {
         </div>
       </section>
 
-
+      {/* Footer */}
+      <footer className="border-t border-gray-600/20" style={{ backgroundColor: '#000000' }}>
+        <div className="max-w-7xl mx-auto px-6 py-8">
+          <div className="flex items-center justify-end">
+            {/* Contact */}
+            <div className="flex items-center space-x-6">
+              <a 
+                href="mailto:support@resumecraft.com" 
+                className="text-gray-400 hover:text-white transition-colors text-sm"
+              >
+                support@resumecraft.com
+              </a>
+              <a 
+                href="https://twitter.com/resumecraft" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-gray-400 hover:text-white transition-colors text-sm"
+              >
+                @resumecraft
+              </a>
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 };

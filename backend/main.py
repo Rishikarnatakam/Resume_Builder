@@ -17,7 +17,7 @@ if str(backend_dir) not in sys.path:
     sys.path.insert(0, str(backend_dir))
 
 from routes import auth, resumes, latex, users, templates, ai_chat, subscriptions
-from database import init_db
+from database import init_db, engine
 from utils.config import config
 
 @asynccontextmanager
@@ -34,6 +34,9 @@ async def lifespan(app: FastAPI):
     yield
     # Shutdown
     print("🛑 Shutting down LaTeX Resume AI...")
+    # Properly close database connections
+    await engine.dispose()
+    print("✅ Database connections closed")
 
 # Create FastAPI app with modern config
 app = FastAPI(

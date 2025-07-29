@@ -761,7 +761,7 @@ const ResumeDetails: React.FC = () => {
               />
               <input
                 type="email"
-                placeholder="Email Address"
+                placeholder="Email Address *"
                 value={resumeData.personalInfo.email}
                 onChange={(e) => setResumeData(prev => ({
                   ...prev,
@@ -772,7 +772,7 @@ const ResumeDetails: React.FC = () => {
               />
               <input
                 type="tel"
-                placeholder="Phone Number"
+                placeholder="Phone Number *"
                 value={resumeData.personalInfo.phone}
                 onChange={(e) => setResumeData(prev => ({
                   ...prev,
@@ -783,7 +783,7 @@ const ResumeDetails: React.FC = () => {
               />
               <input
                 type="text"
-                placeholder="Location"
+                placeholder="Location *"
                 value={resumeData.personalInfo.address}
                 onChange={(e) => setResumeData(prev => ({
                   ...prev,
@@ -810,7 +810,7 @@ const ResumeDetails: React.FC = () => {
               
               <input
                 type="url"
-                placeholder="LinkedIn URL"
+                placeholder="LinkedIn URL *"
                 value={resumeData.personalInfo.linkedin}
                 onChange={(e) => setResumeData(prev => ({
                   ...prev,
@@ -821,7 +821,7 @@ const ResumeDetails: React.FC = () => {
               />
               <input
                 type="url"
-                placeholder="GitHub URL"
+                placeholder="GitHub URL *"
                 value={resumeData.personalInfo.github}
                 onChange={(e) => setResumeData(prev => ({
                   ...prev,
@@ -848,7 +848,7 @@ const ResumeDetails: React.FC = () => {
               
               <input
                 type="url"
-                placeholder="Website URL"
+                placeholder="Website URL *"
                 value={resumeData.personalInfo.website}
                 onChange={(e) => setResumeData(prev => ({
                   ...prev,

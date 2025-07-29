@@ -1,103 +1,76 @@
-TEMPLATE: AltaCV
-
-## QUICK START
-- **Layout:** 2-column, modern, professional, clean
-- **Main commands:**
-  - \cvsection{Section} — Section header
-  - \cvevent{Title}{Org}{Date}{Location} — Experience/education entry
-  - \cvtag{Skill} — Tag for project technologies
-  - \begin{paracol}{2} ... \end{paracol} — Two-column layout
-  - \switchcolumn — Move to right column
-  - \makecvheader — Header (inside document)
-- **Section order:** Header → Education → Certifications → [switch column] → Projects → Skills
-- **Margins:** Always use \geometry{margin=0.5in} after \documentclass{altacv}
-- **Skills:** Group by category (see example below)
-
----
-
-## COMMAND USAGE EXAMPLES
-- Section header: `\cvsection{Projects}`
-- Experience: `\cvevent{Software Engineer}{Company}{2022--2024}{Remote}`
-- Project technologies: `\cvtag{React}`
-- Two-column start: `\begin{paracol}{2}`
-- Switch column: `\switchcolumn`
-- End columns: `\end{paracol}`
-
----
-
-## MINIMAL WORKING EXAMPLE
-```latex
-\documentclass{altacv}
-\geometry{margin=0.5in}
-\begin{document}
-\makecvheader
-\begin{paracol}{2}
-% Left column
-\cvsection{Education}
-\cvevent{BSc Computer Science}{Uni}{2020--2024}{City}
-\cvsection{Certifications}
-...certifications...
-\switchcolumn
-% Right column
-\cvsection{Projects}
-\cvevent{Resume Builder}{Self}{2023}{Remote}
-\begin{itemize}
-  \item Built a resume app
-\end{itemize}
-\cvsection{Skills}
-Programming Languages: Python, JavaScript\\
-Frameworks: React, Flask\\
-Tools: Git, Docker
-\end{paracol}
-\end{document}
-```
-
----
-
-## CRITICAL DO'S AND DON'TS
-| Do | Don’t |
-|----|-------|
-| Use only current template commands | Change \documentclass |
-| Group skills by category | List skills flat or randomly |
-| Keep sections contiguous | Split/interleave sections |
-| Use \switchcolumn once | Switch columns multiple times |
-| Omit empty sections | Add fake/placeholder info |
-| Use \href{url}{text} for links | Add comments in LaTeX |
-
----
-
-## SKILLS GROUPING EXAMPLE
-**Good:**
-```
-Programming Languages: Python, JavaScript, Java
-Frameworks: React, Flask, Django
-Tools: Git, Docker, AWS
-Databases: MySQL, PostgreSQL
-```
-**Bad:**
-```
-Python, JavaScript, Java, React, Flask, Django, Git, Docker, AWS, MySQL, PostgreSQL
-```
-
----
-
-## TROUBLESHOOTING / FAQ
-- **Section won’t fit?** Start it on a new page (left column).
-- **Missing command?** Define it based on template patterns.
-- **Skills not grouped?** Use common categories: Programming Languages, Frameworks, Tools, Databases, Cloud.
-- **Output not compiling?** Check for unmatched \begin/\end and section environments.
-- **No photos:** Only add photo commands if user provides a photo and requests it.
-
----
-
-## DETAILED RULES (REFERENCE)
-- Use \makecvheader inside document for header.
-- Add empty line after every \cvsection{}.
-- Use bullet points for project details (\begin{itemize} ... \end{itemize}).
-- Never break, split, or interleave sections across columns/pages unless absolutely necessary.
-- Each section must be a single, contiguous block.
-- Never output comments or explanations in LaTeX code.
-- Compile with pdflatex.
-- Maintain section integrity and professional spacing.
-- ATS-friendly formatting throughout.
+{
+  "template_name": "altacv",
+  "layout": "two_column",
+  "default_margins": "0.5in",
+  "header": {
+    "commands": ["\\makecvheader", "\\name{}", "\\tagline{}", "\\personalinfo{}"],
+    "photo_commands": ["\\photoL", "\\photoR"],
+    "max_addresses": "unlimited",
+    "rules": [
+      "Use \\makecvheader inside the document for the header.",
+      "Use \\name{}, \\tagline{}, and \\personalinfo{} for personal info.",
+      "Only add photo commands if user provides a photo and requests it.",
+      "All header commands must come before \\begin{paracol}{2}.",
+      "CRITICAL: Check template instructions for address formatting rules",
+      "CRITICAL: If you have more than 3 contact items, combine them intelligently",
+      "CRITICAL: NEVER use \\namesize{\\LARGE} or any \\namesize{} command - AltaCV uses \\namefont which is already set to \\Huge\\bfseries",
+      "CRITICAL: The name font is already set to \\Huge\\bfseries by default - do not override it",
+      "CRITICAL: If user wants different name size, modify the template's \\newcommand{\\namefont}{} definition, don't use \\namesize{} in the document"
+    ]
+  },
+  "section_order": [
+    "Header",
+    "Education",
+    "Certifications",
+    "Projects",
+    "Skills"
+  ],
+  "environments": {
+    "section": "\\cvsection{Section Name}",
+    "event": "\\cvevent{Title}{Org}{Date}{Location}",
+    "tag": "\\cvtag{Skill}",
+    "skill": "\\cvskill{Skill}{Level}",
+    "achievement": "\\cvachievement{Icon}{Title}{Description}",
+    "columns": "\\begin{paracol}{2} ... \\end{paracol}",
+    "switch_column": "\\switchcolumn"
+  },
+  "font_sizing": {
+    "name_font": {
+      "default": "\\Huge\\bfseries (already set in template)",
+      "available_sizes": ["\\large", "\\Large", "\\LARGE", "\\huge", "\\Huge", "\\HUGE"],
+      "rules": [
+        "NEVER use \\namesize{\\LARGE} in the document",
+        "The template already sets name font to \\Huge\\bfseries by default",
+        "If user wants different size, modify the template's \\newcommand{\\namefont}{} line",
+        "Available sizes: tiny<scriptsize<footnotesize<small<normalsize<large<Large<LARGE<huge<Huge<HUGE"
+      ]
+    }
+  },
+  "forbidden_commands": [
+    "\\namesize{\\LARGE}",
+    "\\namesize{}"
+  ],
+  "font_sizes": "tiny<scriptsize<footnotesize<small<normalsize<large<Large<LARGE<huge<Huge<HUGE",
+  "forbidden_patterns": [
+    "\\namesize{\\LARGE}",
+    "\\namesize{}"
+  ],
+  "required_checks": [
+    "Check for proper template command usage",
+    "Check that \\namesize{} is not used in the document"
+  ],
+  "bullets_for_achievements": true,
+  "omit_empty_sections": true,
+  "never_add_fake_data": true,
+  "troubleshooting": {
+    "missing_section": "Add it in logical order.",
+    "missing_command": "Define it based on template patterns.",
+    "skills_not_grouped": "Use common categories with colons.",
+    "not_compiling": "Check for unmatched \\begin/\\end and section environments.",
+    "custom_section": "If user requests a custom section, use \\cvsection and place it logically in the order.",
+    "duplicate_sections": "Remove all duplicates, keep only one of each section type.",
+    "invalid_environments": "Use only template environments (\\cvsection, \\cvevent, \\cvskill, \\cvtag, \\cvachievement).",
+    "name_size_issue": "If user wants to change name size, modify the template's \\newcommand{\\namefont}{} line, don't use \\namesize{} in document"
+  }
+}
 

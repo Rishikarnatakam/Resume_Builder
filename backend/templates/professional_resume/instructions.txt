@@ -1,87 +1,230 @@
-TEMPLATE: Professional Resume
-
-## QUICK START
-- **Layout:** Single column, clean, traditional
-- **Main commands:**
-  - \rSection{Section} — Section header
-  - \begin{rSubsection}{Company}{Date}{Title}{Location} ... \end{rSubsection} — Experience entry
-  - \begin{rAward}{Title}{Org}{Date} ... \end{rAward} — Award entry
-  - \begin{rCertification}{Name}{Issuer}{Date} ... \end{rCertification} — Certification entry
-- **Section order:** Header → Summary/Objective → Experience → Education → Skills → Projects
-- **Margins:** Default 0.75in (can be overridden)
-- **Skills:** Group by category (see example below)
-
----
-
-## COMMAND USAGE EXAMPLES
-- Section header: `\rSection{Experience}`
-- Experience: `\begin{rSubsection}{Company}{2022--2024}{Software Engineer}{City}` ... `\end{rSubsection}`
-- Award: `\begin{rAward}{Best Developer}{Org}{2023}` ... `\end{rAward}`
-- Certification: `\begin{rCertification}{AWS}{Amazon}{2023}` ... `\end{rCertification}`
-
----
-
-## MINIMAL WORKING EXAMPLE
-```latex
-\documentclass{professional_resume}
-\begin{document}
-\name{Jane Doe}
-\rSection{Summary}
-Results-driven software engineer with 3+ years of experience.
-\rSection{Experience}
-\begin{rSubsection}{Tech Corp}{2022--2024}{Software Engineer}{Remote}
-  \item Developed scalable web apps
-  \item Led a team of 5
-\end{rSubsection}
-\rSection{Education}
-BSc Computer Science, University, 2020--2024
-\rSection{Skills}
-Programming Languages: Python, JavaScript\\
-Frameworks: React, Flask\\
-Tools: Git, Docker
-\end{document}
-```
-
----
-
-## CRITICAL DO'S AND DON'TS
-| Do | Don’t |
-|----|-------|
-| Use only current template commands | Change \documentclass |
-| Group skills by category | List skills flat or randomly |
-| Use bullet points for achievements | Use plain text for lists |
-| Omit empty sections | Add fake/placeholder info |
-| Use \href{url}{text} for links | Add comments in LaTeX |
-
----
-
-## SKILLS GROUPING EXAMPLE
-**Good:**
-```
-Programming Languages: Python, JavaScript, Java
-Frameworks: React, Flask, Django
-Tools: Git, Docker, AWS
-Databases: MySQL, PostgreSQL
-```
-**Bad:**
-```
-Python, JavaScript, Java, React, Flask, Django, Git, Docker, AWS, MySQL, PostgreSQL
-```
-
----
-
-## TROUBLESHOOTING / FAQ
-- **Section missing?** Add it in logical order.
-- **Missing command?** Define it based on template patterns.
-- **Skills not grouped?** Use common categories: Programming Languages, Frameworks, Tools, Databases, Cloud.
-- **Output not compiling?** Check for unmatched \begin/\end and section environments.
-
----
-
-## DETAILED RULES (REFERENCE)
-- Use \rSection{} for all main sections.
-- Use \begin{rSubsection}...\end{rSubsection} for each experience entry.
-- Use bullet points for achievements and descriptions.
-- Group skills by category with clear labels.
-- Never output comments or explanations in LaTeX code.
-- Maintain professional formatting and ATS-friendly structure. 
+{
+  "template_name": "professional_resume",
+  "layout": "single_column",
+  "default_margins": "0.75in",
+  "header": {
+    "commands": ["\\name{}", "\\address{}"],
+    "address_separator": "\\addressSep",
+    "max_addresses": 3,
+    "rules": [
+      "Use \\name{} for the candidate's name.",
+      "Use up to three \\address{} commands for contact info (email, phone, links, etc.).",
+      "Use \\href{url}{text} for all links.",
+      "ALL header commands MUST come before \\begin{document}.",
+      "If any header field is missing, omit it without placeholder text.",
+      "NEVER add comments or explanations in LaTeX code.",
+      "NEVER put \\name or \\address after \\begin{document}.",
+      "CRITICAL: Maximum 3 address lines - combine multiple links using $\\diamond$ separator",
+      "CRITICAL: If you have more than 3 contact items, combine them intelligently",
+      "CRITICAL: Example: \\address{\\href{url1}{text1} $\\diamond$ \\href{url2}{text2}}",
+      "CRITICAL: Never create more than 3 \\address{} commands",
+      "CRITICAL: NEVER use \\namesize{\\LARGE} or any \\namesize{} command - the template already has predefined name sizing",
+      "CRITICAL: The name size is already set to \\LARGE by default in the template - do not override it",
+      "CRITICAL: If user wants larger name, use the template's predefined sizes: \\small,\\normalsize, \\large,\\Large,\\LARGE,\\huge,\\Huge,\\HUGE,\\GIGANTIC,\\MASSIVE,\\ENORMOUS",
+      "CRITICAL: To change name size, modify the template's \\providecommand{\\namesize}{} definition, don't use \\namesize{} in the document",
+      "CRITICAL: SIZE PROGRESSION RULES - ALWAYS FOLLOW THIS ORDER:",
+      "CRITICAL: Current default is \\LARGE (17pt)",
+      "CRITICAL: If user says 'bigger' or 'larger' from \\LARGE → use \\huge (20pt) ONLY",
+      "CRITICAL: If user says 'bigger' or 'larger' from \\huge → use \\Huge (25pt) ONLY", 
+      "CRITICAL: If user says 'bigger' or 'larger' from \\Huge → use \\HUGE (34pt) ONLY",
+      "CRITICAL: If user says 'bigger' or 'larger' from \\HUGE → use \\GIGANTIC (41pt) ONLY",
+      "CRITICAL: If user says 'bigger' or 'larger' from \\GIGANTIC → use \\MASSIVE (50pt) ONLY",
+      "CRITICAL: If user says 'bigger' or 'larger' from \\MASSIVE → use \\ENORMOUS (60pt) ONLY",
+      "CRITICAL: If user says 'smaller' from \\LARGE → use \\Large (14pt) ONLY",
+      "CRITICAL: If user says 'smaller' from \\Large → use \\large (12pt) ONLY",
+      "CRITICAL: If user says 'smaller' from \\large → use \\normalsize (10pt) ONLY",
+      "CRITICAL: If user says 'smaller' from \\normalsize → use \\small (9pt) ONLY",
+      "CRITICAL: NEVER JUMP TO EXTREMES - GO ONE STEP AT A TIME ONLY"
+    ]
+  },
+  "section_order": [
+    "Header",
+    "Summary",
+    "Experience",
+    "Education",
+    "Skills",
+    "Projects", 
+    "Awards",
+    "Certifications"
+  ],
+  "environments": {
+    "section": "\\rSection{Section Name}",
+    "education": "\\begin{rSubsection}{Institution}{Date}{Degree}{Field} ... \\end{rSubsection}",
+    "project": "\\begin{rSubsection}{Project Name}{Date}{Technologies}{URL} ... \\end{rSubsection}",
+    "award": "\\begin{rAward}{Title}{Organization}{Date} ... \\end{rAward}",
+    "certification": "\\begin{rCertification}{Name}{Issuer}{Date} ... \\end{rCertification}"
+  },
+  "font_sizing": {
+    "name_size": {
+      "default": "\\LARGE (17pt - already set in template)",
+      "available_sizes": [
+        "\\small","\\normalsize", "\\large","\\Large","\\LARGE","\\huge","\\Huge","\\HUGE","\\GIGANTIC","\\MASSIVE","\\ENORMOUS"
+      ],
+      "size_progression": [
+        "\\small (9pt)",
+        "\\normalsize (10pt)", 
+        "\\large (12pt)",
+        "\\Large (14pt)",
+        "\\LARGE (17pt) - DEFAULT",
+        "\\huge (20pt)",
+        "\\Huge (25pt)",
+        "\\HUGE (34pt)",
+        "\\GIGANTIC (41pt)",
+        "\\MASSIVE (50pt)",
+        "\\ENORMOUS (60pt)"
+      ]
+    }
+  },
+  "skills_formatting": {
+    "group_by_category": true,
+    "categories": [
+      "Programming Languages",
+      "Frameworks & Libraries",
+      "Databases",
+      "Cloud & Deployment", 
+      "Tools & DevOps",
+      "APIs"
+    ],
+    "format": "\\item Category: Skill1, Skill2, Skill3",
+    "line_breaks": "Each category must be on a separate line using \\item",
+    "environment": "Use \\begin{rSkills} ... \\end{rSkills} for skills section",
+    "example_good": [
+      "\\item Programming Languages: C, Python, Java",
+      "\\item Frameworks & Libraries: Flask, Flutter, React",
+      "\\item Databases: MySQL, MongoDB, PostgreSQL",
+      "\\item Cloud & Deployment: AWS, Supabase, Netlify, Google Cloud Platform",
+      "\\item Machine Learning: TensorFlow, Google Gemini API",
+      "\\item Tools & DevOps: Git, GitHub, Jenkins"
+    ],
+    "example_bad": [
+      "C, Python, Flask, Flutter, MySQL, MongoDB, AWS, Supabase, Netlify, TensorFlow, Git, GitHub",
+      "Programming Languages: C, Python, Frameworks: Flask, Flutter, Databases: MySQL, MongoDB",
+      "\\begin{tabular} ... \\item Python \\item JavaScript ...",
+      "\\begin{itemize} \\item Python \\item JavaScript ..."
+    ],
+    "forbidden": [
+      "NEVER use \\begin{tabular} for skills",
+      "NEVER use \\begin{itemize} for skills", 
+      "NEVER use \\item outside of rSkills environment",
+      "NEVER nest environments for skills",
+      "NEVER put all skills in one paragraph",
+      "NEVER put multiple categories on the same line",
+      "NEVER forget \\item before each skill category"
+    ]
+  },
+  "critical_rules": [
+    "NEVER duplicate sections - only ONE of each section type",
+    "NEVER nest \\begin{rSubsection} inside \\begin{tabular}",
+    "NEVER use \\item outside of proper environments",
+    "ALWAYS match \\begin{environment} with \\end{environment}",
+    "NEVER put content after \\end{document}",
+    "NEVER put \\usepackage or \\geometry after \\begin{document}",
+    "ALWAYS use template commands (\\rSection, \\rSubsection, \\rAward, \\rCertification, \\rSkills)",
+    "NEVER create custom environments unless explicitly requested",
+    "NEVER use plain \\begin{itemize} or \\begin{enumerate} - use template environments",
+    "NEVER put \\item directly in \\begin{tabular} - use proper list environments",
+    "PRESERVE all template formatting including built-in bullet points (•) from \\item commands",
+    "NEVER add bullet points unless user specifically requests them",
+    "NEVER remove \\item, \\rSubsection, or any template commands unless user specifically requests",
+    "ALWAYS adhere to template structure - only modify when user explicitly asks",
+    "Template bullet points (•) are part of the design - preserve them",
+    "When user mentions 'bullet points', ask for clarification about what they want to change",
+    "NEVER use empty \\item commands - if no content, omit the \\item entirely",
+    "ALWAYS use separate \\item for each skill category - NEVER put all skills in one \\item",
+    "CRITICAL: NEVER create empty sections - if a section has no content, omit it entirely",
+    "CRITICAL: NEVER create \\rSection{Experience} without any \\begin{rSubsection} content",
+    "CRITICAL: NEVER create \\rSection{Projects} without any \\begin{rSubsection} content",
+    "CRITICAL: NEVER create \\rSection{Awards} without any \\begin{rAward} content",
+    "CRITICAL: NEVER create \\rSection{Certifications} without any \\begin{rCertification} content",
+    "CRITICAL: NEVER create \\rSection{Skills} without any \\item content in \\begin{rSkills}",
+    "CRITICAL: If user data is missing for a section, omit the entire section - do not create empty placeholders"
+  ],
+  "forbidden_commands": [
+    "\\namesize{\\LARGE}",
+    "\\namesize{}",
+    "\\begin{rSubsection} ... \\begin{tabular} ...",
+    "Multiple \\rSection{Projects}",
+    "Multiple \\rSection{Skills}",
+    "\\name after \\begin{document}",
+    "\\address after \\begin{document}",
+    "\\item C, Python, Flask, Flutter, MySQL, MongoDB"
+  ],
+  "forbidden_patterns": [
+    "\\begin{rSubsection} ... \\begin{tabular} ...",
+    "Multiple \\rSection{Projects}",
+    "Multiple \\rSection{Skills}",
+    "\\name after \\begin{document}",
+    "\\address after \\begin{document}",
+    "\\item C, Python, Flask, Flutter, MySQL, MongoDB"
+  ],
+  "required_checks": [
+    "Check for proper template command usage",
+    "Check that skills use separate \\item for each category",
+    "Check that skills are not all in one \\item command",
+    "Check that \\namesize{} is not used in the document"
+  ],
+  "bullets_for_achievements": true,
+  "omit_empty_sections": true,
+  "never_add_fake_data": true,
+  "troubleshooting": {
+    "missing_section": "Add it in logical order.",
+    "missing_command": "Define it based on template patterns.",
+    "skills_not_grouped": "Use common categories with colons.",
+    "not_compiling": "Check for unmatched \\begin/\\end and section environments.",
+    "custom_section": "If user requests a custom section, use \\rSection and place it logically in the order.",
+    "duplicate_sections": "Remove all duplicates, keep only one of each section type.",
+    "invalid_environments": "Use only template environments (\\rSection, \\rSubsection, \\rAward, \\rCertification).",
+    "name_size_issue": "If user wants to change name size, modify the template's \\providecommand{\\namesize}{} line, don't use \\namesize{} in document"
+  },
+  "do": [
+    "Use only current template commands.",
+    "Group skills by category with colons.",
+    "Use bullet points for achievements.",
+    "Omit empty sections.",
+    "Use \\href{url}{text} for links.",
+    "Auto-correct unmatched environments if found.",
+    "Warn in the message if user requests a non-standard order, but do your best to comply.",
+    "Validate LaTeX syntax before returning.",
+    "Check for duplicate sections.",
+    "Ensure proper environment matching.",
+    "Preserve all template formatting and structure.",
+    "Keep template bullet points (•) from \\item commands.",
+    "Ask for clarification when user mentions formatting changes.",
+    "Only modify template structure when user explicitly requests changes."
+  ],
+  "dont": [
+    "Change \\documentclass.",
+    "List skills flat or randomly.",
+    "Use plain text for lists.",
+    "Add fake/placeholder info.",
+    "Add comments in LaTeX.",
+    "Add sections not requested by the user unless required for structure.",
+    "Use \\begin{tabular} for skills.",
+    "Use \\begin{itemize} for skills.",
+    "Duplicate sections.",
+    "Put content after \\end{document}.",
+    "Put header commands after \\begin{document}.",
+    "Remove \\item, \\rSubsection, or any template commands unless user specifically requests",
+    "Add bullet points unless user specifically asks for them",
+    "Modify template formatting unless user explicitly requests changes",
+    "Remove template bullet points (•) from \\item commands",
+    "Change template structure without user permission"
+  ],
+  "edge_cases": [
+    "If a section is missing, skip it without error.",
+    "If a command is missing, define it based on template patterns and document it in the message.",
+    "If user requests a custom section, use \\rSection and place it logically.",
+    "If environments are unmatched, auto-correct them and warn in the message.",
+    "If header info is missing, omit that field without placeholder text.",
+    "If user requests a non-standard section order, warn in the message but do your best to comply.",
+    "If user provides custom commands, validate and include only if they don't break structure.",
+    "If user requests a section not in section_order, intelligently place it where it fits best.",
+    "If user requests a section that doesn't fit the template, explain briefly in the message and suggest alternatives.",
+    "If user requests a format that breaks ATS or professional standards, warn in the message and suggest improvements.",
+    "If duplicate sections are detected, remove all duplicates and keep only one of each type.",
+    "If invalid environments are detected, replace with proper template environments.",
+    "If user mentions 'bullet points', ask for clarification about what specific changes they want",
+    "If user wants to remove formatting, clarify exactly what they want removed before making changes",
+    "If user wants to add formatting, confirm the specific formatting they want before adding it"
+  ]
+} 
