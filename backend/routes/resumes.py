@@ -435,6 +435,10 @@ async def create_resume(
             )
         except Exception as e:
             logger.error(f"AI LaTeX generation failed: {e}")
+            logger.error(f"Template: {request.template_name}")
+            logger.error(f"Resume data keys: {list(request.resume_data.dict().keys())}")
+            import traceback
+            logger.error(f"Full traceback: {traceback.format_exc()}")
             raise HTTPException(status_code=500, detail="Failed to generate resume content from AI.")
 
         logger.info("🧠 Used AI LaTeX generation")

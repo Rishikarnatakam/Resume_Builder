@@ -46,21 +46,21 @@ class PromptComposer:
             logger.error(f"❌ Error reading JSON prompt file {filename}: {str(e)}")
             return {}
 
-    def read_template_instructions(self, template_name: str) -> dict:
-        """Read template-specific instructions as JSON."""
+    def read_template_instructions(self, template_name: str) -> str:
+        """Read template-specific instructions as plain text."""
         try:
             instructions_file = self.templates_dir / template_name / "instructions.txt"
             if instructions_file.exists():
                 with open(instructions_file, 'r', encoding='utf-8') as f:
-                    content = json.load(f)
+                    content = f.read().strip()
                 logger.info(f"✅ Loaded template instructions: {template_name}")
                 return content
             else:
                 logger.warning(f"⚠️ Template instructions not found: {template_name}")
-                return {"template_name": template_name, "note": "Instructions missing."}
+                return ""
         except Exception as e:
             logger.error(f"❌ Error reading template instructions {template_name}: {str(e)}")
-            return {"template_name": template_name, "note": f"Error: {str(e)}"}
+            return ""
 
     def read_template_content(self, template_name: str) -> str:
         """Read the actual template .cls file content as a string."""
@@ -160,6 +160,50 @@ class PromptComposer:
         }
         
         return merged
+
+    def build_improved_generation_prompt(self, template_name: str, user_data: dict, job_description: Optional[str] = None) -> str:
+        template_content = self.read_template_content(template_name)
+        instructions = self.read_template_instructions(template_name)
+        prompt = f"""TEMPLATE:\n```latex\n{template_content}\n```\n\nFORM DATA (Current user input):\n{json.dumps(user_data, indent=2)}"""
+        if job_description:
+            prompt += f"\n\nJOB DESCRIPTION: {job_description}"
+        if instructions:
+            prompt += f"\n\nTEMPLATE-SPECIFIC INSTRUCTIONS:\n{instructions}\n"
+        prompt += """\n\nINSTRUCTIONS:\n1. Use the FORM DATA (current user input) as the primary source - this is what the user has entered/edited\n2. Create a LaTeX document that uses this template\n3. Create clean, professional LaTeX code\n4. Ensure proper formatting and spacing\n5. Use the template commands correctly\n6. Include all sections that have data\n7. Skip empty sections\n8. Maintain consistent formatting throughout\n\nIMPORTANT: Use the FORM DATA provided above, not parsed data. This represents the user's current input."""
+        return prompt
+
+    def build_simple_generation_prompt(self, template_name: str, user_data: dict, job_description: Optional[str] = None) -> str:
+        template_content = self.read_template_content(template_name)
+        instructions = self.read_template_instructions(template_name)
+        prompt = f"""TEMPLATE:\n```latex\n{template_content}\n```\n\nUSER DATA:\n{json.dumps(user_data, indent=2)}"""
+        if job_description:
+            prompt += f"\n\nJOB: {job_description}"
+        if instructions:
+            prompt += f"\n\nTEMPLATE-SPECIFIC INSTRUCTIONS:\n{instructions}\n"
+        prompt += "\n\nINSTRUCTIONS:\nCreate a resume using this template and data."
+        return prompt
+
+    def build_simple_conversation_prompt(self, template_name: str, user_data: Optional[dict] = None, job_description: Optional[str] = None) -> str:
+        template_content = self.read_template_content(template_name)
+        instructions = self.read_template_instructions(template_name)
+        prompt = f"""TEMPLATE:\n```latex\n{template_content}\n```\n\nUSER DATA:\n{json.dumps(user_data, indent=2)}"""
+        if job_description:
+            prompt += f"\n\nJOB: {job_description}"
+        if instructions:
+            prompt += f"\n\nTEMPLATE-SPECIFIC INSTRUCTIONS:\n{instructions}\n"
+        prompt += "\n\nINSTRUCTIONS: Help edit this resume."
+        return prompt
+
+    def build_improved_conversation_prompt(self, template_name: str, user_data: Optional[dict] = None, job_description: Optional[str] = None) -> str:
+        template_content = self.read_template_content(template_name)
+        instructions = self.read_template_instructions(template_name)
+        prompt = f"""TEMPLATE:\n```latex\n{template_content}\n```\n\nFORM DATA (Current user input):\n{json.dumps(user_data, indent=2)}"""
+        if job_description:
+            prompt += f"\n\nJOB DESCRIPTION: {job_description}"
+        if instructions:
+            prompt += f"\n\nTEMPLATE-SPECIFIC INSTRUCTIONS:\n{instructions}\n"
+        prompt += """\n\nINSTRUCTIONS: \nYou are an expert LaTeX resume editor. You have access to the template structure and the user's current form data. Help the user edit their resume by making precise LaTeX changes.\n\nIMPORTANT: \n- Use the FORM DATA provided above (current user input), not parsed data\n- This represents what the user has actually entered/edited in the form\n- Focus on accuracy and proper LaTeX formatting\n- Consider the template structure and commands\n- Be helpful and conversational"""
+        return prompt
 
 # Global instance
 prompt_composer = PromptComposer()

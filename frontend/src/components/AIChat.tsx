@@ -641,12 +641,11 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ resumeId }, ref) => {
 
         setMessages(prev => [...prev, assistantMessage]);
 
-        // Handle JSON operations (client-side processing) or diff format
-        if (result.patch_data && result.patch_data.operations) {
-          console.log('✅ FRONTEND: Received JSON operations');
-          console.log('📄 FRONTEND: Operations:', result.patch_data.operations);
-          editorState.receiveAIOperations(result.patch_data.operations);
-
+        // Handle simple LaTeX replacement
+        if (result.patch_data && result.patch_data.new_latex) {
+          console.log('✅ FRONTEND: Received new LaTeX');
+          console.log('📄 FRONTEND: New LaTeX length:', result.patch_data.new_latex.length);
+          editorState.receiveAILatex(result.patch_data.new_latex);
         } else {
           console.log('ℹ️ FRONTEND: Received message-only response (no changes)');
         }

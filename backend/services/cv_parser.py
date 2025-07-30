@@ -1,8 +1,6 @@
 import os
 from typing import Dict, Any, Optional, List
 from docx import Document
-import pdfplumber
-import PyPDF2
 import re
 from dotenv import load_dotenv
 from google import genai
@@ -292,9 +290,9 @@ CRITICAL INSTRUCTIONS:
         client = genai.Client()
         input_token_count = client.models.count_tokens(model=f'models/{get_gemini_model()}', contents=contents).total_tokens
         print(f"GEMINI INPUT TOKEN COUNT: {input_token_count}")
-        # Call Gemini with the most capable model for PDF processing
+        # Call Gemini with the configured model for PDF processing
         response = parser.client.models.generate_content(
-            model=f'models/{get_gemini_model()}',  # Use environment model
+            model=f'models/{get_gemini_model()}',  # Use .env configured model
             contents=contents,
             config=types.GenerateContentConfig(
                 temperature=0.0,  # Deterministic for consistent parsing
@@ -396,38 +394,7 @@ def _log_comprehensive_extraction_summary(data: Dict[str, Any]) -> None:
     if awards:
         print(f"   🏆 Awards found: {', '.join([award.get('title', 'Unknown') for award in awards[:3]])}{'...' if len(awards) > 3 else ''}")
 
-def extract_text_from_pdf(file_content: bytes) -> str:
-    """Extract text from PDF file - handles multi-page documents"""
-    text = ""
-    
-    try:
-        # Primary extraction with pdfplumber (best for layout preservation)
-        with pdfplumber.open(io.BytesIO(file_content)) as pdf:
-            print(f"📄 Processing PDF with {len(pdf.pages)} pages")
-            for page_num, page in enumerate(pdf.pages):
-                page_text = page.extract_text()
-                if page_text:
-                    text += f"\n--- PAGE {page_num + 1} ---\n"
-                    text += page_text + "\n"
-                    print(f"✅ Extracted text from page {page_num + 1}: {len(page_text)} characters")
-        
-        # Fallback to PyPDF2 if pdfplumber didn't get enough content
-        if len(text.strip()) < 100:
-            print("🔄 Trying PyPDF2 as fallback...")
-            pdf_reader = PyPDF2.PdfReader(io.BytesIO(file_content))
-            for page_num, page in enumerate(pdf_reader.pages):
-                page_text = page.extract_text()
-                if page_text:
-                    text += f"\n--- PAGE {page_num + 1} ---\n"
-                    text += page_text + "\n"
-                
-    except Exception as e:
-        # Commented out to reduce terminal clutter. Uncomment for debugging.
-        # logger.error(f"Error extracting text from PDF: {str(e)}")
-        raise
-    
-    print(f"📋 Total extracted text: {len(text)} characters from PDF")
-    return text.strip()
+
 
 def extract_text_from_docx(file_content: bytes) -> str:
     """Extract text from DOCX file"""
@@ -570,7 +537,7 @@ CRITICAL ATS-FRIENDLY INSTRUCTIONS:
         input_token_count = client.models.count_tokens(model=f'models/{get_gemini_model()}', contents=prompt).total_tokens
         print(f"GEMINI INPUT TOKEN COUNT: {input_token_count}")
         response = parser.client.models.generate_content(
-            model=f'models/{get_gemini_model()}',
+            model=f'models/{get_gemini_model()}',  # Use .env configured model
             contents=prompt,
             config=types.GenerateContentConfig(
                 temperature=0.3,  # Deterministic for text parsing

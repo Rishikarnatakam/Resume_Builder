@@ -37,6 +37,7 @@ class ChatSessionManager:
         self.model_name = get_gemini_model()
         self.active_chats = {}  # Store active chat sessions
         self.active_models = {}  # Store model instances for each session
+        self.session_data = {}  # Store template content and user data for each session
         
     async def create_session(
         self, 
@@ -86,6 +87,14 @@ class ChatSessionManager:
         self.active_chats[session_id] = chat
         self.active_models[session_id] = model
         
+        # Store template content and user data for this session
+        template_content = prompt_composer.read_template_content(template_name)
+        self.session_data[session_id] = {
+            'template_content': template_content,
+            'user_data': form_data,
+            'job_description': job_description
+        }
+        
         # Store session in database
         session = AIChatSession(
             id=session_id,
@@ -134,7 +143,7 @@ class ChatSessionManager:
             self.active_models[session_id] = model
         
         # Build prompt with line numbers and explicit patch instructions
-        prompt_str = self._build_simple_prompt(current_latex, user_message)
+        prompt_str = self._build_simple_prompt(session_id, current_latex, user_message)
         message_parts = [prompt_str]
         
         try:
@@ -192,60 +201,86 @@ class ChatSessionManager:
                         if json_match:
                             json_str = json_match.group(0)
                             print(f"🔧 DEBUG: Extracted JSON string: {json_str}")
-                            json_data = json.loads(json_str)
+                            # --- PATCH: Escape unescaped backslashes in LaTeX content fields ---
+                            def escape_latex_in_json(json_str):
+                                # Only escape backslashes that are not already escaped
+                                # This is a simple heuristic: replace single backslash not followed by another backslash or a valid escape
+                                import re
+                                # Only inside string values: this is a best-effort fix for LaTeX
+                                def replacer(match):
+                                    content = match.group(0)
+                                    # Replace single backslash with double, but not if already double
+                                    return content.replace('\\', '\\\\').replace('"', '\\"')
+                                # This regex finds all string values in JSON
+                                # For a robust solution, use a JSON parser and walk the tree, but here we do a best-effort pre-pass
+                                # Replace all single backslashes with double backslashes
+                                return re.sub(r'(?<!\\)\\(?![\\"/bfnrtu])', r'\\\\', json_str)
+                            json_str_escaped = escape_latex_in_json(json_str)
+                            try:
+                                json_data = json.loads(json_str_escaped)
+                            except Exception as e:
+                                print(f"❌ Error parsing JSON after escaping: {e}")
+                                raise
+                            print(f"🔧 DEBUG: Parsed JSON data: {json_data}")
                         else:
                             # Fallback: try parsing the entire response
                             json_data = json.loads(response_text_clean)
                         print(f"🔧 DEBUG: Parsed JSON data: {json_data}")
                         message = json_data.get('message', 'No message provided')
-                        operations = json_data.get('operations', [])
+                        new_latex = json_data.get('new_latex', '')
                         
                         print(f"🔧 DEBUG: Extracted message: {message}")
-                        print(f"🔧 DEBUG: Extracted operations: {operations}")
-                        print(f"🔧 DEBUG: Operations count: {len(operations) if operations else 0}")
+                        print(f"🔧 DEBUG: Extracted new_latex length: {len(new_latex)}")
                         
-                        # Send JSON operations directly to frontend (client-side processing)
+                        # Create simple patch with new LaTeX
                         patch_data = Patch(
-                            type="patch",
-                            diff_text="",  # Empty - frontend will handle conversion
-                            operations=operations,
+                            type="simple_patch",
+                            diff_text="",  # Not used in simple approach
+                            operations=[],  # Not used in simple approach
                             message=message
                         )
-                        print(f"🔧 DEBUG: Created patch_data: {patch_data.dict()}")
+                        
+                        # Add new_latex to the response
+                        patch_data_dict = patch_data.dict()
+                        patch_data_dict['new_latex'] = new_latex
+                        print(f"🔧 DEBUG: Created patch_data: {patch_data_dict}")
                     except json.JSONDecodeError as e:
                         print(f"❌ Error parsing JSON: {e}")
-                        patch_data = Patch(
-                            type="patch",
-                            diff_text="",
-                            operations=[],
-                            message="Sorry, I couldn't process that. Please try rephrasing your request."
-                        )
+                        patch_data_dict = {
+                            "type": "simple_patch",
+                            "diff_text": "",
+                            "operations": [],
+                            "message": "Sorry, I couldn't process that. Please try rephrasing your request.",
+                            "new_latex": ""
+                        }
                 else:
                     # Fallback: treat as message-only response
-                    patch_data = Patch(
-                        type="patch",
-                        diff_text="",
-                        operations=[],
-                        message=response_text_clean if response_text_clean else "No changes needed."
-                    )
+                    patch_data_dict = {
+                        "type": "simple_patch",
+                        "diff_text": "",
+                        "operations": [],
+                        "message": response_text_clean if response_text_clean else "No changes needed.",
+                        "new_latex": ""
+                    }
             except Exception as e:
                 print(f"❌ Error parsing response: {e}")
-                patch_data = Patch(
-                    type="patch", 
-                    diff_text="", 
-                    operations=[],
-                    message="Sorry, I couldn't process that. Please try rephrasing your request."
-                )
+                patch_data_dict = {
+                    "type": "simple_patch", 
+                    "diff_text": "", 
+                    "operations": [],
+                    "message": "Sorry, I couldn't process that. Please try rephrasing your request.",
+                    "new_latex": ""
+                }
             
-            await self._update_conversation_history(db, session, user_message, patch_data.message)
+            await self._update_conversation_history(db, session, user_message, patch_data_dict['message'])
             
-            # Success should be true for any valid response, even with empty operations
-            success = patch_data.type == "patch"
+            # Success should be true for any valid response
+            success = patch_data_dict['type'] == "simple_patch"
             
             return {
                 "success": success,
-                "response": patch_data.message,
-                "patch_data": patch_data.dict()
+                "response": patch_data_dict['message'],
+                "patch_data": patch_data_dict
             }
             
         except Exception as e:
@@ -256,194 +291,46 @@ class ChatSessionManager:
                 "success": False,
                 "response": "I encountered an error processing your request. Please try again.",
                 "patch_data": {
-                    "type": "patch",
+                    "type": "simple_patch",
                     "diff_text": "",
-                    "message": "Sorry, I couldn't process that. Please try rephrasing your request."
+                    "operations": [],
+                    "message": "Sorry, I couldn't process that. Please try rephrasing your request.",
+                    "new_latex": ""
                 },
                 "error": str(e)
             }
 
     @staticmethod
     def _build_initial_context_json(template_name: str, form_data: Dict[str, Any], job_description: Optional[str]) -> str:
-        """Build the initial context using prompt composer"""
+        """Build the initial context using improved prompt composer"""
         
-        # Use prompt composer to build conversation prompt as JSON
-        prompt_json = prompt_composer.build_conversation_prompt(template_name, user_data=form_data, job_description=job_description)
-        # Serialize the JSON prompt to a string for Gemini
-        prompt_str = json.dumps(prompt_json, ensure_ascii=False, indent=2)
-        return prompt_str
+        # Use improved prompt composer with form data emphasis
+        prompt = prompt_composer.build_improved_conversation_prompt(template_name, user_data=form_data, job_description=job_description)
+        return prompt
 
 
-
-    @staticmethod
-    def _validate_and_fix_latex(latex_code: str) -> str:
-        """Validate and fix common LaTeX errors"""
-        if not latex_code:
-            return latex_code
-            
-        lines = latex_code.split('\n')
-        fixed_lines = []
-        section_count = {}
-        
-        for line in lines:
-            # Count sections to prevent duplicates
-            if '\\rSection{' in line:
-                section_name = line.split('{')[1].split('}')[0] if '{' in line and '}' in line else 'unknown'
-                section_count[section_name] = section_count.get(section_name, 0) + 1
-                # Skip duplicate sections
-                if section_count[section_name] > 1:
-                    continue
-                    
-            # Remove content after \end{document}
-            if '\\end{document}' in line:
-                fixed_lines.append(line)
-                break
-                
-            # Skip lines after \end{document}
-            if any('\\end{document}' in prev_line for prev_line in fixed_lines):
-                continue
-                
-            # Fix common tabular issues
-            if '\\begin{tabular}' in line and '\\item' in line:
-                # Replace tabular with simple text for skills
-                continue
-                
-            fixed_lines.append(line)
-            
-        return '\n'.join(fixed_lines)
-
-
-
-    def _build_simple_prompt(self, current_latex: str, user_message: str) -> str:
-        """Build simple prompt - request JSON operations format for efficiency and reliability"""
-
-        # Add line numbers to help AI with accuracy
-        latex_lines = current_latex.split('\n')
-        numbered_latex = '\n'.join([f"{i+1:3d}: {line}" for i, line in enumerate(latex_lines)])
+    def _build_simple_prompt(self, session_id: str, current_latex: str, user_message: str) -> str:
+        """Build simple prompt for complete LaTeX replacement"""
         
         return (
-            "🤔 CONTEXT AWARENESS: Before responding, actively think about the template instructions, user data, and rules provided in the session context. Consider the template limitations, font sizing rules, and formatting requirements.\n\n"
-            "Current LaTeX code (with line numbers):\n"
-            "```latex\n"
-            f"{numbered_latex}\n"
-            "```\n\n"
-            f"Request: {user_message}\n\n"
-            "🚨 JSON OPERATIONS FORMAT (TOKEN-EFFICIENT):\n"
-            "Return ONLY a JSON object with this structure:\n"
-            "```json\n"
+            "CURRENT LATEX:\n"
+            f"{current_latex}\n\n"
+            f"USER REQUEST: {user_message}\n\n"
+            "INSTRUCTIONS:\n"
+            "Return the complete updated LaTeX code and a friendly message explaining what you changed.\n\n"
+            "FORMAT:\n"
             "{\n"
-            '  "message": "natural friendly message",\n'
-            '  "operations": [\n'
-            '    {\n'
-            '      "type": "delete|add|replace|delete_range|add_multiple|replace_range|move_section|reorder_items",\n'
-            '      "line": 16,\n'
-            '      "content": "new content (for add/replace)",\n'
-            '      "start_line": 20,\n'
-            '      "end_line": 25,\n'
-            '      "section_name": "Projects",\n'
-            '      "from_index": 3,\n'
-            '      "to_index": 1\n'
-            '    }\n'
-            '  ]\n'
-            "}\n"
-            "```\n\n"
-            "📝 OPERATION TYPES & EXAMPLES:\n\n"
-            "1. BASIC LINE OPERATIONS:\n"
-            "```json\n"
-            "{\n"
-            '  "message": "Removed summary section",\n'
-            '  "operations": [\n'
-            '    {"type": "delete", "line": 16},\n'
-            '    {"type": "delete", "line": 17}\n'
-            '  ]\n'
-            "}\n"
-            "```\n\n"
-            "```json\n"
-            "{\n"
-            '  "message": "Added new skill",\n'
-            '  "operations": [\n'
-            '    {"type": "add", "line": 25, "content": "\\item JavaScript"}\n'
-            '  ]\n'
-            "}\n"
-            "```\n\n"
-            "```json\n"
-            "{\n"
-            '  "message": "Updated name",\n'
-            '  "operations": [\n'
-            '    {"type": "replace", "line": 10, "content": "\\\\name{John Doe}"}\n'
-            '  ]\n'
-            "}\n"
-            "```\n\n"
-            "2. MULTI-LINE OPERATIONS:\n"
-            "```json\n"
-            "{\n"
-            '  "message": "Removed entire section",\n'
-            '  "operations": [\n'
-            '    {"type": "delete_range", "start_line": 20, "end_line": 35}\n'
-            '  ]\n'
-            "}\n"
-            "```\n\n"
-            "```json\n"
-            "{\n"
-            '  "message": "Added new project",\n'
-            '  "operations": [\n'
-            '    {"type": "add_multiple", "line": 40, "content": [\n'
-            '      "\\\\begin{rSubsection}{Project Name}{2024}{Tech Stack}{URL}",\n'
-            '      "\\\\item Achievement 1",\n'
-            '      "\\\\item Achievement 2",\n'
-            '      "\\\\end{rSubsection}"\n'
-            '    ]}\n'
-            '  ]\n'
-            "}\n"
-            "```\n\n"
-            "```json\n"
-            "{\n"
-            '  "message": "Updated project details",\n'
-            '  "operations": [\n'
-            '    {"type": "replace_range", "start_line": 25, "end_line": 28, "content": [\n'
-            '      "\\\\item New achievement 1",\n'
-            '      "\\\\item New achievement 2",\n'
-            '      "\\\\item New achievement 3"\n'
-            '    ]}\n'
-            '  ]\n'
-            "}\n"
-            "```\n\n"
-            "3. SEMANTIC OPERATIONS:\n"
-            "```json\n"
-            "{\n"
-            '  "message": "Moved project to top",\n'
-            '  "operations": [\n'
-            '    {"type": "move_section", "section_name": "Projects", "from_index": 3, "to_index": 1}\n'
-            '  ]\n'
-            "}\n"
-            "```\n\n"
-            "```json\n"
-            "{\n"
-            '  "message": "Reordered skills",\n'
-            '  "operations": [\n'
-            '    {"type": "reorder_items", "section_name": "Skills", "changes": [\n'
-            '      {"from": 3, "to": 1},\n'
-            '      {"from": 1, "to": 2}\n'
-            '    ]}\n'
-            '  ]\n'
-            "}\n"
-            "```\n\n"
-            "🎯 OPERATION SELECTION RULES:\n"
-            "- Use SINGLE operations (delete/add/replace) for 1-2 line changes\n"
-            "- Use RANGE operations (delete_range/add_multiple/replace_range) for 3+ line changes\n"
-            "- Use SEMANTIC operations (move_section/reorder_items) for complex reordering\n"
-            "- Keep messages short: 'Done!', 'Fixed!', 'Moved!'\n"
-            "- Use line numbers (1-based) - COUNT CAREFULLY from the numbered LaTeX above\n"
-            "- For semantic operations, use section names exactly as they appear in LaTeX\n"
-            "- Always validate LaTeX syntax before returning\n"
-            "- NEVER create duplicate sections\n"
-            "- NEVER nest environments incorrectly\n"
-            "- ALWAYS match \\begin/\\end pairs\n"
-            "- NEVER use \\item outside proper environments\n"
-            "- NEVER put content after \\end{document}\n"
-            "- ALWAYS use template commands (\\rSection, \\rSubsection, \\rAward, \\rCertification, \\rSkills)\n"
-            "- ALWAYS use template-specific skills formatting - check template instructions\n"
-            "- CRITICAL: Double-check line numbers before returning - count from the numbered LaTeX above\n"
+            '  "message": "I\'ve added a skills section with your technical skills",\n'
+            '  "new_latex": "\\\\documentclass{professional_resume}\\n\\\\name{...}\\n\\\\begin{document}\\n... complete new latex ...\\n\\\\end{document}"\n'
+            "}\n\n"
+            "RULES:\n"
+            "- Return the COMPLETE LaTeX document\n"
+            "- Include all sections (education, skills, projects, etc.)\n"
+            "- Keep the message short and friendly\n"
+            "- Ensure proper LaTeX syntax and formatting\n"
+            "- Double-escape backslashes in the new_latex field\n"
+            "- Think like a modern code editor - replace the whole file\n"
+            "- Always include an empty line between sections in the LaTeX code for better readability\n"
         )
 
     async def _process_image_attachment(self, image_data: str):
