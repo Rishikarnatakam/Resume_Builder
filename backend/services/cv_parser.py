@@ -33,13 +33,13 @@ def extract_resume_data(file_content: bytes, filename: str) -> Dict[str, Any]:
         
         if file_extension == 'pdf':
             # Primary approach: Send PDF directly to AI
-            print("🤖 Attempting direct PDF-to-AI extraction...")
+            # Debug logging removed for production
             ai_result = extract_resume_data_from_pdf_ai_primary(file_content, filename)
             if ai_result and _validate_extraction_quality(ai_result):
-                print("✅ Direct PDF-to-AI extraction successful!")
+                # Debug logging removed for production
                 return ai_result
             else:
-                print("❌ Direct PDF-to-AI failed or low quality. No fallback. Raising error.")
+                # Debug logging removed for production
                 raise RuntimeError("AI PDF extraction failed or low quality.")
         elif file_extension in ['docx', 'doc']:
             text = extract_text_from_docx(file_content)
@@ -62,7 +62,7 @@ def extract_resume_data_from_pdf_ai_primary(file_content: bytes, filename: str) 
     4. Categorize unknown content intelligently
     """
     try:
-        print(f"🚀 AI-First PDF Analysis: Processing {len(file_content)} bytes...")
+        # Debug logging removed for production
         
         parser = CVParser()
 
@@ -289,7 +289,7 @@ CRITICAL INSTRUCTIONS:
         # Count input tokens before generation
         client = genai.Client()
         input_token_count = client.models.count_tokens(model=f'models/{get_gemini_model()}', contents=contents).total_tokens
-        print(f"GEMINI INPUT TOKEN COUNT: {input_token_count}")
+        # Debug logging removed for production
         # Call Gemini with the configured model for PDF processing
         response = parser.client.models.generate_content(
             model=f'models/{get_gemini_model()}',  # Use .env configured model
@@ -305,25 +305,25 @@ CRITICAL INSTRUCTIONS:
         )
         
         response_text = response.text.strip()
-        print(f"✅ AI PDF processing complete. Response length: {len(response_text)} characters")
+        # Debug logging removed for production
         # Count tokens in the output using the low-level, future-proof API
         client = genai.Client()
         token_count = client.models.count_tokens(model=f'models/{get_gemini_model()}', contents=response_text).total_tokens
-        print(f"GEMINI OUTPUT TOKEN COUNT: {token_count}")
+        # Debug logging removed for production
         
         # Clean and parse JSON response
         json_data = _extract_and_validate_json(response_text)
         
         if json_data:
-            print("🎉 Successfully parsed PDF directly with AI!")
+            # Debug logging removed for production
             _log_comprehensive_extraction_summary(json_data)
             return json_data
         else:
-            print("❌ AI PDF JSON parsing failed")
+            # Debug logging removed for production
             raise RuntimeError("AI PDF JSON parsing failed.")
             
     except Exception as e:
-        print(f"❌ AI PDF processing failed: {str(e)}")
+        # Debug logging removed for production
         # Commented out to reduce terminal clutter. Uncomment for debugging.
         # logger.error(f"AI PDF processing error: {str(e)}")
         raise
@@ -348,51 +348,20 @@ def _validate_extraction_quality(data: Dict[str, Any]) -> bool:
         # Require at least name and some content
         quality_score = has_name and (has_contact or has_content)
         
-        print(f"📊 Quality validation: name={has_name}, contact={has_contact}, content={has_content}, overall={quality_score}")
+        # Debug logging removed for production
         return quality_score
         
     except Exception as e:
-        print(f"❌ Quality validation failed: {str(e)}")
+        # Debug logging removed for production
         return False
 
 def _log_comprehensive_extraction_summary(data: Dict[str, Any]) -> None:
     """Log comprehensive summary of extracted data"""
     personal = data.get("personalInfo", {})
     
-    print(f"📋 Comprehensive Extraction Summary:")
-    print(f"   👤 Personal: name={bool(personal.get('name'))}, email={bool(personal.get('email'))}, phone={bool(personal.get('phone'))}")
-    print(f"   💼 Experience: {len(data.get('experience', []))} entries")
-    print(f"   🎓 Education: {len(data.get('education', []))} entries") 
-    print(f"   🛠️ Skills: {len(data.get('skills', []))} items")
-    print(f"   🚀 Projects: {len(data.get('projects', []))} items")
-    print(f"   🏆 Awards: {len(data.get('awards', []))} items")
-    print(f"   📜 Certifications: {len(data.get('certifications', []))} items")
-    print(f"   🌍 Languages: {len(data.get('languages', []))} items")
-    print(f"   📚 Publications: {len(data.get('publications', []))} items")
-    print(f"   🤝 Volunteering: {len(data.get('volunteering', []))} items")
-    print(f"   🎤 Speaking: {len(data.get('speaking', []))} items")
-    print(f"   🪖 Military: {len(data.get('military', []))} items")
-    print(f"   🎯 Hobbies: {len(data.get('hobbies', []))} items")
-    print(f"   ➕ Additional Sections: {len(data.get('additional_sections', []))} sections")
+    # Debug logging removed for production
     
-    # Log additional sections details - THIS IS CRITICAL
-    additional_sections = data.get('additional_sections', [])
-    if additional_sections:
-        print(f"   🔍 Additional sections found:")
-        for section in additional_sections:
-            section_name = section.get('section_name', 'Unknown')
-            content_length = len(section.get('content', ''))
-            print(f"      - {section_name} ({content_length} characters)")
-        
-    # Log skills details
-    skills = data.get('skills', [])
-    if skills:
-        print(f"   📝 Skills found: {', '.join(skills[:5])}{'...' if len(skills) > 5 else ''}")
-        
-    # Log awards details  
-    awards = data.get('awards', [])
-    if awards:
-        print(f"   🏆 Awards found: {', '.join([award.get('title', 'Unknown') for award in awards[:3]])}{'...' if len(awards) > 3 else ''}")
+    # Debug logging removed for production
 
             
 
@@ -421,7 +390,7 @@ def parse_resume_text(text: str) -> Dict[str, Any]:
     Send entire PDF content directly to AI for complete extraction and form auto-filling
     """
     try:
-        print(f"🤖 AI CV Parser: Processing {len(text)} characters...")
+        # Debug logging removed for production
         
         # Initialize CV parser
         parser = CVParser()
@@ -535,7 +504,7 @@ CRITICAL ATS-FRIENDLY INSTRUCTIONS:
         # Count input tokens before generation
         client = genai.Client()
         input_token_count = client.models.count_tokens(model=f'models/{get_gemini_model()}', contents=prompt).total_tokens
-        print(f"GEMINI INPUT TOKEN COUNT: {input_token_count}")
+        # Debug logging removed for production
         response = parser.client.models.generate_content(
             model=f'models/{get_gemini_model()}',  # Use .env configured model
             contents=prompt,
@@ -550,21 +519,21 @@ CRITICAL ATS-FRIENDLY INSTRUCTIONS:
         )
         
         response_text = response.text.strip()
-        print(f"✅ AI processing complete. Response length: {len(response_text)} characters")
+        # Debug logging removed for production
         # Count tokens in the output using the low-level, future-proof API
         client = genai.Client()
         token_count = client.models.count_tokens(model=f'models/{get_gemini_model()}', contents=response_text).total_tokens
-        print(f"GEMINI OUTPUT TOKEN COUNT: {token_count}")
+        # Debug logging removed for production
         
         # Clean and parse JSON response
         json_data = _extract_and_validate_json(response_text)
         
         if json_data:
-            print("🎉 Successfully parsed resume with AI!")
+            # Debug logging removed for production
             _log_extraction_summary(json_data)
             return json_data
         else:
-            print("❌ AI JSON parsing failed. No fallback. Raising error.")
+            # Debug logging removed for production
             raise RuntimeError("AI JSON parsing failed.")
             
     except Exception as e:
@@ -591,17 +560,10 @@ def _extract_and_validate_json(response_text: str) -> Dict[str, Any]:
             return json.loads(json_str)
         return None
     except json.JSONDecodeError as e:
-        print(f"JSON parsing error: {str(e)}")
+        # Debug logging removed for production
         return None
 
 def _log_extraction_summary(data: Dict[str, Any]) -> None:
     """Log summary of extracted data"""
     personal = data.get("personalInfo", {})
-    print(f"📋 Extraction Summary:")
-    print(f"   👤 Personal: name={bool(personal.get('name'))}, email={bool(personal.get('email'))}")
-    print(f"   💼 Experience: {len(data.get('experience', []))} entries")
-    print(f"   🎓 Education: {len(data.get('education', []))} entries") 
-    print(f"   🛠️ Skills: {len(data.get('skills', []))} items")
-    print(f"   🚀 Projects: {len(data.get('projects', []))} items")
-    print(f"   🏆 Awards: {len(data.get('awards', []))} items")
-    print(f"   📜 Certifications: {len(data.get('certifications', []))} items")
+    # Debug logging removed for production

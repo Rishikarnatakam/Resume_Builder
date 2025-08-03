@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { logger } from '../utils/logger';
 import { 
   PlusIcon, 
   DocumentTextIcon, 
@@ -51,7 +52,7 @@ const Dashboard: React.FC = () => {
         setTemplates(templateData);
       }
     } catch (error) {
-      console.error('Error fetching templates:', error);
+      logger.error('Error fetching templates:', error);
     }
   };
 
@@ -69,7 +70,7 @@ const Dashboard: React.FC = () => {
         setResumes(data);
       }
     } catch (error) {
-      console.error('Error fetching resumes:', error);
+      logger.error('Error fetching resumes:', error);
     } finally {
       setLoading(false);
     }
@@ -87,7 +88,7 @@ const Dashboard: React.FC = () => {
         setResumes(resumes.filter(resume => resume.id !== resumeId));
       }
     } catch (error) {
-      console.error('Error deleting resume:', error);
+      logger.error('Error deleting resume:', error);
     }
   };
 
@@ -119,7 +120,7 @@ const Dashboard: React.FC = () => {
         setEditingTitle('');
       }
     } catch (error) {
-      console.error('Error updating title:', error);
+      logger.error('Error updating title:', error);
     }
   };
 

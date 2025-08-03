@@ -3,14 +3,25 @@ Configuration management for LaTeX Resume AI
 Centralizes all environment variables and model settings
 """
 import os
+import logging
 from dotenv import load_dotenv
 from typing import Optional
 
 # Load environment variables
 load_dotenv()
 
+# Configure production logging
+logging.basicConfig(
+    level=logging.INFO if os.getenv("ENVIRONMENT") == "production" else logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+
 class Config:
     """Centralized configuration management"""
+    
+    # Environment
+    ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
+    DEBUG: bool = os.getenv("DEBUG", "false").lower() == "true"
     
     # API Keys
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
@@ -21,6 +32,11 @@ class Config:
     SUPABASE_ANON_KEY: str = os.getenv("SUPABASE_ANON_KEY", "")
     SUPABASE_SERVICE_KEY: str = os.getenv("SUPABASE_SERVICE_KEY", "")
     SUPABASE_JWT_SECRET: str = os.getenv("SUPABASE_JWT_SECRET", "")  # JWT secret for token verification
+    
+    # Razorpay Configuration
+    RAZORPAY_KEY_ID: str = os.getenv("RAZORPAY_KEY_ID", "")
+    RAZORPAY_KEY_SECRET: str = os.getenv("RAZORPAY_KEY_SECRET", "")
+    RAZORPAY_WEBHOOK_SECRET: str = os.getenv("RAZORPAY_WEBHOOK_SECRET", "")
     
     # Model Configuration
     DEFAULT_GEMINI_MODEL: str = os.getenv("DEFAULT_GEMINI_MODEL", "")
@@ -40,6 +56,9 @@ class Config:
     # Security
     JWT_ALGORITHM: str = os.getenv("JWT_ALGORITHM", "HS256")
     ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
+    
+    # Rate Limiting
+    RATE_LIMIT_PER_MINUTE: int = int(os.getenv("RATE_LIMIT_PER_MINUTE", "60"))
     
     # CORS Configuration - No defaults, must be set in .env
     raw_origins = os.getenv("CORS_ALLOWED_ORIGINS", "")
@@ -64,6 +83,13 @@ class Config:
             raise ValueError("SUPABASE_URL environment variable is required")
         if not cls.SUPABASE_JWT_SECRET:
             raise ValueError("SUPABASE_JWT_SECRET environment variable is required")
+        if cls.ENVIRONMENT == "production":
+            if not cls.RAZORPAY_KEY_ID:
+                raise ValueError("RAZORPAY_KEY_ID environment variable is required for production")
+            if not cls.RAZORPAY_KEY_SECRET:
+                raise ValueError("RAZORPAY_KEY_SECRET environment variable is required for production")
+            if not cls.RAZORPAY_WEBHOOK_SECRET:
+                raise ValueError("RAZORPAY_WEBHOOK_SECRET environment variable is required for production")
         return True
 
 # Global config instance

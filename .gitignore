@@ -445,4 +445,11 @@ $RECYCLE.BIN/
 *.msix
 *.msm
 *.msp
-*.lnk 
+*.lnk
+
+# Temporary/utility files
+fix-aichat.js
+remove-console-logs.js
+replace-console-logs.js
+token.txt
+LATEX_EDITOR_UPGRADE.txt 

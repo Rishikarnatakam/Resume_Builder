@@ -81,7 +81,7 @@ const Billing: React.FC = () => {
         currency: res.currency,
         name: 'ResumeCraft',
         description: pack ? `Top-up for ${pack.messages} messages` : 'Top-up',
-        handler: async (response: any) => {
+        handler: async (_response: any) => {
           setShowToast(true);
           await fetchSubscriptionData();
           // Auto-hide toast after 3 seconds
@@ -170,7 +170,7 @@ const Billing: React.FC = () => {
 
         <h2 className="text-2xl font-semibold mb-4">Get more AI Credits</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {packs.map((pack, idx) => {
+          {packs.map((pack, _idx) => {
             return (
               <div key={pack.id} className="rounded-3xl p-6 flex flex-col items-center text-center bg-[#212121] transition-all">
                 <h3 className="text-3xl font-bold text-white mb-2 flex items-center justify-center">

@@ -36,7 +36,7 @@ def create_razorpay_subscription(plan_id: str, user_id: str, total_count: int = 
     user_id: your app's user ID to be passed in notes for webhook identification
     """
     if RAZORPAY_MOCK_MODE:
-        print(f"RAZORPAY_MOCK_MODE: Mocking create_razorpay_subscription for plan {plan_id}")
+        # Debug logging removed for production
         return {
             "id": f"sub_mock_{plan_id}_{os.urandom(4).hex()}",
             "entity": "subscription",
@@ -76,7 +76,7 @@ def fetch_razorpay_subscription(subscription_id: str) -> dict:
     Fetches details of a Razorpay subscription.
     """
     if RAZORPAY_MOCK_MODE:
-        print(f"RAZORPAY_MOCK_MODE: Mocking fetch_razorpay_subscription for {subscription_id}")
+        # Debug logging removed for production
         return {"id": subscription_id, "status": "active", "plan_id": "plan_mock_fetched"} # Mock data
     return razorpay_client.subscription.fetch(subscription_id)
 
@@ -86,7 +86,7 @@ def cancel_razorpay_subscription(subscription_id: str, at_cycle_end: bool = Fals
     If at_cycle_end is True, the subscription will be cancelled at the end of the current billing cycle.
     """
     if RAZORPAY_MOCK_MODE:
-        print(f"RAZORPAY_MOCK_MODE: Mocking cancel_razorpay_subscription for {subscription_id}")
+        # Debug logging removed for production
         return {"id": subscription_id, "status": "cancelled", "cancel_by": "user"} # Mock data
     return razorpay_client.subscription.cancel(subscription_id, {"cancel_at_cycle_end": 1 if at_cycle_end else 0})
 
@@ -95,11 +95,11 @@ def verify_razorpay_webhook_signature(payload: str, signature: str, secret: str)
     Verifies the Razorpay webhook signature.
     """
     if RAZORPAY_MOCK_MODE:
-        print("RAZORPAY_MOCK_MODE: Bypassing webhook signature verification.")
+        # Debug logging removed for production
         return True # Always return true in mock mode
     try:
         razorpay_client.utility.verify_webhook_signature(payload, signature, secret)
         return True
     except Exception as e:
-        print(f"Webhook signature verification failed: {e}")
+        # Debug logging removed for production
         return False 

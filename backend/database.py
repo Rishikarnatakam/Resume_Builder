@@ -138,10 +138,10 @@ async def get_db():
             finally:
                 await session.close()
     except Exception as e:
-        print(f"❌ Database connection error: {e}")
+        # Debug logging removed for production
         # For connection issues, try to reconnect
         if "connection was closed" in str(e) or "ConnectionDoesNotExistError" in str(e):
-            print("🔄 Attempting to reconnect to database...")
+            # Debug logging removed for production
             # Force cleanup for ngrok scenarios
             try:
                 await engine.dispose()
@@ -154,4 +154,4 @@ async def init_db():
     async with engine.begin() as conn:
         # Create all tables
         await conn.run_sync(Base.metadata.create_all)
-        print("✅ Database tables created successfully") 
+        # Debug logging removed for production 

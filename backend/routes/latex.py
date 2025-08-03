@@ -7,15 +7,35 @@ import subprocess
 import tempfile
 import uuid
 import re
+import logging
 
 from routes.auth import get_current_user
-from pydantic import BaseModel
+from pydantic import BaseModel, validator
+from utils.config import config
+from utils.logger import prod_logger
+
 router = APIRouter(prefix="/latex", tags=["latex"])
+logger = logging.getLogger(__name__)
 
 class LaTeXCompileRequest(BaseModel):
     latex_content: str
     compiler: Optional[str] = "pdflatex"  # pdflatex, xelatex, lualatex
     resume_title: Optional[str] = None  # User's resume title for filename
+    
+    @validator('latex_content')
+    def validate_latex_content(cls, v):
+        if not v or len(v.strip()) == 0:
+            raise ValueError('LaTeX content cannot be empty')
+        if len(v) > 50000:  # 50KB limit
+            raise ValueError('LaTeX content too large (max 50KB)')
+        return v
+    
+    @validator('compiler')
+    def validate_compiler(cls, v):
+        allowed_compilers = ['pdflatex', 'xelatex', 'lualatex']
+        if v not in allowed_compilers:
+            raise ValueError(f'Invalid compiler. Allowed: {allowed_compilers}')
+        return v
 
 class LaTeXCompileResponse(BaseModel):
     success: bool
@@ -34,7 +54,7 @@ async def compile_latex(
 ):
     """Compile LaTeX content to PDF and stream directly to browser"""
     
-    print("[DEBUG] Compile endpoint called - LaTeX content length:", len(request.latex_content))
+    prod_logger.compilation_start(len(request.latex_content))
     
     try:
         # Generate unique filename for this compilation
@@ -85,6 +105,8 @@ async def compile_latex(
                     with open(pdf_file, 'rb') as f:
                         pdf_content = f.read()
                     
+                    prod_logger.compilation_success(safe_filename)
+                    
                     # Stream PDF directly to browser with safe headers
                     return StreamingResponse(
                         iter([pdf_content]),
@@ -96,8 +118,8 @@ async def compile_latex(
                         }
                     )
                 else:
-                    # Print log output for debugging
-                    print("[LaTeX Compile Error]", log_output[:1000])
+                    # Log error for debugging
+                    prod_logger.compilation_error("PDF not generated", log_output[:1000])
                     # Return empty PDF with error status
                     return StreamingResponse(
                         iter([b""]),
@@ -109,7 +131,7 @@ async def compile_latex(
                     )
                     
             except subprocess.TimeoutExpired as e:
-                print("[LaTeX Timeout]", str(e))
+                prod_logger.compilation_error("Compilation timeout", str(e))
                 return StreamingResponse(
                     iter([b""]),
                     media_type="application/pdf",
@@ -121,7 +143,7 @@ async def compile_latex(
             except Exception as e:
                 import traceback
                 tb = traceback.format_exc()
-                print("[LaTeX Compile Exception]", tb)
+                prod_logger.compilation_error("Compilation exception", tb)
                 # Clean error message for header safety
                 safe_error = safe_ascii(str(e))[:100]
                 return StreamingResponse(
@@ -137,7 +159,7 @@ async def compile_latex(
         # Catch-all for any exception in the entire function
         import traceback
         tb = traceback.format_exc()
-        print("[Function Exception]", tb)
+        prod_logger.compilation_error("Function exception", tb)
         safe_error = safe_ascii(str(e))[:100]
         return StreamingResponse(
             iter([b""]),

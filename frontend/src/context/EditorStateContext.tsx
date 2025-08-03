@@ -1,3 +1,4 @@
+import { logger } from '../utils/logger';
 import React, { createContext, useState, useRef, useEffect, useCallback } from 'react';
 import { supabase, apiConfig } from '../config/api';
 
@@ -152,7 +153,7 @@ export const EditorStateProvider: React.FC<EditorStateProviderProps> = ({ childr
   const updateLatexFromUser = useCallback((content: string) => {
     // Prevent user edits during AI operations
     if (aiOperationInProgress.current || state.diffMode !== 'none') {
-      console.log('🚫 Blocking user edit during AI operation');
+      logger.warn('Blocking user edit during AI operation');
       return;
     }
 
@@ -197,17 +198,16 @@ export const EditorStateProvider: React.FC<EditorStateProviderProps> = ({ childr
   // Receive AI LaTeX and show diff (simple approach)
   const receiveAILatex = useCallback((newLatex: string) => {
     if (!aiOperationInProgress.current) {
-      console.log('🚫 Received AI LaTeX but no operation in progress');
+      logger.warn('Received AI LaTeX but no operation in progress');
       return;
     }
 
     try {
-      console.log('📥 SIMPLE LATEX: Received new LaTeX');
-      console.log('📥 SIMPLE LATEX: Original LaTeX length:', state.originalLatex.length);
-      console.log('📥 SIMPLE LATEX: New LaTeX length:', newLatex.length);
+      logger.info('SIMPLE LATEX: Received new LaTeX');
+      // LaTeX length logging for debugging
       
       if (!newLatex || newLatex === state.originalLatex) {
-        console.log('📥 SIMPLE LATEX: No changes detected, completing operation');
+        logger.info('SIMPLE LATEX: No changes detected, completing operation');
         completeAIOperation();
         return;
       }
@@ -223,7 +223,7 @@ export const EditorStateProvider: React.FC<EditorStateProviderProps> = ({ childr
       }));
       
     } catch (error) {
-      console.error('❌ Error processing AI LaTeX:', error);
+      logger.error('❌ Error processing AI LaTeX:', error);
       completeAIOperation();
     }
   }, [state.originalLatex, completeAIOperation]);
@@ -300,13 +300,13 @@ export const EditorStateProvider: React.FC<EditorStateProviderProps> = ({ childr
           lastSaved: new Date(),
           isSaving: false,
         }));
-        console.log('✅ Auto-saved resume successfully');
+        logger.success('Auto-saved resume successfully');
       } else {
-        console.error('❌ Auto-save failed:', response.status);
+        logger.error('❌ Auto-save failed:', response.status);
         setState(prev => ({ ...prev, isSaving: false }));
       }
     } catch (error) {
-      console.error('❌ Auto-save error:', error);
+      logger.error('❌ Auto-save error:', error);
       setState(prev => ({ ...prev, isSaving: false }));
     }
   }, []);

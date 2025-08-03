@@ -34,9 +34,7 @@ class AILatexGenerator:
                 job_description=job_description
             )
             
-            print("==== GEMINI LATEX PROMPT SENT TO AI START ====")
-            print(prompt)
-            print("==== GEMINI LATEX PROMPT SENT TO AI END ====")
+                    # Debug logging removed for production
             
             client = genai.Client(api_key=self.api_key)
             response = client.models.generate_content(
@@ -47,27 +45,24 @@ class AILatexGenerator:
                     top_k=30,
                     top_p=0.85,
                     max_output_tokens=12288,
-                    system_instruction="You are an expert LaTeX resume generator. Create clean, professional LaTeX code using the provided template and form data. Focus on accuracy and proper formatting."
+                    system_instruction="You are an expert LaTeX resume generator with ATS optimization expertise. Create clean, professional LaTeX code using the provided template and form data. Focus on accuracy, proper formatting, and ATS-friendly content optimization."
                 )
             )
             
-            print("==== GEMINI RAW AI RESPONSE START ====")
-            print(response)
-            print("==== GEMINI RAW AI RESPONSE END ====")
+                    # Debug logging removed for production
             
             usage = getattr(response, 'usage_metadata', None)
             if usage:
-                print(f"GEMINI INPUT TOKEN COUNT: {usage.prompt_token_count}")
-                print(f"GEMINI OUTPUT TOKEN COUNT: {usage.candidates_token_count}")
+                pass  # Debug logging removed for production
             else:
-                print("GEMINI USAGE METADATA NOT AVAILABLE")
+                pass  # Debug logging removed for production
             
             # Try to get LaTeX content from response
             latex_code = ""
             try:
                 # Get LaTeX content directly from response text
                 response_text = response.text.strip()
-                print(f"Response text: {response_text[:200]}...")
+                # Debug logging removed for production
                 
                 # Clean up the response - remove any markdown formatting
                 if response_text.startswith('```latex'):
@@ -94,9 +89,7 @@ class AILatexGenerator:
                 # Fallback to raw text
                 latex_code = response.text.strip()
                 
-            print("==== GEMINI PARSED LATEX CODE START ====")
-            print(latex_code)
-            print("==== GEMINI PARSED LATEX CODE END ====")
+            # Debug logging removed for production
             
             # Only validate that the result is a full LaTeX document
             if not latex_code.strip().startswith('\\documentclass'):

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { logger } from '../utils/logger';
 import { motion } from "framer-motion";
 import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
 import { supabase } from '../config/api';
@@ -32,7 +33,7 @@ const Login: React.FC = () => {
       }
     } catch (err) {
       setError('Invalid credentials. Please try again.');
-      console.error('Login error:', err);
+      logger.error('Login error:', err);
     } finally {
       setIsLoading(false);
     }

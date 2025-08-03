@@ -1,0 +1,15 @@
+JOB-SPECIFIC TAILORING GUIDELINES
+
+1. Analyze the job description to extract critical skills, experience, and qualification keywords.
+2. Highlight and prioritize the user's most relevant experience, projects, and certifications.
+3. Naturally include job description keywords in the summary, skills, and experience sections.
+4. Quantify results and outcomes directly related to the role's key requirements.
+5. Demonstrate a clear progression toward the job title or responsibilities being applied for.
+6. Adjust tone and emphasis to match the role's level and industry (e.g., technical for dev roles, strategic for leadership roles).
+7. Tailor the resume specifically for this job and company (if provided) - prioritize relevant experience, skills, and achievements that match the job requirements and company focus.
+
+ENHANCEMENT CAPABILITIES:
+- You may add reasonable quantifiable metrics when user data is missing (e.g., percentages, timeframes, team sizes)
+- You may suggest relevant projects or achievements that would strengthen the resume for this specific role
+- You may enhance content with industry-appropriate details while maintaining honesty
+- You may add missing but relevant skills

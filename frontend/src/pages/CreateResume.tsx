@@ -1,3 +1,4 @@
+import { logger } from '../utils/logger';
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -100,7 +101,7 @@ const CreateResume: React.FC = () => {
   const handleSelectTemplate = (templateId: string) => {
     // Just select the template, don't navigate
     setSelectedTemplate(templateId);
-    console.log('Selected template:', templateId);
+    logger.info('Selected template', { templateId });
   };
 
   const handleGenerateResume = async () => {
@@ -131,7 +132,7 @@ const CreateResume: React.FC = () => {
         job_description: jobDescription || undefined,
       };
 
-      console.log('Creating resume with payload:', payload);
+      logger.info('Creating resume with payload', { payload });
 
       const response = await fetch(`${apiConfig.baseUrl}/resumes/`, {
         method: 'POST',
@@ -145,7 +146,7 @@ const CreateResume: React.FC = () => {
 
       if (response.ok) {
         const newResume = await response.json();
-        console.log('Resume created successfully:', newResume);
+        logger.success('Resume created successfully', { newResume });
         
         // Clean up localStorage
         localStorage.removeItem('resumeData');
@@ -155,11 +156,11 @@ const CreateResume: React.FC = () => {
         navigate(`/editor/${newResume.id}`);
       } else {
         const errorData = await response.json();
-        console.error('Failed to create resume:', errorData);
+        logger.error('Failed to create resume:', errorData);
         alert('Failed to create resume. Please try again.');
       }
     } catch (error) {
-      console.error('Error creating resume:', error);
+      logger.error('Error creating resume:', error);
       alert('Error creating resume. Please try again.');
     } finally {
       setIsGenerating(false);

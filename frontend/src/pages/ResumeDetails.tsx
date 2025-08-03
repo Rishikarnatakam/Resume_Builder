@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { logger } from '../utils/logger';
 import { 
   ArrowRightIcon,
   ArrowLeftIcon,
@@ -317,7 +318,7 @@ const ResumeDetails: React.FC = () => {
       setResumeData(prev => ({ ...prev, ...data.resume_data }));
         setExtractedData(true);
     } catch (error: any) {
-      console.error('Extraction failed:', error);
+      logger.error('Extraction failed:', error);
     } finally {
       setIsUploading(false);
     }

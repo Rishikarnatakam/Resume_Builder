@@ -146,11 +146,7 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ resumeId }, ref) => {
 
               // Compress the pasted image
               const compressedFile = await compressImage(file);
-              console.log('📸 FRONTEND: Pasted image compressed:', {
-                originalSize: file.size,
-                compressedSize: compressedFile.size,
-                compressionRatio: ((file.size - compressedFile.size) / file.size * 100).toFixed(1) + '%'
-              });
+                    // Image compressed for upload
 
               // Convert to the same format as file upload
               const reader = new FileReader();
@@ -166,7 +162,6 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ resumeId }, ref) => {
               };
               reader.readAsDataURL(compressedFile);
             } catch (error) {
-              console.error('Error processing pasted image:', error);
               // Fallback to original method if compression fails
               const reader = new FileReader();
               reader.onload = () => {
@@ -210,15 +205,9 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ resumeId }, ref) => {
         const resume = await response.json();
         setFormData(resume.resume_data);
         setFormDataLoaded(true); // Set flag to prevent double loading
-        console.log('✅ FRONTEND: Loaded form data for session:', {
-          resumeId,
-          hasPersonalInfo: !!resume.resume_data?.personalInfo,
-          hasExperience: !!resume.resume_data?.experience?.length,
-          hasEducation: !!resume.resume_data?.education?.length
-        });
       }
     } catch (error) {
-      console.error('❌ Error loading form data:', error);
+      // Handle error silently
     }
   };
 
@@ -242,7 +231,6 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ resumeId }, ref) => {
         const resume = await resumeResponse.json();
         const resumeTemplateName = resume.template_name;
         if (!resumeTemplateName) {
-          console.error('❌ No template name found in resume data');
           return;
         }
         setTemplateName(resumeTemplateName);
@@ -258,18 +246,10 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ resumeId }, ref) => {
           const templateData = await templateResponse.json();
           setTemplateContent(templateData.content || '');
           setTemplateLoaded(true); // Set flag to prevent double loading
-          console.log('✅ FRONTEND: Loaded template for AI chat:', {
-            templateName: resumeTemplateName,
-            contentLength: templateData.content?.length || 0
-          });
-        } else {
-          console.error('❌ Failed to load template content');
         }
-      } else {
-        console.error('❌ Failed to load resume data');
       }
     } catch (error) {
-      console.error('❌ Error loading template:', error);
+      // Handle error silently
     } finally {
       setTemplateLoading(false);
     }
@@ -293,33 +273,6 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ resumeId }, ref) => {
         job_description: null // Add job description later if needed
       };
 
-      console.log('🚀 FRONTEND: Starting AI session:', {
-        resumeId,
-        templateName,
-        hasFormData: !!formData,
-        formDataKeys: Object.keys(formData || {}),
-        // Detailed breakdown of all sections
-        personalInfo: !!formData?.personalInfo,
-        summary: !!formData?.summary,
-        experience: formData?.experience?.length || 0,
-        education: formData?.education?.length || 0,
-        skills: formData?.skills?.length || 0,
-        projects: formData?.projects?.length || 0,
-        awards: formData?.awards?.length || 0,
-        certifications: formData?.certifications?.length || 0,
-        languages: formData?.languages?.length || 0,
-        publications: formData?.publications?.length || 0,
-        volunteering: formData?.volunteering?.length || 0,
-        speaking: formData?.speaking?.length || 0,
-        military: formData?.military?.length || 0,
-        references: !!formData?.references,
-        hobbies: formData?.hobbies?.length || 0,
-        additional_sections: formData?.additional_sections?.length || 0
-      });
-
-      // Log the complete form data structure being sent
-      console.log('📊 FRONTEND: Complete form data being sent to AI:', JSON.stringify(formData, null, 2));
-
       const response = await fetch(apiConfig.url('/ai/session/start'), {
         method: 'POST',
         headers: {
@@ -335,15 +288,8 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ resumeId }, ref) => {
       if (result.success && result.session_id) {
         setSessionId(result.session_id);
         
-        console.log('✅ FRONTEND: Session initialized:', {
-          sessionId: result.session_id,
-          model: result.model_info?.model,
-          contextCaching: result.model_info?.context_caching
-        });
-
         // Session initialized successfully - no need to update the welcome message
       } else {
-        console.error('❌ Failed to initialize session:', result);
         // Don't reset sessionInitialized to prevent infinite loop!
         // Keep it as true to prevent retries
         setMessages(prev => prev.map(msg => 
@@ -354,7 +300,6 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ resumeId }, ref) => {
         ));
       }
     } catch (error) {
-      console.error('❌ Error initializing session:', error);
       // Don't reset sessionInitialized to prevent infinite loop!
       // Keep it as true to prevent retries
       setMessages(prev => prev.map(msg => 
@@ -383,10 +328,8 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ resumeId }, ref) => {
           'ngrok-skip-browser-warning': 'true'
         },
       });
-
-      console.log('🔚 FRONTEND: Session ended:', sessionId);
     } catch (error) {
-      console.error('❌ Error ending session:', error);
+      // Handle error silently
     }
   };
 
@@ -413,12 +356,6 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ resumeId }, ref) => {
 
       // Compress the image before processing
       const compressedFile = await compressImage(file);
-      console.log('📸 FRONTEND: Image compressed:', {
-        originalSize: file.size,
-        compressedSize: compressedFile.size,
-        compressionRatio: ((file.size - compressedFile.size) / file.size * 100).toFixed(1) + '%'
-      });
-
       const reader = new FileReader();
       reader.onload = () => {
         const base64Data = reader.result as string;
@@ -433,7 +370,6 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ resumeId }, ref) => {
       };
       reader.readAsDataURL(compressedFile);
     } catch (error) {
-      console.error('Error uploading image:', error);
       alert('Error uploading image. Please try again.');
     }
   };
@@ -447,10 +383,6 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ resumeId }, ref) => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("User not authenticated");
-      console.log('🔄 FRONTEND: Compiling LaTeX for AI analysis...', {
-        latexLength: editorState.originalLatex.length
-      });
-
       const response = await fetch(apiConfig.url('/latex/compile-for-analysis'), {
         method: 'POST',
         headers: {
@@ -467,23 +399,15 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ resumeId }, ref) => {
       const result = await response.json();
       
       if (result.success && result.pdf_base64) {
-        console.log('✅ FRONTEND: LaTeX compiled successfully for analysis', {
-          pdfSize: result.pdf_base64.length,
-          filename: result.filename
-        });
-
         setSelectedPdf({
           data: result.pdf_base64,
           name: result.filename || 'current_resume.pdf'
         });
         
-        console.log('📄 FRONTEND: PDF ready for AI analysis');
-      } else {
-        console.error('❌ FRONTEND: LaTeX compilation failed:', result.error);
+        } else {
         alert(`PDF compilation failed: ${result.error || 'Unknown error'}`);
       }
     } catch (error) {
-      console.error('❌ FRONTEND: Error compiling LaTeX:', error);
       alert('Error compiling LaTeX. Please try again.');
     }
   };
@@ -552,21 +476,12 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ resumeId }, ref) => {
       // Add image data if present
       if (imageForAPI) {
         requestBody.image_data = imageForAPI.data;
-        console.log('📸 FRONTEND: Sending image with session message:', {
-          fileName: imageForAPI.name,
-          fileType: imageForAPI.type,
-          dataLength: imageForAPI.data.length
-        });
-      }
+        }
 
       // Add PDF data if present
       if (pdfForAPI) {
         requestBody.pdf_data = pdfForAPI.data;
-        console.log('📄 FRONTEND: Sending PDF with session message:', {
-          fileName: pdfForAPI.name,
-          dataLength: pdfForAPI.data.length
-        });
-      }
+        }
 
       const response = await fetch(apiConfig.url('/ai/session/message'), {
         method: 'POST',
@@ -624,13 +539,6 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ resumeId }, ref) => {
       }
 
       const result = await response.json();
-      console.log('📨 FRONTEND: Received session response:', {
-        success: result.success,
-        hasResponse: !!result.response,
-        hasPatchData: !!result.patch_data,
-        operationsCount: result.patch_data?.operations?.length || 0
-      });
-
       if (result.success) {
         const assistantMessage: Message = {
           id: (Date.now() + 1).toString(),
@@ -643,15 +551,8 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ resumeId }, ref) => {
 
         // Handle simple LaTeX replacement
         if (result.patch_data && result.patch_data.new_latex) {
-          console.log('✅ FRONTEND: Received new LaTeX');
-          console.log('📄 FRONTEND: New LaTeX length:', result.patch_data.new_latex.length);
-          editorState.receiveAILatex(result.patch_data.new_latex);
-        } else {
-          console.log('ℹ️ FRONTEND: Received message-only response (no changes)');
-        }
+          editorState.receiveAILatex(result.patch_data.new_latex);}
       } else {
-        console.error('❌ FRONTEND: AI response indicates failure:', result);
-        
         // Check if credits were deducted
         const creditsMessage = result.credits_deducted === false ? ' (No message credit deducted)' : '';
         
@@ -664,7 +565,6 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ resumeId }, ref) => {
         setMessages(prev => [...prev, errorMessage]);
       }
     } catch (error) {
-      console.error('❌ Error sending message to session:', error);
       // Handle network or other unexpected errors
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),

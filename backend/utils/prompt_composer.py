@@ -29,6 +29,38 @@ class PromptComposer:
             logger.error(f"❌ Error reading template instructions {template_name}: {str(e)}")
             return ""
 
+    def read_ats_guidelines(self) -> str:
+        """Read ATS guidelines for content optimization."""
+        try:
+            guidelines_file = Path(__file__).parent / "ats_guidelines.txt"
+            if guidelines_file.exists():
+                with open(guidelines_file, 'r', encoding='utf-8') as f:
+                    content = f.read().strip()
+                logger.info("✅ Loaded ATS guidelines")
+                return content
+            else:
+                logger.warning("⚠️ ATS guidelines not found")
+                return ""
+        except Exception as e:
+            logger.error(f"❌ Error reading ATS guidelines: {str(e)}")
+            return ""
+
+    def read_job_tailoring_guidelines(self) -> str:
+        """Read job-specific tailoring guidelines."""
+        try:
+            guidelines_file = Path(__file__).parent / "job_tailoring_guidelines.txt"
+            if guidelines_file.exists():
+                with open(guidelines_file, 'r', encoding='utf-8') as f:
+                    content = f.read().strip()
+                logger.info("✅ Loaded job tailoring guidelines")
+                return content
+            else:
+                logger.warning("⚠️ Job tailoring guidelines not found")
+                return ""
+        except Exception as e:
+            logger.error(f"❌ Error reading job tailoring guidelines: {str(e)}")
+            return ""
+
     def read_template_content(self, template_name: str) -> str:
         """Read the actual template .cls file content as a string."""
         try:
@@ -49,11 +81,18 @@ class PromptComposer:
     def build_improved_generation_prompt(self, template_name: str, user_data: dict, job_description: Optional[str] = None) -> str:
         template_content = self.read_template_content(template_name)
         instructions = self.read_template_instructions(template_name)
+        ats_guidelines = self.read_ats_guidelines()
+        job_tailoring = self.read_job_tailoring_guidelines()
+        
         prompt = f"""TEMPLATE:\n```latex\n{template_content}\n```\n\nFORM DATA (Current user input):\n{json.dumps(user_data, indent=2)}"""
         if job_description:
             prompt += f"\n\nJOB DESCRIPTION: {job_description}"
         if instructions:
             prompt += f"\n\nTEMPLATE-SPECIFIC INSTRUCTIONS:\n{instructions}\n"
+        if ats_guidelines:
+            prompt += f"\n\nATS-FRIENDLY CONTENT GUIDELINES:\n{ats_guidelines}\n"
+        if job_description and job_tailoring:
+            prompt += f"\n\nJOB-SPECIFIC TAILORING GUIDELINES:\n{job_tailoring}\n"
         prompt += """\n\nINSTRUCTIONS:\n
         1. Use the FORM DATA as the primary source - this is what the user has entered/edited\n
         2. Output a LaTeX .tex document that uses the template\n
@@ -61,7 +100,10 @@ class PromptComposer:
         4. CRITICAL: Only include sections that have actual data in FORM DATA. If a section is empty or missing, DO NOT include it\n
         5. Use the template's custom commands and environments to format the user's data\n
         6. Double-escape backslashes in the new_latex field (use \\\\\\\\ for \\\\)\n
-        7. Ensure proper JSON escaping for LaTeX commands\n\nIMPORTANT: Use the FORM DATA provided above, not parsed data. This represents the user's current input.
+        7. Ensure proper JSON escaping for LaTeX commands\n
+        8. OPTIMIZE CONTENT FOR ATS: Follow the ATS guidelines to create keyword-rich, achievement-focused content that mirrors job description language\n
+        9. JOB-SPECIFIC TAILORING: When job description is provided, apply job-specific optimization to prioritize relevant experience, skills, and achievements\n
+        10. DO NOT add placeholders like [INSERT], [ADD], or [FILL] - provide actual content\
         """
         return prompt
 
@@ -69,17 +111,28 @@ class PromptComposer:
     def build_improved_conversation_prompt(self, template_name: str, user_data: Optional[dict] = None, job_description: Optional[str] = None) -> str:
         template_content = self.read_template_content(template_name)
         instructions = self.read_template_instructions(template_name)
+        ats_guidelines = self.read_ats_guidelines()
+        job_tailoring = self.read_job_tailoring_guidelines()
+        
         prompt = f"""TEMPLATE:\n```latex\n{template_content}\n```\n\nFORM DATA (Current user input):\n{json.dumps(user_data, indent=2)}"""
         if job_description:
             prompt += f"\n\nJOB DESCRIPTION: {job_description}"
         if instructions:
             prompt += f"\n\nTEMPLATE-SPECIFIC INSTRUCTIONS:\n{instructions}\n"
+        if ats_guidelines:
+            prompt += f"\n\nATS-FRIENDLY CONTENT GUIDELINES:\n{ats_guidelines}\n"
+        if job_description and job_tailoring:
+            prompt += f"\n\nJOB-SPECIFIC TAILORING GUIDELINES:\n{job_tailoring}\n"
         prompt += """\n\nINSTRUCTIONS: 
-        1. You are an expert LaTeX resume editor. You have access to the template structure and the user's current form data. Help the user edit their resume by making precise LaTeX changes.\n
-        2. Use the FORM DATA provided above (current user input), not parsed data.This represents what the user has actually entered/edited in the form\n
+        1. You are an expert LaTeX resume editor with ATS optimization expertise. You have access to the template structure and the user's current form data. Help the user edit their resume by making precise LaTeX changes.\n
+        2. Use the FORM DATA provided above (current user input), not parsed data. This represents what the user has actually entered/edited in the form\n
         3. Focus on accuracy and proper LaTeX formatting\n
         4. Consider the template structure and commands\n
-        5. Be helpful and conversational"""
+        5. OPTIMIZE CONTENT FOR ATS: When suggesting content changes, follow ATS guidelines for keyword optimization, achievement focus, and job description alignment\n
+        6. JOB-SPECIFIC TAILORING: When job description is provided, apply job-specific optimization to prioritize relevant experience, skills, and achievements\n
+        7. DO NOT add placeholders like [INSERT], [ADD], or [FILL] - provide actual content\n
+        8. When job description is provided, tailor the resume specifically for that job - prioritize relevant experience, skills, and achievements that match the job requirements\n
+        9. Be helpful and conversational while maintaining ATS-friendly content standards"""
         return prompt
 
 # Global instance

@@ -1,8 +1,10 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 import uvicorn
+import logging
 from dotenv import load_dotenv  # Import the library
 
 load_dotenv()  # Load environment variables from .env file
@@ -19,34 +21,50 @@ if str(backend_dir) not in sys.path:
 from routes import auth, resumes, latex, users, templates, ai_chat, subscriptions
 from database import init_db, engine
 from utils.config import config
+from utils.rate_limiter import rate_limit_middleware
+
+# Configure logging
+logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    print("🚀 Starting LaTeX Resume AI...")
+    logger.info("🚀 Starting LaTeX Resume AI...")
     
     # Validate configuration
     config.validate_config()
-    print(f"✅ Configuration validated - Using model: {config.get_gemini_model()}")
+    logger.info(f"✅ Configuration validated - Using model: {config.get_gemini_model()}")
     
     # await init_db()  # Disabled for production safety
-    print("✅ Database initialized")
+    logger.info("✅ Database initialized")
     yield
     # Shutdown
-    print("🛑 Shutting down LaTeX Resume AI...")
+    logger.info("🛑 Shutting down LaTeX Resume AI...")
     # Properly close database connections
     await engine.dispose()
-    print("✅ Database connections closed")
+    logger.info("✅ Database connections closed")
 
 # Create FastAPI app with modern config
 app = FastAPI(
     title="LaTeX Resume AI",
     description="AI-powered LaTeX resume generator with live preview",
     version="1.0.0",
-    docs_url="/api/docs",
-    redoc_url="/api/redoc",
+    docs_url="/api/docs" if config.ENVIRONMENT == "development" else None,
+    redoc_url="/api/redoc" if config.ENVIRONMENT == "development" else None,
     lifespan=lifespan
 )
+
+# Security middleware - Trusted hosts
+if config.ENVIRONMENT == "production":
+    app.add_middleware(
+        TrustedHostMiddleware,
+        allowed_hosts=["*"]  # Configure with your actual domain in production
+    )
+
+# Rate limiting middleware
+@app.middleware("http")
+async def rate_limit(request: Request, call_next):
+    return await rate_limit_middleware(request, call_next)
 
 # Define allowed origins for CORS
 # This is now controlled by environment variables via config.py
@@ -83,6 +101,7 @@ async def health_check():
         "status": "healthy",
         "service": "LaTeX Resume AI",
         "version": "2.0.0",
+        "environment": config.ENVIRONMENT,
         "model": config.get_gemini_model(),
         "features": {
             "session_based_ai": True,
@@ -97,8 +116,9 @@ async def root():
     """Root endpoint with API info"""
     return {
         "message": "🤖 LaTeX Resume AI API",
-        "docs": "/api/docs",
-        "version": "1.0.0"
+        "docs": "/api/docs" if config.ENVIRONMENT == "development" else "API docs disabled in production",
+        "health": "/api/health",
+        "environment": config.ENVIRONMENT
     }
 
 if __name__ == "__main__":

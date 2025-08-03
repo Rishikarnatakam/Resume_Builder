@@ -64,9 +64,7 @@ class ChatSessionManager:
             form_data=form_data,
             job_description=job_description
         )
-        print("==== GEMINI CHAT SESSION INIT PROMPT START ====")
-        print(initial_context_json)
-        print("==== GEMINI CHAT SESSION INIT PROMPT END ====")
+        # Debug logging removed for production
         
         # Create Gemini model and start chat
         model = genai.GenerativeModel(self.model_name)
@@ -76,9 +74,7 @@ class ChatSessionManager:
             {"role": "user", "parts": [initial_context_json]},
             {"role": "model", "parts": ["Perfect! I understand your resume template, instructions, and data. I'm ready to help you edit your LaTeX resume. I'll actively think about the template rules, user data, and formatting requirements before making any changes. What would you like to work on first?"]}
         ])
-        print("==== GEMINI CHAT SESSION INIT RESPONSE START ====")
-        print(chat.history)
-        print("==== GEMINI CHAT SESSION INIT RESPONSE END ====")
+        # Debug logging removed for production
         
         # Generate session ID
         session_id = f"chat_session_{datetime.utcnow().timestamp()}_{resume_id}"
@@ -161,15 +157,11 @@ class ChatSessionManager:
                 # logger.info("📄 SESSION: Added PDF to message")
             
             # Print the exact prompt sent to Gemini for chat messages
-            print("==== GEMINI CHAT PROMPT START ====")
-            print(prompt_str)
-            print("==== GEMINI CHAT PROMPT END ====")
+                    # Debug logging removed for production
             # For Gemini Flash models, do NOT pass response_mime_type, response_schema, or system_instruction
             response = chat.send_message(message_parts)
             response_text = response.text.strip()
-            print("==== GEMINI CHAT RESPONSE START ====")
-            print(response_text)
-            print("==== GEMINI CHAT RESPONSE END ====")
+                    # Debug logging removed for production
             
             # --- Token/Word Count Logging ---
             def simple_token_word_count(text):
@@ -177,8 +169,7 @@ class ChatSessionManager:
                 words = cleaned.split()
                 word_count = len(words)
                 token_estimate = int(word_count * 1.3)  # 1 word ≈ 1.3 tokens for code/JSON
-                print(f"🔢 AI Response Word Count: {word_count}")
-                print(f"🔢 AI Response Estimated Token Count: {token_estimate}")
+                        # Debug logging removed for production
                 return word_count, token_estimate
 
             simple_token_word_count(response_text)
@@ -193,14 +184,14 @@ class ChatSessionManager:
                 # Check if response contains JSON format (more flexible)
                 if '{' in response_text_clean and '}' in response_text_clean:
                     try:
-                        print(f"🔧 DEBUG: Attempting to parse JSON: {response_text_clean[:200]}...")
+                        # Debug logging removed for production
                         
                         # Try to extract JSON from the response
                         import re
                         json_match = re.search(r'\{.*\}', response_text_clean, re.DOTALL)
                         if json_match:
                             json_str = json_match.group(0)
-                            print(f"🔧 DEBUG: Extracted JSON string: {json_str}")
+                            # Debug logging removed for production
                             # --- PATCH: Escape unescaped backslashes in LaTeX content fields ---
                             def escape_latex_in_json(json_str):
                                 # Only escape backslashes that are not already escaped
@@ -219,18 +210,17 @@ class ChatSessionManager:
                             try:
                                 json_data = json.loads(json_str_escaped)
                             except Exception as e:
-                                print(f"❌ Error parsing JSON after escaping: {e}")
+                                # Debug logging removed for production
                                 raise
-                            print(f"🔧 DEBUG: Parsed JSON data: {json_data}")
+                            # Debug logging removed for production
                         else:
                             # Fallback: try parsing the entire response
                             json_data = json.loads(response_text_clean)
-                        print(f"🔧 DEBUG: Parsed JSON data: {json_data}")
+                        # Debug logging removed for production
                         message = json_data.get('message', 'No message provided')
                         new_latex = json_data.get('new_latex', '')
                         
-                        print(f"🔧 DEBUG: Extracted message: {message}")
-                        print(f"🔧 DEBUG: Extracted new_latex length: {len(new_latex)}")
+                        # Debug logging removed for production
                         
                         # Create simple patch with new LaTeX
                         patch_data = Patch(
@@ -243,9 +233,9 @@ class ChatSessionManager:
                         # Add new_latex to the response
                         patch_data_dict = patch_data.dict()
                         patch_data_dict['new_latex'] = new_latex
-                        print(f"🔧 DEBUG: Created patch_data: {patch_data_dict}")
+                        # Debug logging removed for production
                     except json.JSONDecodeError as e:
-                        print(f"❌ Error parsing JSON: {e}")
+                        # Debug logging removed for production
                         # JSON parsing failed - this should not count as success
                         patch_data_dict = {
                             "type": "parse_error_patch",
@@ -264,7 +254,7 @@ class ChatSessionManager:
                         "new_latex": ""
                     }
             except Exception as e:
-                print(f"❌ Error parsing response: {e}")
+                # Debug logging removed for production
                 patch_data_dict = {
                     "type": "parse_error_patch", 
                     "diff_text": "", 
@@ -296,9 +286,7 @@ class ChatSessionManager:
             }
             
         except Exception as e:
-            print("==== GEMINI CHAT ERROR ====")
-            print(repr(e))
-            print("==== GEMINI CHAT ERROR END ====")
+            # Debug logging removed for production
             return {
                 "success": False,
                 "response": "I encountered an error processing your request. Please try again.",
@@ -325,10 +313,29 @@ class ChatSessionManager:
     def _build_simple_prompt(self, session_id: str, current_latex: str, user_message: str) -> str:
         """Build simple prompt for complete LaTeX replacement"""
         
-        return (
+        # Get session data to check if job description exists
+        session_data = self.session_data.get(session_id, {})
+        job_description = session_data.get('job_description')
+        
+        prompt = (
             "CURRENT LATEX:\n"
             f"{current_latex}\n\n"
             f"USER REQUEST: {user_message}\n\n"
+        )
+        
+        # Include job description if available
+        if job_description:
+            prompt += f"JOB DESCRIPTION: {job_description}\n\n"
+            prompt += (
+                "JOB-SPECIFIC INSTRUCTIONS:\n"
+                "- Optimize content for this specific role\n"
+                "- Include relevant keywords from job description\n"
+                "- Prioritize experiences that match job requirements\n"
+                "- Use industry-specific terminology\n"
+                "- Focus on quantifiable achievements relevant to the role\n\n"
+            )
+        
+        prompt += (
             "INSTRUCTIONS:\n"
             "Return ONLY a JSON object with 'message' field for your explanation and 'new_latex' field for the complete updated LaTeX code.\n\n"
             "REQUIRED FORMAT:\n"
@@ -345,6 +352,8 @@ class ChatSessionManager:
             "- Think like a modern code editor - replace the whole file\n"
             "- Always include an empty line between sections in the LaTeX code for better readability\n"
         )
+        
+        return prompt
 
     async def _process_image_attachment(self, image_data: str):
         """Process image for Gemini"""
@@ -492,6 +501,14 @@ class ChatSessionManager:
         if not session:
             logger.warning(f"⚠️ SESSION: Session {session_id} not found")
         return session
+
+    async def update_session_job_description(self, session_id: str, job_description: str):
+        """Update session with new job description"""
+        if session_id in self.session_data:
+            self.session_data[session_id]['job_description'] = job_description
+            logger.info(f"✅ SESSION: Updated job description for session {session_id}")
+        else:
+            logger.warning(f"⚠️ SESSION: Session {session_id} not found in memory")
 
 # Global instance
 session_manager = ChatSessionManager()

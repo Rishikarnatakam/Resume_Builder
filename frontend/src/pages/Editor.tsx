@@ -1,3 +1,4 @@
+import { logger } from '../utils/logger';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import Editor, { DiffEditor } from '@monaco-editor/react';
@@ -28,7 +29,6 @@ const LaTeXEditor: React.FC = () => {
   const [messagesRemaining, setMessagesRemaining] = useState<number | null>(null);
   
   const editorRef = useRef<any>(null);
-  const diffEditorRef = useRef<any>(null);
   const aiChatRef = useRef<AIChatRef>(null);
   const latestLatexContent = useRef(editorState.currentLatex);
   const isInitialMount = useRef(true);
@@ -36,6 +36,7 @@ const LaTeXEditor: React.FC = () => {
 
   // State for diff mode
   const [isDiffMode, setIsDiffMode] = useState(false);
+  const [diffEditorInstance, setDiffEditorInstance] = useState<any>(null);
 
   // Keep a ref to the latest latex content to avoid stale closures
   useEffect(() => {
@@ -64,27 +65,17 @@ const LaTeXEditor: React.FC = () => {
     }
 
     if (editorState.lastSaved) {
-      console.log('✅ Save completed, triggering auto-compilation.');
+      logger.success('Save completed, triggering auto-compilation.');
       compileLatex();
     }
   }, [editorState.lastSaved]); // Intentionally not including compileLatex, see below
-
-  // Debug logging for inline changes state
-  useEffect(() => {
-    console.log('🔍 EDITOR: showInlineChanges changed to:', editorState.showInlineChanges, 'proposedLatex length:', editorState.proposedLatex.length);
-    console.log('🔍 EDITOR: diffMode =', editorState.diffMode);
-  }, [editorState.showInlineChanges, editorState.proposedLatex, editorState.diffMode]);
 
   // Auto-switch to diff mode when AI changes are available
   useEffect(() => {
     if (editorState.showInlineChanges && editorState.proposedLatex && editorState.proposedLatex !== editorState.originalLatex) {
       setIsDiffMode(true);
     } else if (!editorState.showInlineChanges) {
-      // Add a small delay to prevent rapid unmounting
-      const timer = setTimeout(() => {
-        setIsDiffMode(false);
-      }, 100);
-      return () => clearTimeout(timer);
+      setIsDiffMode(false);
     }
   }, [editorState.showInlineChanges, editorState.proposedLatex, editorState.originalLatex]);
 
@@ -117,7 +108,7 @@ const LaTeXEditor: React.FC = () => {
         setMessagesRemaining(remaining);
       }
     } catch (error) {
-      console.error('Error fetching message balance:', error);
+              logger.error('Error fetching message balance', error);
     }
   };
 
@@ -146,10 +137,10 @@ const LaTeXEditor: React.FC = () => {
           .then(blob => {
             const pdfUrl = URL.createObjectURL(blob);
             setPdfUrl(pdfUrl);
-            console.log('📄 Loaded existing PDF from browser storage');
+            logger.info('Loaded existing PDF from browser storage');
           })
           .catch(error => {
-            console.error('Failed to load PDF from storage:', error);
+            logger.error('Failed to load PDF from storage', error);
             // Clear invalid data
             sessionStorage.removeItem(storageKey);
           });
@@ -214,7 +205,7 @@ Programming Languages, Frameworks, Tools, etc.
         data.job_description || ''
       );
     } catch (error) {
-      console.error("Error fetching resume:", error);
+              logger.error("Error fetching resume", error);
     }
   };
 
@@ -232,10 +223,7 @@ Programming Languages, Frameworks, Tools, etc.
 
       if (!session.data.session) throw new Error("Not authenticated");
       const token = session.data.session.access_token;
-      console.log('🔄 Starting LaTeX compilation...', {
-        contentLength: contentToCompile.length,
-        isOverride: !!overrideContent
-      });
+      logger.compilationStart(contentToCompile.length);
       
       const response = await fetch(`${apiConfig.baseUrl}/latex/compile`, {
         method: 'POST',
@@ -251,8 +239,7 @@ Programming Languages, Frameworks, Tools, etc.
         }),
       });
 
-      console.log('📊 Compile response status:', response.status);
-      console.log('📊 Response headers:', Object.fromEntries(response.headers.entries()));
+      // Response status and headers logged for debugging
       
       // Check compilation status from headers
       const success = response.headers.get('X-Success') === 'true';
@@ -277,8 +264,8 @@ Programming Languages, Frameworks, Tools, etc.
             const pdfUrl = URL.createObjectURL(blob);
             setPdfUrl(pdfUrl);
             
-            console.log('✅ PDF compiled and stored in browser storage');
-            console.log('📄 PDF filename:', filename);
+            logger.compilationSuccess(filename);
+            logger.info('PDF filename', { filename });
           };
           reader.readAsDataURL(blob);
           
@@ -290,7 +277,7 @@ Programming Languages, Frameworks, Tools, etc.
       } else {
         // Compilation failed
         const errorMessage = error.replace(/_/g, ' ') || 'Unknown compilation error';
-        console.error('❌ Compilation failed:', errorMessage);
+        logger.compilationError(errorMessage);
         setCompileLog(`❌ Compilation failed: ${errorMessage}`);
         setPdfUrl('');
         
@@ -301,7 +288,7 @@ Programming Languages, Frameworks, Tools, etc.
         }
       }
     } catch (error) {
-      console.error('❌ Compile error:', error);
+      logger.error('Compile error', error);
       setCompileLog(`Error: ${error}`);
     } finally {
       setIsCompiling(false);
@@ -317,24 +304,12 @@ Programming Languages, Frameworks, Tools, etc.
       return;
     }
 
-    // Expert ATS-focused LaTeX generation prompt
-    const tailoringPrompt = `You are an expert LaTeX resume generator specializing in ATS-friendly, machine-readable resumes.
+    // Simple prompt that leverages AI's already learned knowledge
+    const tailoringPrompt = `JOB DESCRIPTION: ${editorState.jobDescription}
 
-TARGET POSITION:
-${editorState.jobDescription}
+INSTRUCTIONS: Use the job tailoring guidelines, template instructions, and ATS guidelines you already learned in this session to tailor my resume for this specific job description. Apply all the optimization techniques you know to create a job-specific, ATS-optimized resume. Tailor the resume specifically for this job - prioritize relevant experience, skills, and achievements that match the job requirements. DO NOT add placeholders like [INSERT], [ADD], or [FILL] - provide actual content.
 
-TASK: Generate a complete, ATS-optimized LaTeX resume using my existing template and data.
-
-REQUIREMENTS:
-✅ ATS-FRIENDLY: Use clear section headers, standard fonts, proper spacing
-✅ MACHINE-READABLE: Avoid complex formatting, tables, or graphics that confuse ATS
-✅ KEYWORD-OPTIMIZED: Include relevant keywords from the job description naturally
-✅ QUANTIFIED IMPACT: Use specific numbers, percentages, and metrics
-✅ TEMPLATE-COMPLIANT: Keep exact same LaTeX structure and commands
-
-OUTPUT: Return ONLY the complete LaTeX code from \\documentclass{} to \\end{document}. No explanations or commentary.
-
-Tailor the content to match this specific role while maintaining professional, scannable formatting.`;
+OUTPUT: Return ONLY the complete LaTeX code from \\documentclass{} to \\end{document}. No explanations or commentary.`;
 
     // Show clean message to user instead of technical prompt
     const userFriendlyMessage = `✨ Tailoring your resume for: ${editorState.jobDescription}`;
@@ -397,10 +372,10 @@ Tailor the content to match this specific role while maintaining professional, s
       // Clean up
       URL.revokeObjectURL(downloadUrl);
       
-      console.log('📥 PDF downloaded:', filename);
+      logger.success('PDF downloaded', { filename });
       
     } catch (error) {
-      console.error('Download failed:', error);
+              logger.error('Download failed', error);
       alert('Failed to download PDF. Please try compiling again.');
     } finally {
       setIsDownloading(false);
@@ -411,23 +386,7 @@ Tailor the content to match this specific role while maintaining professional, s
 
   // Diff creation is now handled by the context
 
-  // Apply red/green styling based on line content - now uses context
-  const applyDiffStyling = (content: string) => {
-    // This function is no longer needed with Monaco diff editor
-    return;
-  };
 
-  // Helper to detect if a line is new content (follows a %% line or is substantially different)
-  const isNewContentLine = (line: string, index: number, allLines: string[]) => {
-    // This function is no longer needed with Monaco diff editor
-    return false;
-  };
-
-  // Handle individual line clicks for accept/reject - simplified since context handles state
-  const handleLineClick = (lineNumber: number) => {
-    // This function is no longer needed with Monaco diff editor
-    return;
-  };
 
   const handleRejectChanges = () => {
     editorState.rejectAIChanges();
@@ -439,30 +398,20 @@ Tailor the content to match this specific role while maintaining professional, s
     setIsDiffMode(false);
   };
 
-  // Cleanup function for DiffEditor
-  const cleanupDiffEditor = () => {
-    if (diffEditorRef.current) {
-      try {
-        diffEditorRef.current.dispose();
-      } catch (error) {
-        console.warn('DiffEditor cleanup error:', error);
-      }
-      diffEditorRef.current = null;
-    }
-  };
-
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      cleanupDiffEditor();
+      if (diffEditorInstance) {
+        try {
+          diffEditorInstance.dispose();
+        } catch (error) {
+          // Ignore disposal errors
+        }
+      }
     };
-  }, []);
+  }, [diffEditorInstance]);
 
-  const handleToggleDiffMode = () => {
-    if (editorState.showInlineChanges && editorState.proposedLatex) {
-      setIsDiffMode(!isDiffMode);
-    }
-  };
+
 
   // Create the LaTeX editor content
   const latexEditorContent = (
@@ -477,59 +426,29 @@ Tailor the content to match this specific role while maintaining professional, s
           </div>
           
           <div className="flex-1 relative">
-            {isDiffMode && editorState.showInlineChanges && editorState.proposedLatex ? (
-              <div className="h-full w-full">
-                <DiffEditor
-                  key={`diff-${editorState.showInlineChanges}`}
-                  height="100%"
-                  language="latex"
-                  original={editorState.originalLatex}
-                  modified={editorState.proposedLatex}
-                  theme="vs-dark"
-                  onMount={(editor) => {
-                    diffEditorRef.current = editor;
-                  }}
-                  options={{
-                    minimap: { enabled: false },
-                    fontSize: 14,
-                    lineNumbers: 'on',
-                    wordWrap: 'on',
-                    automaticLayout: true,
-                    scrollBeyondLastLine: false,
-                    padding: { top: 16, bottom: 16 },
-                    readOnly: true,
-                    renderSideBySide: false,
-                    enableSplitViewResizing: false,
-                    renderOverviewRuler: false,
-                    overviewRulerBorder: false,
-                    overviewRulerLanes: 0,
-                    scrollbar: {
-                      vertical: 'visible',
-                      horizontal: 'visible',
-                      verticalScrollbarSize: 14,
-                      horizontalScrollbarSize: 14,
-                      useShadows: false,
-                      verticalHasArrows: false,
-                      horizontalHasArrows: false,
-                    },
-                    folding: false,
-                    foldingStrategy: 'indentation',
-                    showFoldingControls: 'never',
-                    lineDecorationsWidth: 10,
-                    lineNumbersMinChars: 3,
-                    glyphMargin: false,
-                    contextmenu: false,
-                    quickSuggestions: false,
-                    parameterHints: {
-                      enabled: false,
-                    },
-                    suggestOnTriggerCharacters: false,
-                    acceptSuggestionOnEnter: 'off',
-                    tabCompletion: 'off',
-                  }}
-                />
-              </div>
-            ) : (
+            <div className="h-full w-full" style={{ display: isDiffMode && editorState.showInlineChanges && editorState.proposedLatex ? 'block' : 'none' }}>
+              <DiffEditor
+                key="diff-editor-stable"
+                height="100%"
+                language="latex"
+                original={editorState.originalLatex}
+                modified={editorState.proposedLatex}
+                theme="vs-dark"
+                onMount={(editor) => {
+                  setDiffEditorInstance(editor);
+                }}
+                options={{
+                  minimap: { enabled: false },
+                  fontSize: 14,
+                  lineNumbers: 'on',
+                  wordWrap: 'on',
+                  automaticLayout: true,
+                  readOnly: true,
+                  renderSideBySide: false,
+                }}
+              />
+            </div>
+            <div className="h-full w-full" style={{ display: !isDiffMode || !editorState.showInlineChanges || !editorState.proposedLatex ? 'block' : 'none' }}>
               <Editor
                 height="100%"
                 defaultLanguage="latex"
@@ -545,14 +464,10 @@ Tailor the content to match this specific role while maintaining professional, s
                   lineNumbers: 'on',
                   wordWrap: 'on',
                   automaticLayout: true,
-                  scrollBeyondLastLine: false,
-                  padding: { top: 16, bottom: 16 },
-                  readOnly: editorState.showInlineChanges, // Make read-only when showing changes
-                  selectOnLineNumbers: false, // Disable line number selection in diff mode
-                  selectionHighlight: !editorState.showInlineChanges, // Disable selection highlight in diff mode
+                  readOnly: editorState.showInlineChanges,
                 }}
               />
-            )}
+            </div>
             
             {/* Inline Accept/Reject Controls */}
             {editorState.showInlineChanges && (

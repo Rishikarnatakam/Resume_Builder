@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { logger } from '../utils/logger';
 
 import { motion } from "framer-motion";
 import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
@@ -89,7 +90,7 @@ const Register: React.FC = () => {
       }
     } catch (err) {
       setError('Network error. Please try again.');
-      console.error('Registration error:', err);
+      logger.error('Registration error:', err);
     } finally {
       setIsLoading(false);
     }
