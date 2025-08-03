@@ -10,15 +10,6 @@ This directory contains professional LaTeX resume templates optimized for ATS sy
 - **Best for**: Corporate positions, traditional industries
 - **Commands**: `\name`, `\address`, `\rSection`, `\rSubsection`
 
-### 2. AltaCV (`altacv/`)
-- **Type**: Modern two-column resume
-- **Features**: Two-column layout with paracol, modern design, color-coded sections
-- **Best for**: Tech positions, creative industries, modern companies
-- **Commands**: `\name`, `\tagline`, `\makecvheader`, `\cvsection`, `\cvevent`, `\cvskill`, `\cvtag`
-- **Layout**: Left column (skills, languages, certifications), Right column (experience, education, projects)
-
-
-
 ## Template Structure
 
 Each template directory contains:

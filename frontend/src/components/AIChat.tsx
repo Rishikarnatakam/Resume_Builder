@@ -651,10 +651,14 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ resumeId }, ref) => {
         }
       } else {
         console.error('❌ FRONTEND: AI response indicates failure:', result);
+        
+        // Check if credits were deducted
+        const creditsMessage = result.credits_deducted === false ? ' (No message credit deducted)' : '';
+        
         const errorMessage: Message = {
           id: (Date.now() + 1).toString(),
           type: 'assistant',
-          content: result.error || 'Sorry, I encountered an error processing your request. Please try again.',
+          content: (result.error || 'Sorry, I encountered an error processing your request. Please try again.') + creditsMessage,
           timestamp: new Date()
         };
         setMessages(prev => [...prev, errorMessage]);
@@ -665,7 +669,7 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ resumeId }, ref) => {
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         type: 'assistant',
-        content: `Sorry, something went wrong. Please check the console for details.`,
+        content: `Sorry, something went wrong. Please check the console for details. (No message credit deducted)`,
         timestamp: new Date()
       };
       setMessages(prev => [...prev, errorMessage]);
@@ -799,7 +803,7 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ resumeId }, ref) => {
                     </Link>
                   </div>
                 ) : (
-                  <div className="whitespace-pre-wrap text-sm break-words">{message.content}</div>
+                  <div className="whitespace-pre-wrap text-sm break-words select-text">{message.content}</div>
                 )}
                 <div className={`text-xs mt-2 ${
                   message.type === 'user' ? 'text-gray-400' : 'text-gray-500'

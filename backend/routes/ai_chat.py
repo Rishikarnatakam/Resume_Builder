@@ -51,6 +51,7 @@ class ChatMessageResponse(BaseModel):
     patch_data: Optional[Dict[str, Any]] = None
     session_info: Optional[Dict[str, Any]] = None
     error: Optional[str] = None
+    credits_deducted: bool = True  # Default to True for backward compatibility
 
 class SessionInfoResponse(BaseModel):
     success: bool
@@ -234,7 +235,8 @@ async def send_chat_message(
             success=response["success"],
             response=response["response"],
             patch_data=response.get("patch_data"),
-            session_info=updated_session_info
+            session_info=updated_session_info,
+            credits_deducted=response.get("credits_deducted", True)  # Default to True for backward compatibility
         )
         
     except HTTPException:

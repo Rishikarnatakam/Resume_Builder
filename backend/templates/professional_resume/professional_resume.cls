@@ -90,7 +90,7 @@
  \ifthenelse{\equal{#3}{}}{}{ % If technologies are provided, show them
   \\
   {\bf Technologies:} {\em #3} % Bold "Technologies:" with italic tech list
-  }\vspace{-0.1em}
+  }\vspace{-0.3em}
   \begin{list}{$\cdot$}{\leftmargin=0em} % \cdot used for bullets, no indentation
    \setlength{\itemsep}{-0.3em} % Consistent spacing between bullet points
    \setlength{\parsep}{0em} % No extra paragraph spacing
@@ -112,7 +112,7 @@
   \hrule % Horizontal line
   \begin{list}{}{ % List for each individual item in the section
     \setlength{\leftmargin}{0em} % Margin within the section
-    \setlength{\itemsep}{-0.2em}
+    \setlength{\itemsep}{-0.1em}
   }
   %\item[]
 }{

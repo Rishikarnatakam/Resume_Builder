@@ -383,18 +383,18 @@ def _log_comprehensive_extraction_summary(data: Dict[str, Any]) -> None:
             section_name = section.get('section_name', 'Unknown')
             content_length = len(section.get('content', ''))
             print(f"      - {section_name} ({content_length} characters)")
-    
+        
     # Log skills details
     skills = data.get('skills', [])
     if skills:
         print(f"   📝 Skills found: {', '.join(skills[:5])}{'...' if len(skills) > 5 else ''}")
-    
+        
     # Log awards details  
     awards = data.get('awards', [])
     if awards:
         print(f"   🏆 Awards found: {', '.join([award.get('title', 'Unknown') for award in awards[:3]])}{'...' if len(awards) > 3 else ''}")
 
-
+            
 
 def extract_text_from_docx(file_content: bytes) -> str:
     """Extract text from DOCX file"""

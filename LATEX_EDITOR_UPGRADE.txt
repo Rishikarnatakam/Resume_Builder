@@ -1,0 +1,3 @@
+LATEX EDITOR UPGRADE IDEA
+
+Add LaTeX Language Server to Monaco Editor for real-time error detection. Will catch basic LaTeX syntax errors automatically but needs custom validation rules for template-specific errors like URL wrapping in rProjectWithTech environments and wrong bullet point usage. Custom rules required to detect template violations that standard LaTeX parser misses. 

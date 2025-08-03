@@ -1,9 +1,8 @@
 import json
 import logging
-from pathlib import Path
 from typing import Dict, Any, Optional
 from google import genai
-from google.genai.types import HarmCategory, HarmBlockThreshold, GenerateContentConfig
+from google.genai.types import GenerateContentConfig
 from utils.config import get_gemini_model, get_gemini_api_key
 from utils.prompt_composer import prompt_composer
 
@@ -44,7 +43,7 @@ class AILatexGenerator:
                 model=f"models/{self.model_name}",
                 contents=[prompt],
                 config=GenerateContentConfig(
-                    temperature=0.3,
+                    temperature=0.9,
                     top_k=30,
                     top_p=0.85,
                     max_output_tokens=12288,

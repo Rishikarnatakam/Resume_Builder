@@ -7,7 +7,7 @@ import logging
 import json
 import re
 from datetime import datetime
-from typing import Dict, Any, Optional, AsyncGenerator
+from typing import Dict, Any, Optional
 import google.generativeai as genai
 import os
 # Set the global API key for GenerativeModel API
@@ -246,26 +246,27 @@ class ChatSessionManager:
                         print(f"🔧 DEBUG: Created patch_data: {patch_data_dict}")
                     except json.JSONDecodeError as e:
                         print(f"❌ Error parsing JSON: {e}")
+                        # JSON parsing failed - this should not count as success
                         patch_data_dict = {
-                            "type": "simple_patch",
+                            "type": "parse_error_patch",
                             "diff_text": "",
                             "operations": [],
-                            "message": "Sorry, I couldn't process that. Please try rephrasing your request.",
+                            "message": "No response received.",
                             "new_latex": ""
                         }
                 else:
-                    # Fallback: treat as message-only response
+                    # No JSON found in response - treat as parsing error
                     patch_data_dict = {
-                        "type": "simple_patch",
+                        "type": "parse_error_patch",
                         "diff_text": "",
                         "operations": [],
-                        "message": response_text_clean if response_text_clean else "No changes needed.",
+                        "message": "No response received.",
                         "new_latex": ""
                     }
             except Exception as e:
                 print(f"❌ Error parsing response: {e}")
                 patch_data_dict = {
-                    "type": "simple_patch", 
+                    "type": "parse_error_patch", 
                     "diff_text": "", 
                     "operations": [],
                     "message": "Sorry, I couldn't process that. Please try rephrasing your request.",
@@ -274,13 +275,24 @@ class ChatSessionManager:
             
             await self._update_conversation_history(db, session, user_message, patch_data_dict['message'])
             
-            # Success should be true for any valid response
-            success = patch_data_dict['type'] == "simple_patch"
+            # Success should be true only when we got a valid parsed response with actual content
+            # Check if we have meaningful content (not just error messages)
+            has_valid_content = (
+                patch_data_dict['type'] == "simple_patch" and
+                patch_data_dict.get('new_latex', '').strip() and
+                not patch_data_dict['message'].startswith('Sorry, I couldn\'t process') and
+                not patch_data_dict['message'].startswith('No response received')
+            )
+            
+            # Explicitly mark parsing errors as failures
+            if patch_data_dict['type'] in ["parse_error_patch", "error_patch"]:
+                has_valid_content = False
             
             return {
-                "success": success,
+                "success": has_valid_content,
                 "response": patch_data_dict['message'],
-                "patch_data": patch_data_dict
+                "patch_data": patch_data_dict,
+                "credits_deducted": has_valid_content  # Add flag to indicate if credits were deducted
             }
             
         except Exception as e:
@@ -291,13 +303,14 @@ class ChatSessionManager:
                 "success": False,
                 "response": "I encountered an error processing your request. Please try again.",
                 "patch_data": {
-                    "type": "simple_patch",
+                    "type": "error_patch",  # Changed to indicate this is an error
                     "diff_text": "",
                     "operations": [],
                     "message": "Sorry, I couldn't process that. Please try rephrasing your request.",
                     "new_latex": ""
                 },
-                "error": str(e)
+                "error": str(e),
+                "credits_deducted": False  # No credits deducted for errors
             }
 
     @staticmethod
@@ -317,18 +330,18 @@ class ChatSessionManager:
             f"{current_latex}\n\n"
             f"USER REQUEST: {user_message}\n\n"
             "INSTRUCTIONS:\n"
-            "Return the complete updated LaTeX code and a friendly message explaining what you changed.\n\n"
-            "FORMAT:\n"
+            "Return ONLY a JSON object with 'message' field for your explanation and 'new_latex' field for the complete updated LaTeX code.\n\n"
+            "REQUIRED FORMAT:\n"
             "{\n"
-            '  "message": "I\'ve added a skills section with your technical skills",\n'
-            '  "new_latex": "\\\\documentclass{professional_resume}\\n\\\\name{...}\\n\\\\begin{document}\\n... complete new latex ...\\n\\\\end{document}"\n'
+            '  "message": "Brief explanation of changes made",\n'
+            '  "new_latex": "\\\\documentclass{...}\\n\\\\begin{document}\\n... complete latex code ...\\n\\\\end{document}"\n'
             "}\n\n"
-            "RULES:\n"
-            "- Return the COMPLETE LaTeX document\n"
-            "- Include all sections (education, skills, projects, etc.)\n"
-            "- Keep the message short and friendly\n"
-            "- Ensure proper LaTeX syntax and formatting\n"
-            "- Double-escape backslashes in the new_latex field\n"
+            "CRITICAL RULES:\n"
+            "- Return ONLY the JSON object, no other text\n"
+            "- Put explanations in 'message' field only\n"
+            "- Put complete LaTeX code in 'new_latex' field only\n"
+            "- Double-escape all backslashes in LaTeX code\n"
+            "- Include the complete LaTeX document from \\documentclass to \\end{document}\n"
             "- Think like a modern code editor - replace the whole file\n"
             "- Always include an empty line between sections in the LaTeX code for better readability\n"
         )

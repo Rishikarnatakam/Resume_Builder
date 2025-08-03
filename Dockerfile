@@ -5,16 +5,19 @@ FROM python:3.11-slim
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-# 3. Install OS-level dependencies including a minimal TeX Live distribution
-# This is carefully curated to support your templates without installing the full 5GB+ TeX Live.
+# 3. Install OS-level dependencies including minimal TeX Live distribution
+# This is carefully curated to support both templates without installing the full 5GB+ TeX Live.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     texlive-latex-base \
     texlive-latex-recommended \
     texlive-latex-extra \
-    texlive-fonts-extra \
-    texlive-pictures \
+    texlive-fonts-recommended \
     ghostscript \
-    && rm -rf /var/lib/apt/lists/*
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* \
+    && rm -rf /usr/share/doc/* \
+    && rm -rf /usr/share/man/* \
+    && rm -rf /usr/share/locale/*
 
 # 4. Set the working directory in the container
 WORKDIR /app

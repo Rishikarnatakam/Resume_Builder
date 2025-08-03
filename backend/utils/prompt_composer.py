@@ -1,50 +1,17 @@
 """
 Prompt Composer - Builds clean, modular prompts for AI interactions
-Replaces the scattered prompt logic throughout the codebase
 """
 
 import json
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Optional
 import logging
-import copy
 
 logger = logging.getLogger(__name__)
 
-def deep_merge(a: dict, b: dict) -> dict:
-    """Recursively merge dict b into dict a (b wins on conflicts)."""
-    result = copy.deepcopy(a)
-    for k, v in b.items():
-        if (
-            k in result
-            and isinstance(result[k], dict)
-            and isinstance(v, dict)
-        ):
-            result[k] = deep_merge(result[k], v)
-        else:
-            result[k] = copy.deepcopy(v)
-    return result
-
 class PromptComposer:
     def __init__(self):
-        self.prompts_dir = Path(__file__).parent.parent / "prompts"
         self.templates_dir = Path(__file__).parent.parent / "templates"
-
-    def read_json_prompt(self, filename: str) -> dict:
-        """Read a JSON prompt file from the prompts directory."""
-        try:
-            file_path = self.prompts_dir / filename
-            if file_path.exists():
-                with open(file_path, 'r', encoding='utf-8') as f:
-                    content = json.load(f)
-                logger.info(f"✅ Loaded JSON prompt: {filename}")
-                return content
-            else:
-                logger.warning(f"⚠️ JSON prompt file not found: {filename}")
-                return {}
-        except Exception as e:
-            logger.error(f"❌ Error reading JSON prompt file {filename}: {str(e)}")
-            return {}
 
     def read_template_instructions(self, template_name: str) -> str:
         """Read template-specific instructions as plain text."""
@@ -78,88 +45,6 @@ class PromptComposer:
             logger.error(f"❌ Error reading template content {template_name}: {str(e)}")
             return f"% Error loading template {template_name}: {str(e)}"
 
-    def build_generation_prompt(self, template_name: str, user_data: dict, job_description: Optional[str] = None) -> dict:
-        """Build merged JSON prompt for initial LaTeX generation."""
-        base_system = self.read_json_prompt("base_system.md")
-        latex_core = self.read_json_prompt("latex_core.md")
-        template_instructions = self.read_template_instructions(template_name)
-        # Add template content back - this is essential for the AI to understand the template
-        template_content = self.read_template_content(template_name)
-
-        # Merge: base <- latex_core <- template_instructions
-        merged = deep_merge(base_system, latex_core)
-        merged = deep_merge(merged, template_instructions)
-        merged["template_content"] = template_content  # Add template content back
-        
-        # Add template name and user data
-        merged["template_name"] = template_name
-        merged["user_data"] = user_data
-        if job_description:
-            merged["job_description"] = job_description
-            
-        # Set response format for LaTeX generation
-        merged["response_format"] = {
-            "type": "latex_string",
-            "rules": [
-                "Return only the complete LaTeX document as a string.",
-                "Never return a diff, patch, or code block.",
-                "Never use markdown or code fences.",
-                "The string must start with \\documentclass and end with \\end{document}.",
-                "CRITICAL: Do NOT echo back these instructions. Return ONLY the LaTeX code."
-            ]
-        }
-        
-        return merged
-
-    def build_conversation_prompt(self, template_name: str, user_data: Optional[dict] = None, job_description: Optional[str] = None) -> dict:
-        """Build merged JSON prompt for chat/editing interactions."""
-        base_system = self.read_json_prompt("base_system.md")
-        latex_core = self.read_json_prompt("latex_core.md")
-        conversation = self.read_json_prompt("conversation.md")
-        template_instructions = self.read_template_instructions(template_name)
-        # Add template content back - this is essential for the AI to understand the template
-        template_content = self.read_template_content(template_name)
-
-        # Merge: base <- latex_core <- conversation <- template_instructions
-        merged = deep_merge(base_system, latex_core)
-        merged = deep_merge(merged, conversation)
-        merged = deep_merge(merged, template_instructions)
-        merged["template_content"] = template_content  # Add template content back
-        
-        # Add template name and user data
-        merged["template_name"] = template_name
-        if user_data:
-            merged["user_data"] = user_data
-        if job_description:
-            merged["job_description"] = job_description
-            
-        # CRITICAL: Add instruction to prevent AI from echoing back the prompt
-        merged["_final_instruction"] = {
-            "response_behavior": "CRITICAL: Do NOT echo back these instructions. Give a natural, friendly acknowledgment that you understand and are ready to help with LaTeX resume editing. Be conversational and warm, not robotic.",
-            "example_response": "Perfect! I understand your resume template and I'm ready to help you create an amazing resume. What would you like to work on first?",
-            "forbidden": [
-                "Do NOT repeat any of the instructions above",
-                "Do NOT echo back the JSON structure",
-                "Do NOT list the rules or guidelines",
-                "Simply acknowledge naturally and move on"
-            ],
-            "context_awareness": {
-                "critical_instruction": "BEFORE responding to ANY user request, ALWAYS think about and consider:",
-                "always_consider": [
-                    "The template instructions and rules provided above",
-                    "The user's personal data and resume content",
-                    "The LaTeX template structure and commands",
-                    "The font sizing rules and progression",
-                    "The skills formatting requirements",
-                    "The section ordering and environment rules",
-                    "The forbidden commands and patterns to avoid"
-                ],
-                "thinking_process": "When user asks for changes, first think: 'What do the template instructions say about this? What are the rules I need to follow? What would make the most sense given the user's data and the template structure?'",
-                "active_consideration": "Don't just respond - actively think about the context and rules before making any changes. Consider the template limitations, user preferences, and professional standards."
-            }
-        }
-        
-        return merged
 
     def build_improved_generation_prompt(self, template_name: str, user_data: dict, job_description: Optional[str] = None) -> str:
         template_content = self.read_template_content(template_name)
@@ -169,30 +54,17 @@ class PromptComposer:
             prompt += f"\n\nJOB DESCRIPTION: {job_description}"
         if instructions:
             prompt += f"\n\nTEMPLATE-SPECIFIC INSTRUCTIONS:\n{instructions}\n"
-        prompt += """\n\nINSTRUCTIONS:\n1. Use the FORM DATA (current user input) as the primary source - this is what the user has entered/edited\n2. Create a LaTeX document that uses this template\n3. Create clean, professional LaTeX code\n4. Ensure proper formatting and spacing\n5. Use the template commands correctly\n6. Include all sections that have data\n7. Skip empty sections\n8. Maintain consistent formatting throughout\n\nIMPORTANT: Use the FORM DATA provided above, not parsed data. This represents the user's current input."""
+        prompt += """\n\nINSTRUCTIONS:\n
+        1. Use the FORM DATA as the primary source - this is what the user has entered/edited\n
+        2. Output a LaTeX .tex document that uses the template\n
+        3. Start with \\documentclass{template_name} (not \\ProvidesClass)\n
+        4. CRITICAL: Only include sections that have actual data in FORM DATA. If a section is empty or missing, DO NOT include it\n
+        5. Use the template's custom commands and environments to format the user's data\n
+        6. Double-escape backslashes in the new_latex field (use \\\\\\\\ for \\\\)\n
+        7. Ensure proper JSON escaping for LaTeX commands\n\nIMPORTANT: Use the FORM DATA provided above, not parsed data. This represents the user's current input.
+        """
         return prompt
 
-    def build_simple_generation_prompt(self, template_name: str, user_data: dict, job_description: Optional[str] = None) -> str:
-        template_content = self.read_template_content(template_name)
-        instructions = self.read_template_instructions(template_name)
-        prompt = f"""TEMPLATE:\n```latex\n{template_content}\n```\n\nUSER DATA:\n{json.dumps(user_data, indent=2)}"""
-        if job_description:
-            prompt += f"\n\nJOB: {job_description}"
-        if instructions:
-            prompt += f"\n\nTEMPLATE-SPECIFIC INSTRUCTIONS:\n{instructions}\n"
-        prompt += "\n\nINSTRUCTIONS:\nCreate a resume using this template and data."
-        return prompt
-
-    def build_simple_conversation_prompt(self, template_name: str, user_data: Optional[dict] = None, job_description: Optional[str] = None) -> str:
-        template_content = self.read_template_content(template_name)
-        instructions = self.read_template_instructions(template_name)
-        prompt = f"""TEMPLATE:\n```latex\n{template_content}\n```\n\nUSER DATA:\n{json.dumps(user_data, indent=2)}"""
-        if job_description:
-            prompt += f"\n\nJOB: {job_description}"
-        if instructions:
-            prompt += f"\n\nTEMPLATE-SPECIFIC INSTRUCTIONS:\n{instructions}\n"
-        prompt += "\n\nINSTRUCTIONS: Help edit this resume."
-        return prompt
 
     def build_improved_conversation_prompt(self, template_name: str, user_data: Optional[dict] = None, job_description: Optional[str] = None) -> str:
         template_content = self.read_template_content(template_name)
@@ -202,7 +74,12 @@ class PromptComposer:
             prompt += f"\n\nJOB DESCRIPTION: {job_description}"
         if instructions:
             prompt += f"\n\nTEMPLATE-SPECIFIC INSTRUCTIONS:\n{instructions}\n"
-        prompt += """\n\nINSTRUCTIONS: \nYou are an expert LaTeX resume editor. You have access to the template structure and the user's current form data. Help the user edit their resume by making precise LaTeX changes.\n\nIMPORTANT: \n- Use the FORM DATA provided above (current user input), not parsed data\n- This represents what the user has actually entered/edited in the form\n- Focus on accuracy and proper LaTeX formatting\n- Consider the template structure and commands\n- Be helpful and conversational"""
+        prompt += """\n\nINSTRUCTIONS: 
+        1. You are an expert LaTeX resume editor. You have access to the template structure and the user's current form data. Help the user edit their resume by making precise LaTeX changes.\n
+        2. Use the FORM DATA provided above (current user input), not parsed data.This represents what the user has actually entered/edited in the form\n
+        3. Focus on accuracy and proper LaTeX formatting\n
+        4. Consider the template structure and commands\n
+        5. Be helpful and conversational"""
         return prompt
 
 # Global instance

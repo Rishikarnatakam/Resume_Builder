@@ -67,7 +67,7 @@ async def compile_latex(
                     "-interaction=nonstopmode",
                     "-output-directory", temp_dir,
                     tex_file
-                ], capture_output=True, text=True, timeout=30, encoding='utf-8', errors='replace')
+                ], capture_output=True, text=True, timeout=60, encoding='utf-8', errors='replace')
                 
                 stdout = result.stdout or ""
                 stderr = result.stderr or ""
@@ -286,14 +286,14 @@ async def compile_latex_for_analysis(
                             with open(target_path, 'w', encoding='utf-8') as dst:
                                 dst.write(src.read())
         
-        # Compile with pdflatex
+                    # Compile with pdflatex
         try:
             result = subprocess.run([
                 request.compiler,
                 "-interaction=nonstopmode",
                 "-output-directory", temp_dir,
                 tex_file
-            ], capture_output=True, text=True, timeout=30)
+            ], capture_output=True, text=True, timeout=60)
             
             log_output = result.stdout + result.stderr
             
@@ -325,7 +325,7 @@ async def compile_latex_for_analysis(
         except subprocess.TimeoutExpired:
             return {
                 "success": False,
-                "error": "Compilation timed out after 30 seconds",
+                "error": "Compilation timed out after 60 seconds",
                 "log_output": ""
             }
         except Exception as e:
