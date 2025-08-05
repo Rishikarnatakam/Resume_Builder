@@ -699,7 +699,7 @@ const ResumeDetails: React.FC = () => {
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept=".pdf,.doc,.docx"
+                  accept=".pdf"
                   onChange={handleFileUpload}
                   className="hidden"
                 />
@@ -716,7 +716,7 @@ const ResumeDetails: React.FC = () => {
                   ) : (
                     <>
                       <CloudArrowUpIcon className="w-5 h-5 mr-3" />
-                      <span>Upload Resume (PDF, DOC, DOCX)</span>
+                      <span>Upload Resume (PDF)</span>
                     </>
                   )}
                 </button>

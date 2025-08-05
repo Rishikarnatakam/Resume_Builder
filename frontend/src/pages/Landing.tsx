@@ -126,22 +126,50 @@ const Landing: React.FC = () => {
       {/* Footer */}
       <footer className="border-t border-gray-600/20" style={{ backgroundColor: '#000000' }}>
         <div className="max-w-7xl mx-auto px-6 py-8">
-          <div className="flex items-center justify-end">
+          <div className="flex flex-col md:flex-row items-center justify-between space-y-4 md:space-y-0">
+            {/* Legal Links */}
+            <div className="flex items-center space-x-6">
+              <Link 
+                to="/privacy" 
+                className="text-gray-400 hover:text-white transition-colors text-sm"
+              >
+                Privacy Policy
+              </Link>
+              <Link 
+                to="/terms" 
+                className="text-gray-400 hover:text-white transition-colors text-sm"
+              >
+                Terms of Service
+              </Link>
+              <Link 
+                to="/refund" 
+                className="text-gray-400 hover:text-white transition-colors text-sm"
+              >
+                Refund Policy
+              </Link>
+              <Link 
+                to="/contact" 
+                className="text-gray-400 hover:text-white transition-colors text-sm"
+              >
+                Contact Us
+              </Link>
+            </div>
+            
             {/* Contact */}
             <div className="flex items-center space-x-6">
               <a 
-                href="mailto:support@resumecraft.com" 
+                href="mailto:craftairesume@gmail.com" 
                 className="text-gray-400 hover:text-white transition-colors text-sm"
               >
-                support@resumecraft.com
+                craftairesume@gmail.com
               </a>
               <a 
-                href="https://twitter.com/resumecraft" 
+                href="https://twitter.com/craftairesume" 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="text-gray-400 hover:text-white transition-colors text-sm"
               >
-                @resumecraft
+                @craftairesume
               </a>
             </div>
           </div>

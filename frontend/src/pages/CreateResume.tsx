@@ -290,58 +290,15 @@ const CreateResume: React.FC = () => {
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                   
                   {/* Template Info Overlay */}
-                  <div className="absolute bottom-4 left-4 right-4">
-                    <div className="backdrop-blur-sm rounded-3xl p-3" style={{ backgroundColor: 'rgba(21, 21, 21, 0.8)' }}>
-                      <div className="text-xs text-gray-300 mb-1">{template.category}</div>
-                      <div className="text-sm font-medium text-white">{template.name}</div>
-                      <div className="text-xs text-gray-400 mt-1">{template.type === 'class' ? 'LaTeX Class' : 'LaTeX Document'}</div>
+                  <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2">
+                    <div className="backdrop-blur-sm rounded-3xl p-4 px-12" style={{ backgroundColor: 'rgba(21, 21, 21, 0.8)' }}>
+                      <div className="text-2xl font-semibold text-white text-center whitespace-nowrap">{template.name}</div>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Template Info */}
-              <div className="p-6 border border-gray-600/20 border-t-0 rounded-b-3xl" style={{ backgroundColor: '#0A0A0A' }}>
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-lg text-white mb-1">{template.name}</h3>
-                    <p className="text-sm text-gray-400">{template.description}</p>
-                  </div>
-                  {selectedTemplate === template.id && (
-                    <CheckIcon className="w-6 h-6 text-green-400 ml-2 flex-shrink-0" />
-                  )}
-                </div>
 
-                {/* Features */}
-                {template.features && template.features.length > 0 && (
-                  <div className="space-y-2">
-                    <div className="text-xs text-gray-300 font-medium">Features:</div>
-                    <ul className="space-y-1">
-                      {template.features.slice(0, 3).map((feature, idx) => (
-                        <li key={idx} className="text-xs text-gray-400 flex items-center">
-                          <StarIcon className="w-3 h-3 mr-2 text-gray-500" />
-                          {feature}
-                        </li>
-                      ))}
-                      {template.features.length > 3 && (
-                        <li className="text-xs text-gray-500">
-                          +{template.features.length - 3} more features
-                        </li>
-                      )}
-                    </ul>
-                  </div>
-                )}
-
-                {/* Commands available */}
-                {template.commands && template.commands.length > 0 && (
-                  <div className="mt-3 pt-3 border-t border-gray-600/20">
-                    <div className="text-xs text-gray-300 font-medium mb-1">LaTeX commands available:</div>
-                    <div className="text-xs text-gray-500">
-                      {template.commands.length} LaTeX commands available
-                    </div>
-                  </div>
-                )}
-              </div>
             </motion.div>
           ))}
         </div>

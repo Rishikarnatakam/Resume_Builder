@@ -16,16 +16,16 @@ razorpay_client = razorpay.Client(
     auth=(os.getenv("RAZORPAY_KEY_ID"), os.getenv("RAZORPAY_KEY_SECRET"))
 )
 
-def create_razorpay_order(amount: int, user_id: str, pack_id: str, currency: str = "INR") -> dict:
+def create_razorpay_order(amount: int, user_id: str, pack_id: str, currency: str = "INR", country_code: str = "IN") -> dict:
     # Ensure receipt is <= 40 chars
     short_user_id = user_id[:8]
     short_time = str(int(time.time()))
     receipt = f"topup_{short_user_id}_{short_time}"[:40]
     data = {
-        "amount": amount,  # in paise
+        "amount": amount,  # in smallest currency unit (paise/cents/pence)
         "currency": currency,
         "receipt": receipt,
-        "notes": {"user_id": user_id, "pack_id": pack_id}
+        "notes": {"user_id": user_id, "pack_id": pack_id, "country_code": country_code}
     }
     return razorpay_client.order.create(data)
 

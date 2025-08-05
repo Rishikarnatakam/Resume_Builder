@@ -44,37 +44,13 @@ async def get_available_templates():
                             
                             # Determine category based on template analysis
                             category = "Professional"  # Default
-                            features = ["LaTeX Template", "ATS-Friendly"]
                             
                             if template_id == "altacv":
                                 category = "Professional"
-                                features = [
-                                    "Modern",
-                                    "Professional Design",
-                                    "Clean Layout",
-                                    "Standard Sections",
-                                    "Corporate Style",
-                                    "Modern Professional"
-                                ]
                             elif template_id == "professional_resume":
                                 category = "Professional"
-                                features = [
-                                    "Single Column",
-                                    "Clean Layout", 
-                                    "Standard Sections",
-                                    "Corporate Style",
-                                    "Modern Professional"
-                                ]
                             elif "minipage" in content and "column" in content.lower():
                                 category = "Modern"
-                                features = ["Multi-Column", "Modern Design", "Elegant Typography"]
-                            
-                            # Create better description based on template
-                            description = f"LaTeX resume template: {template_name}"
-                            if template_id == "altacv":
-                                description = "A modern, professional resume template with clean design"
-                            elif template_id == "professional_resume":
-                                description = "Modern professional resume with clean single-column layout, ideal for corporate positions and standard business environments."
                             
                             templates.append({
                                 "id": template_id,
@@ -82,8 +58,6 @@ async def get_available_templates():
                                 "filename": cls_file.name,
                                 "type": "class",
                                 "category": category,
-                                "description": description,
-                                "features": features,
                                 "commands": [],  # Could extract from template if needed
                                 "has_preview": has_preview,
                                 "preview_url": preview_url

@@ -2,7 +2,9 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Header
 from typing import Dict, Any, List
 from pydantic import BaseModel
 from services.razorpay_service import create_razorpay_order, verify_razorpay_webhook_signature, RAZORPAY_MOCK_MODE
-from utils.topup_packs import get_all_topup_packs, get_topup_pack_by_id
+from services.pricing_service import get_pack_pricing, is_payment_restricted_to_india
+from services.geolocation_service import detect_country
+# Removed old topup_packs import - now using pricing_service
 from database import get_db, create_user_subscription, update_user_subscription, get_user_subscription, AsyncSession, UserSubscription
 from sqlalchemy.future import select
 from datetime import datetime, timezone
@@ -21,24 +23,55 @@ class TopupRequest(BaseModel):
 # --- Endpoints ---
 
 @router.get("/topup-packs")
-async def get_topup_packs():
-    return get_all_topup_packs()
+async def get_topup_packs(request: Request):
+    # Auto-detect country and return packs for that country
+    country_code = await detect_country(request) if request else "IN"
+    
+    try:
+        packs = get_all_packs_for_country(country_code)
+        return list(packs.values())
+    except Exception:
+        # Fallback to India packs
+        packs = get_all_packs_for_country("IN")
+        return list(packs.values())
 
 @router.post("/purchase/topup")
 async def purchase_topup(
     request: TopupRequest,
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
+    http_request: Request = None
 ):
     user_id = current_user['id']
-    pack = get_topup_pack_by_id(request.pack_id)
-    if not pack:
-        raise HTTPException(status_code=404, detail="Pack not found")
-    amount = pack["price"]
-    order = create_razorpay_order(amount, user_id, request.pack_id)
+    
+    # Detect user's country
+    country_code = await detect_country(http_request) if http_request else "IN"
+    
+    # Check if payments are restricted to India only
+    if is_payment_restricted_to_india() and country_code != "IN":
+        raise HTTPException(
+            status_code=403, 
+            detail=f"Payments are currently only available in India. Your country ({country_code}) will be supported soon!"
+        )
+    
+    # Get country-specific pricing
+    try:
+        pricing = get_pack_pricing(request.pack_id, country_code)
+        amount = pricing["amount"]
+        currency = pricing["currency"]
+    except ValueError:
+        # Fallback to India pricing if pack not available in detected country
+        pricing = get_pack_pricing(request.pack_id, "IN")
+        amount = pricing["amount"]
+        currency = pricing["currency"]
+        country_code = "IN"
+    
+    # Store country_code in order notes for webhook processing
+    order = create_razorpay_order(amount, user_id, request.pack_id, currency, country_code)
     return {
         "order_id": order["id"],
         "amount": amount,
-        "currency": "INR",
+        "currency": currency,
+        "country_code": country_code,
         "key_id": os.getenv("RAZORPAY_KEY_ID")
     }
 
@@ -71,11 +104,16 @@ async def handle_razorpay_webhook(
             notes = payment_entity.get("notes", {})
             user_id = notes.get("user_id")
             pack_id = notes.get("pack_id")
-            pack = get_topup_pack_by_id(pack_id)
-            if not pack:
-                logger.error(f"Pack not found for pack_id: {pack_id}")
+            country_code = notes.get("country_code", "IN")  # Get country from order notes, default to IN
+            
+            # Get pack info from PPP data using the correct country
+            try:
+                pack_info = get_pack_pricing(pack_id, country_code)
+                messages_purchased = pack_info["messages"]
+                logger.info(f"User {user_id} purchased {pack_id} from {country_code} - {messages_purchased} messages")
+            except ValueError:
+                logger.error(f"Pack not found for pack_id: {pack_id} in country: {country_code}")
                 raise HTTPException(status_code=404, detail="Pack not found in webhook")
-            messages_purchased = pack["messages"]
 
             subscription = await get_user_subscription(user_id, db)
             if subscription:

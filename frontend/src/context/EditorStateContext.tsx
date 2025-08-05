@@ -247,6 +247,14 @@ export const EditorStateProvider: React.FC<EditorStateProviderProps> = ({ childr
       editorDecorations: [],
       isDirty: true // Mark as dirty for auto-save
     }));
+
+    // Immediately trigger auto-save after accepting AI changes
+    setTimeout(() => {
+      const currentState = stateRef.current;
+      if (currentState.resumeId && !currentState.isSaving && !aiOperationInProgress.current) {
+        triggerAutoSave();
+      }
+    }, 100);
   }, [state.diffMode, state.proposedLatex, completeAIOperation]);
 
   // Reject AI changes

@@ -10,7 +10,8 @@
 
 % Packages
 \RequirePackage{etoolbox}
-\RequirePackage[letterpaper, margin=0.5in]{geometry}
+\usepackage{geometry}
+\geometry{margin=0.5in} 
 \RequirePackage[colorlinks=true, urlcolor=linkColor]{hyperref}
 \RequirePackage{fontawesome}
 \RequirePackage{xcolor}

@@ -1,10 +1,24 @@
-- Use \geometry{margin=0.75in} for page margins
-- Use \entrybullets environment for bullet points
-- Use \item for bullets in template environments
-- Include \begin{document} and \end{document}
-- ALWAYS use the existing \makeheader command from the template - NEVER create custom header commands or modify the header structure 
-- Escape % as \% in LaTeX
-- Group skills into categories with clear labels
-- Format project descriptions as bullet points, not paragraphs
-CRITICAL: Understand user queries intelligently and solve problems smartly. When a user asks for spacing changes, layout improvements, or formatting adjustments, analyze the current LaTeX structure and make intelligent decisions about what needs to be changed. Don't just follow instructions literally - think about the user's intent and solve the underlying problem.
-CRITICAL: Maintain user customizations and preferences across requests. If a user has previously requested specific formatting (like name size, spacing, layout changes), preserve those changes when making new modifications. Don't revert to default settings unless explicitly requested. 
+SIMPLE RESUME TEMPLATE
+
+Key Commands:
+- \geometry{margin=0.5in} for default margins (can be changed when user requests)
+- \makeheader{name}{contact1}{contact2}{contact3}{contact4} for header with name and contact info
+- Name size is hardcoded as \Huge in \makeheader (can be modified in template if needed)
+- \entrybullets environment for bullet points
+- \item for bullets in template environments
+- \href{url}{text} for clickable links
+
+IMPORTANT: Header information (\makeheader) must be placed BEFORE \begin{document}, not after it.
+
+Formatting:
+- Use template commands and environments
+- Make URLs clickable with \href
+- Escape % as \%
+- Group skills into categories with clear label
+- Format projects as bullet points
+- When user requests margin changes, add \geometry{margin=X} after \documentclass
+- When user requests name size changes, modify the \Huge in \makeheader command
+- Available name sizes: \tiny, \scriptsize, \footnotesize, \small, \normalsize, \large, \Large, \LARGE, \huge, \Huge
+- Header commands (\makeheader) go BEFORE \begin{document}
+
+Trust your expertise to apply these principles intelligently. 

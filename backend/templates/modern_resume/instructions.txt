@@ -1,10 +1,27 @@
-- Use \geometry{margin=0.5in} for page margins
-- Escape % as \% in LaTeX
-- Group skills into categories with clear labels
-- Use \item for bullets in template environments
-- Include \begin{document} and \end{document}
-- Make email, LinkedIn, and GitHub clickable with \href{url}{text}
-- For projects, use: \projectentry{Project Name}{Dates}{Technologies}{\item Description point 1\item Description point 2}
-- Format project descriptions as bullet points, not paragraphs
-CRITICAL: Understand user queries intelligently and solve problems smartly. When a user asks for spacing changes, layout improvements, or formatting adjustments, analyze the current LaTeX structure and make intelligent decisions about what needs to be changed. Don't just follow instructions literally - think about the user's intent and solve the underlying problem.
-CRITICAL: Maintain user customizations and preferences across requests. If a user has previously requested specific formatting (like name size, spacing, layout changes), preserve those changes when making new modifications. Don't revert to default settings unless explicitly requested. 
+MODERN RESUME TEMPLATE
+
+IMPORTANT: Follow the template commands exactly as defined. Only modify them if specifically required by user request.
+
+Key Commands (DO NOT CHANGE unless required):
+- \geometry{margin=0.5in} for margins (can be changed when user requests)
+- \name{\Huge name} for name with custom size (use \Large, \large, \normalsize, etc.)
+- \projectentry{name}{dates}{tech}{description} for projects
+- \item for bullet points
+- \href{url}{text} for clickable links
+
+IMPORTANT: Header information (\name) must be placed BEFORE \begin{document}, not after it.
+
+Formatting Rules:
+- Use template commands and environments exactly as defined
+- Make URLs clickable with \href
+- Escape % as \%
+- Group skills into categories with clear label 
+- Format projects as bullet points
+- Only modify template commands when user explicitly requests changes
+- Use maximum 3 links per line in the icons section for optimal layout
+- When user requests margin changes, add \geometry{margin=X} after \documentclass
+- When user requests name size changes, use \name{\Size Name} format
+- Available name sizes: \tiny, \scriptsize, \footnotesize, \small, \normalsize, \large, \Large, \LARGE, \huge, \Huge
+- Header commands (\name) go BEFORE \begin{document}
+
+Trust your expertise to apply these principles intelligently while respecting the template structure. 

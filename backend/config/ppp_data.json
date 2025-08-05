@@ -1,0 +1,242 @@
+{
+  "IN": {
+    "currency": "INR", 
+    "symbol": "₹",
+    "smallest_unit": "paise",
+    "packs": {
+      "basic": {"price": 2900, "messages": 30},
+      "pro": {"price": 4900, "messages": 70},
+      "ultra": {"price": 9900, "messages": 160}
+    }
+  },
+  "US": {
+    "currency": "USD", 
+    "symbol": "$",
+    "smallest_unit": "cents",
+    "packs": {
+      "basic": {"price": 149, "messages": 40},
+      "pro": {"price": 299, "messages": 100},
+      "ultra": {"price": 499, "messages": 250}
+    }
+  },
+  "GB": {
+    "currency": "GBP", 
+    "symbol": "£",
+    "smallest_unit": "pence",
+    "packs": {
+      "basic": {"price": 149, "messages": 40},
+      "pro": {"price": 299, "messages": 100},
+      "ultra": {"price": 499, "messages": 250}
+    }
+  },
+  "CA": {
+    "currency": "CAD", 
+    "symbol": "C$",
+    "smallest_unit": "cents",
+    "packs": {
+      "basic": {"price": 199, "messages": 40},
+      "pro": {"price": 349, "messages": 100},
+      "ultra": {"price": 649, "messages": 250}
+    }
+  },
+  "AU": {
+    "currency": "AUD", 
+    "symbol": "A$",
+    "smallest_unit": "cents",
+    "packs": {
+      "basic": {"price": 249, "messages": 40},
+      "pro": {"price": 449, "messages": 100},
+      "ultra": {"price": 699, "messages": 250}
+    }
+  },
+  "DE": {
+    "currency": "EUR", 
+    "symbol": "€",
+    "smallest_unit": "cents",
+    "packs": {
+      "basic": {"price": 149, "messages": 40},
+      "pro": {"price": 299, "messages": 100},
+      "ultra": {"price": 499, "messages": 250}
+    }
+  },
+  "FR": {
+    "currency": "EUR", 
+    "symbol": "€",
+    "smallest_unit": "cents",
+    "packs": {
+      "basic": {"price": 149, "messages": 40},
+      "pro": {"price": 299, "messages": 100},
+      "ultra": {"price": 499, "messages": 250}
+    }
+  },
+  "SG": {
+    "currency": "SGD", 
+    "symbol": "S$",
+    "smallest_unit": "cents",
+    "packs": {
+      "basic": {"price": 199, "messages": 40},
+      "pro": {"price": 349, "messages": 100},
+      "ultra": {"price": 599, "messages": 250}
+    }
+  },
+  "AE": {
+    "currency": "AED", 
+    "symbol": "د.إ",
+    "smallest_unit": "fils",
+    "packs": {
+      "basic": {"price": 449, "messages": 40},
+      "pro": {"price": 799, "messages": 100},
+      "ultra": {"price": 1499, "messages": 250}
+    }
+  },
+  "JP": {
+    "currency": "JPY", 
+    "symbol": "¥",
+    "smallest_unit": "yen",
+    "packs": {
+      "basic": {"price": 199, "messages": 40},
+      "pro": {"price": 349, "messages": 100},
+      "ultra": {"price": 599, "messages": 250}
+    }
+  },
+  "BR": {
+    "currency": "BRL", 
+    "symbol": "R$",
+    "smallest_unit": "centavos",
+    "packs": {
+      "basic": {"price": 799, "messages": 40},
+      "pro": {"price": 1499, "messages": 100},
+      "ultra": {"price": 2499, "messages": 250}
+    }
+  },
+  "MX": {
+    "currency": "MXN", 
+    "symbol": "Mex$",
+    "smallest_unit": "centavos",
+    "packs": {
+      "basic": {"price": 2499, "messages": 40},
+      "pro": {"price": 4999, "messages": 100},
+      "ultra": {"price": 7999, "messages": 250}
+    }
+  },
+  "KR": {
+    "currency": "KRW", 
+    "symbol": "₩",
+    "smallest_unit": "won",
+    "packs": {
+      "basic": {"price": 1999, "messages": 40},
+      "pro": {"price": 3999, "messages": 100},
+      "ultra": {"price": 6999, "messages": 250}
+    }
+  },
+  "CN": {
+    "currency": "CNY", 
+    "symbol": "¥",
+    "smallest_unit": "fen",
+    "packs": {
+      "basic": {"price": 999, "messages": 40},
+      "pro": {"price": 1999, "messages": 100},
+      "ultra": {"price": 3999, "messages": 250}
+    }
+  },
+  "NL": {
+    "currency": "EUR", 
+    "symbol": "€",
+    "smallest_unit": "cents",
+    "packs": {
+      "basic": {"price": 149, "messages": 40},
+      "pro": {"price": 299, "messages": 100},
+      "ultra": {"price": 499, "messages": 250}
+    }
+  },
+  "SE": {
+    "currency": "SEK", 
+    "symbol": "kr",
+    "smallest_unit": "öre",
+    "packs": {
+      "basic": {"price": 1499, "messages": 40},
+      "pro": {"price": 2999, "messages": 100},
+      "ultra": {"price": 4999, "messages": 250}
+    }
+  },
+  "NO": {
+    "currency": "NOK", 
+    "symbol": "kr",
+    "smallest_unit": "øre",
+    "packs": {
+      "basic": {"price": 1499, "messages": 40},
+      "pro": {"price": 2999, "messages": 100},
+      "ultra": {"price": 4999, "messages": 250}
+    }
+  },
+  "CH": {
+    "currency": "CHF", 
+    "symbol": "CHF",
+    "smallest_unit": "rappen",
+    "packs": {
+      "basic": {"price": 199, "messages": 40},
+      "pro": {"price": 399, "messages": 100},
+      "ultra": {"price": 699, "messages": 250}
+    }
+  },
+  "IT": {
+    "currency": "EUR", 
+    "symbol": "€",
+    "smallest_unit": "cents",
+    "packs": {
+      "basic": {"price": 149, "messages": 40},
+      "pro": {"price": 299, "messages": 100},
+      "ultra": {"price": 499, "messages": 250}
+    }
+  },
+  "ES": {
+    "currency": "EUR", 
+    "symbol": "€",
+    "smallest_unit": "cents",
+    "packs": {
+      "basic": {"price": 149, "messages": 40},
+      "pro": {"price": 299, "messages": 100},
+      "ultra": {"price": 499, "messages": 250}
+    }
+  },
+  "PL": {
+    "currency": "PLN", 
+    "symbol": "zł",
+    "smallest_unit": "groszy",
+    "packs": {
+      "basic": {"price": 599, "messages": 40},
+      "pro": {"price": 1199, "messages": 100},
+      "ultra": {"price": 1999, "messages": 250}
+    }
+  },
+  "TR": {
+    "currency": "TRY", 
+    "symbol": "₺",
+    "smallest_unit": "kuruş",
+    "packs": {
+      "basic": {"price": 1499, "messages": 40},
+      "pro": {"price": 2999, "messages": 100},
+      "ultra": {"price": 4999, "messages": 250}
+    }
+  },
+  "ZA": {
+    "currency": "ZAR", 
+    "symbol": "R",
+    "smallest_unit": "cents",
+    "packs": {
+      "basic": {"price": 2499, "messages": 40},
+      "pro": {"price": 4999, "messages": 100},
+      "ultra": {"price": 7999, "messages": 250}
+    }
+  },
+  "AR": {
+    "currency": "ARS", 
+    "symbol": "$",
+    "smallest_unit": "centavos",
+    "packs": {
+      "basic": {"price": 999, "messages": 40},
+      "pro": {"price": 1999, "messages": 100},
+      "ultra": {"price": 3999, "messages": 250}
+    }
+  }
+} 

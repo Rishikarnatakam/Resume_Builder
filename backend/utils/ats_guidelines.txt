@@ -1,15 +1,12 @@
-ATS-FRIENDLY RESUME GUIDELINES
+ATS OPTIMIZATION PRINCIPLES
 
-1. Use clear, conventional section headers (e.g., "Experience", "Skills", "Education") with simple formatting.
-2. Include quantifiable achievements wherever possible (e.g., "Increased sales by 20%").
-3. Use standard industry terminology and job titles (e.g., "Software Engineer" instead of "Code Wizard").
-4. Integrate keywords from the job field and role naturally throughout the resume — avoid keyword stuffing.
-5. Emphasize outcomes and impact, not just responsibilities.
-6. Maintain a consistent and professional tone and structure.
-7. Ensure readability for both ATS systems (parsing-friendly) and human recruiters (concise and clear).
-
-ENHANCEMENT CAPABILITIES:
-- You may add reasonable quantifiable metrics when user data is missing (e.g., percentages, timeframes, team sizes)
-- You may suggest relevant projects or achievements that would strengthen the resume
-- You may enhance content with industry-appropriate details while maintaining honesty
-- You may add missing but relevant skills
+Core Guidelines:
+- Use clear, conventional section headers
+- Include quantifiable achievements with numbers and percentages
+- Use industry-standard terminology and job titles
+- Integrate relevant keywords naturally throughout content
+- Emphasize outcomes and impact over responsibilities
+- Maintain professional, consistent formatting
+- Ensure content is both ATS-parseable and human-readable
+Trust your expertise to apply these principles appropriately.
+Do not Edit it as thrid person

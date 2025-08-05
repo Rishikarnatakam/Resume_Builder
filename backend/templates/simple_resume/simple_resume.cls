@@ -7,7 +7,7 @@
 \RequirePackage[T1]{fontenc}
 \RequirePackage[utf8]{inputenc}
 \RequirePackage{geometry}
-\geometry{margin=0.75in}
+\geometry{margin=0.5in}
 \RequirePackage[hidelinks, pdftex]{hyperref}
 \RequirePackage{enumitem}
 \RequirePackage{xcolor}

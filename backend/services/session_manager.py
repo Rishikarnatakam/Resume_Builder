@@ -59,7 +59,7 @@ class ChatSessionManager:
         # logger.info(f"✅ SESSION: Using template_name from request: {template_name}")
         
         # Build initial context using prompt composer
-        initial_context_json = ChatSessionManager._build_initial_context_json(
+        initial_context = ChatSessionManager._build_initial_context(
             template_name=template_name,
             form_data=form_data,
             job_description=job_description
@@ -71,8 +71,8 @@ class ChatSessionManager:
         
         # Start chat with initial context
         chat = model.start_chat(history=[
-            {"role": "user", "parts": [initial_context_json]},
-            {"role": "model", "parts": ["Perfect! I understand your resume template, instructions, and data. I'm ready to help you edit your LaTeX resume. I'll actively think about the template rules, user data, and formatting requirements before making any changes. What would you like to work on first?"]}
+            {"role": "user", "parts": [initial_context]},
+            {"role": "model", "parts": ["Perfect! I have all the knowledge I need - template structure, ATS guidelines, job tailoring principles, and your data. I'm ready to help you create and edit your LaTeX resume professionally. What would you like to work on?"]}
         ])
         # Debug logging removed for production
         
@@ -138,9 +138,16 @@ class ChatSessionManager:
             model = genai.GenerativeModel(self.model_name)
             self.active_models[session_id] = model
         
-        # Build prompt with line numbers and explicit patch instructions
+        # Build simple prompt - trust-based approach
         prompt_str = self._build_simple_prompt(session_id, current_latex, user_message)
         message_parts = [prompt_str]
+        
+        # DEBUG: Print what we're sending to AI
+        print("\n" + "="*80)
+        print("🚀 SENDING TO AI:")
+        print("="*80)
+        print(prompt_str)
+        print("="*80)
         
         try:
             if image_data:
@@ -161,64 +168,45 @@ class ChatSessionManager:
             # For Gemini Flash models, do NOT pass response_mime_type, response_schema, or system_instruction
             response = chat.send_message(message_parts)
             response_text = response.text.strip()
-                    # Debug logging removed for production
+            
+            # DEBUG: Print raw AI response
+            print("\n" + "="*80)
+            print("🤖 RAW AI RESPONSE:")
+            print("="*80)
+            print(response_text)
+            print("="*80)
             
             # --- Token/Word Count Logging ---
             def simple_token_word_count(text):
                 cleaned = text.replace('\n', ' ').replace('\r', ' ').strip()
                 words = cleaned.split()
                 word_count = len(words)
-                token_estimate = int(word_count * 1.3)  # 1 word ≈ 1.3 tokens for code/JSON
+                token_estimate = int(word_count * 1.3)  # 1 word ≈ 1.3 tokens for code/text
                         # Debug logging removed for production
                 return word_count, token_estimate
 
             simple_token_word_count(response_text)
             # --- End Logging ---
 
-            # --- Robust JSON Operations Extraction ---
+            # --- Robust Format Parsing ---
             patch_data = None
             try:
-                # Extract JSON operations from response
+                # Extract message and LaTeX from response using simple delimiters
                 response_text_clean = response_text.strip()
                 
-                # Check if response contains JSON format (more flexible)
-                if '{' in response_text_clean and '}' in response_text_clean:
+                # Check if response contains our format
+                if '===MESSAGE===' in response_text_clean and '===LATEX===' in response_text_clean:
                     try:
-                        # Debug logging removed for production
-                        
-                        # Try to extract JSON from the response
+                        # Extract message and LaTeX using regex
                         import re
-                        json_match = re.search(r'\{.*\}', response_text_clean, re.DOTALL)
-                        if json_match:
-                            json_str = json_match.group(0)
-                            # Debug logging removed for production
-                            # --- PATCH: Escape unescaped backslashes in LaTeX content fields ---
-                            def escape_latex_in_json(json_str):
-                                # Only escape backslashes that are not already escaped
-                                # This is a simple heuristic: replace single backslash not followed by another backslash or a valid escape
-                                import re
-                                # Only inside string values: this is a best-effort fix for LaTeX
-                                def replacer(match):
-                                    content = match.group(0)
-                                    # Replace single backslash with double, but not if already double
-                                    return content.replace('\\', '\\\\').replace('"', '\\"')
-                                # This regex finds all string values in JSON
-                                # For a robust solution, use a JSON parser and walk the tree, but here we do a best-effort pre-pass
-                                # Replace all single backslashes with double backslashes
-                                return re.sub(r'(?<!\\)\\(?![\\"/bfnrtu])', r'\\\\', json_str)
-                            json_str_escaped = escape_latex_in_json(json_str)
-                            try:
-                                json_data = json.loads(json_str_escaped)
-                            except Exception as e:
-                                # Debug logging removed for production
-                                raise
-                            # Debug logging removed for production
-                        else:
-                            # Fallback: try parsing the entire response
-                            json_data = json.loads(response_text_clean)
-                        # Debug logging removed for production
-                        message = json_data.get('message', 'No message provided')
-                        new_latex = json_data.get('new_latex', '')
+                        
+                        # Extract message
+                        message_match = re.search(r'===MESSAGE===\s*(.*?)\s*===LATEX===', response_text_clean, re.DOTALL)
+                        message = message_match.group(1).strip() if message_match else 'No message provided'
+                        
+                        # Extract LaTeX
+                        latex_match = re.search(r'===LATEX===\s*(.*?)\s*===END===', response_text_clean, re.DOTALL)
+                        new_latex = latex_match.group(1).strip() if latex_match else ''
                         
                         # Debug logging removed for production
                         
@@ -234,9 +222,9 @@ class ChatSessionManager:
                         patch_data_dict = patch_data.dict()
                         patch_data_dict['new_latex'] = new_latex
                         # Debug logging removed for production
-                    except json.JSONDecodeError as e:
+                    except Exception as e:
                         # Debug logging removed for production
-                        # JSON parsing failed - this should not count as success
+                        # Format parsing failed - this should not count as success
                         patch_data_dict = {
                             "type": "parse_error_patch",
                             "diff_text": "",
@@ -245,7 +233,7 @@ class ChatSessionManager:
                             "new_latex": ""
                         }
                 else:
-                    # No JSON found in response - treat as parsing error
+                    # No format found in response - treat as parsing error
                     patch_data_dict = {
                         "type": "parse_error_patch",
                         "diff_text": "",
@@ -302,7 +290,7 @@ class ChatSessionManager:
             }
 
     @staticmethod
-    def _build_initial_context_json(template_name: str, form_data: Dict[str, Any], job_description: Optional[str]) -> str:
+    def _build_initial_context(template_name: str, form_data: Dict[str, Any], job_description: Optional[str]) -> str:
         """Build the initial context using improved prompt composer"""
         
         # Use improved prompt composer with form data emphasis
@@ -311,47 +299,65 @@ class ChatSessionManager:
 
 
     def _build_simple_prompt(self, session_id: str, current_latex: str, user_message: str) -> str:
-        """Build simple prompt for complete LaTeX replacement"""
+        """Build simple prompt for complete LaTeX replacement - trust-based approach"""
         
         # Get session data to check if job description exists
         session_data = self.session_data.get(session_id, {})
         job_description = session_data.get('job_description')
         
-        prompt = (
-            "CURRENT LATEX:\n"
-            f"{current_latex}\n\n"
-            f"USER REQUEST: {user_message}\n\n"
-        )
-        
+        prompt = f"""CURRENT LATEX:
+{current_latex}
+
+USER REQUEST: {user_message}"""
+
         # Include job description if available
         if job_description:
-            prompt += f"JOB DESCRIPTION: {job_description}\n\n"
-            prompt += (
-                "JOB-SPECIFIC INSTRUCTIONS:\n"
-                "- Optimize content for this specific role\n"
-                "- Include relevant keywords from job description\n"
-                "- Prioritize experiences that match job requirements\n"
-                "- Use industry-specific terminology\n"
-                "- Focus on quantifiable achievements relevant to the role\n\n"
-            )
+            prompt += f"\n\nJOB DESCRIPTION:\n{job_description}"
         
-        prompt += (
-            "INSTRUCTIONS:\n"
-            "Return ONLY a JSON object with 'message' field for your explanation and 'new_latex' field for the complete updated LaTeX code.\n\n"
-            "REQUIRED FORMAT:\n"
-            "{\n"
-            '  "message": "Brief explanation of changes made",\n'
-            '  "new_latex": "\\\\documentclass{...}\\n\\\\begin{document}\\n... complete latex code ...\\n\\\\end{document}"\n'
-            "}\n\n"
-            "CRITICAL RULES:\n"
-            "- Return ONLY the JSON object, no other text\n"
-            "- Put explanations in 'message' field only\n"
-            "- Put complete LaTeX code in 'new_latex' field only\n"
-            "- Double-escape all backslashes in LaTeX code\n"
-            "- Include the complete LaTeX document from \\documentclass to \\end{document}\n"
-            "- Think like a modern code editor - replace the whole file\n"
-            "- Always include an empty line between sections in the LaTeX code for better readability\n"
-        )
+        prompt += """
+
+TASK: Help the user edit their own .tex file based on their request.
+
+You already have all the knowledge you need from session initialization:
+- Template structure and commands
+- ATS optimization guidelines  
+- Job tailoring principles
+- Template-specific instructions
+
+Use your expertise to make the requested changes intelligently.
+
+CRITICAL VERIFICATION: Before claiming you made changes, DOUBLE-CHECK that your LaTeX output actually contains the requested modifications. Compare the "before" and "after" code to ensure changes were implemented. If you say you made changes but the LaTeX code is identical, you have failed.
+
+IMPLEMENTATION REQUIREMENT: When you plan a change, you MUST also implement it in the LaTeX code. Do not just describe what you plan to do - actually do it and show the updated LaTeX. Your response should contain BOTH the explanation AND the modified code.
+
+BE CONVERSATIONAL: Be friendly and human-like in your responses. You are helping the user edit their own resume - write as if you're helping them personally.
+
+IMPORTANT: ALWAYS use this simple format, even for casual conversations or greetings.
+
+- If it's just a greeting, thank you, or casual conversation, keep the LATEX section empty but still use this format
+- If it's a resume-related request, make the appropriate changes and include the new LaTeX
+
+Return ONLY this format:
+===MESSAGE===
+Your response message here
+===LATEX===
+\\documentclass{...}
+\\begin{document}
+... complete latex code ...
+\\end{document}
+===END===
+
+RULES:
+- Return ONLY the format above, no other text
+- Put explanations in MESSAGE section only
+- Put complete LaTeX code in LATEX section only (leave empty if no changes needed)
+- Include the complete LaTeX document from \\documentclass to \\end{document}
+- Think like a modern code editor - replace the whole file
+- Do not edit it as third person
+- ALWAYS use this format, even for greetings or casual chat
+- VERIFY: If you claim to make changes, ensure they appear in the LaTeX output
+- IMPLEMENT: Don't just plan changes - actually implement them in the LaTeX code
+"""
         
         return prompt
 

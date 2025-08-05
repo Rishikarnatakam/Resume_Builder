@@ -10,6 +10,10 @@ import CreateResume from './pages/CreateResume';
 import ResumeDetails from './pages/ResumeDetails';
 import Editor from './pages/Editor';
 import Billing from './pages/Billing'; // Import the new Billing page
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import TermsOfService from './pages/TermsOfService';
+import RefundPolicy from './pages/RefundPolicy';
+import Contact from './pages/Contact';
 import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
@@ -66,6 +70,12 @@ function App() {
                   </ProtectedRoute>
                 }
               />
+              
+              {/* Legal and Support Pages (Public) */}
+              <Route path="/privacy" element={<PrivacyPolicy />} />
+              <Route path="/terms" element={<TermsOfService />} />
+              <Route path="/refund" element={<RefundPolicy />} />
+              <Route path="/contact" element={<Contact />} />
               
               {/* Redirect any unmatched routes */}
               <Route path="*" element={<Navigate to="/" replace />} />

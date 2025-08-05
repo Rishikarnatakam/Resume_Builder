@@ -307,7 +307,14 @@ Programming Languages, Frameworks, Tools, etc.
     // Simple prompt that leverages AI's already learned knowledge
     const tailoringPrompt = `JOB DESCRIPTION: ${editorState.jobDescription}
 
-INSTRUCTIONS: Use the job tailoring guidelines, template instructions, and ATS guidelines you already learned in this session to tailor my resume for this specific job description. Apply all the optimization techniques you know to create a job-specific, ATS-optimized resume. Tailor the resume specifically for this job - prioritize relevant experience, skills, and achievements that match the job requirements. DO NOT add placeholders like [INSERT], [ADD], or [FILL] - provide actual content.
+IMPORTANT: Before making any changes, carefully consider and apply:
+- Template instructions and formatting rules you learned
+- ATS guidelines for keyword optimization and achievement focus  
+- Job tailoring guidelines for content enhancement
+- User's formatting preferences and customizations
+- Job Tailoring Guidelines
+
+INSTRUCTIONS: Use the job tailoring guidelines, template instructions, and ATS guidelines you already learned in this session to tailor the resume for this specific job description. DO NOT add placeholders like [INSERT], [ADD], or [FILL] - provide actual content.
 
 OUTPUT: Return ONLY the complete LaTeX code from \\documentclass{} to \\end{document}. No explanations or commentary.`;
 

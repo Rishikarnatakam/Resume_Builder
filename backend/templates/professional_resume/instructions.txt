@@ -1,9 +1,28 @@
-- Use \geometry{margin=0.75in} for page margins
-- Escape % as \% in LaTeX
-- Group skills into categories with clear labels
-- rProjectWithTech{Name}{URL}{Tech}{Date} - URL as plain text, no \href
-- Use \item for bullets in template environments
-- Include \begin{document} and \end{document}
-- Format project descriptions as bullet points, not paragraphs
-CRITICAL: Understand user queries intelligently and solve problems smartly. When a user asks for spacing changes, layout improvements, or formatting adjustments, analyze the current LaTeX structure and make intelligent decisions about what needs to be changed. Don't just follow instructions literally - think about the user's intent and solve the underlying problem.
-CRITICAL: Maintain user customizations and preferences across requests. If a user has previously requested specific formatting (like name size, spacing, layout changes), preserve those changes when making new modifications. Don't revert to default settings unless explicitly requested.
+PROFESSIONAL RESUME TEMPLATE
+
+Key Commands:
+- \geometry{margin=0.5in} for margins (can be changed when user requests)
+- \name{\Huge name} for name with custom size (use \Large, \large, \normalsize, etc.)
+- \address{link1 ----- link2} for header (2 links per line)
+- \href{url}{text} for clickable links
+
+IMPORTANT: Header information (\name, \address) must be placed BEFORE \begin{document}, not after it.
+
+Environments:
+- rSection: \begin{rSection}{name} ... \end{rSection}
+- rEducation: \begin{rEducation}{institution}{degree}{dates}{gpa} ... \end{rEducation}
+- rSkills: \begin{rSkills} \item \textbf{Category:} items \end{rSkills}
+- rProjectWithTech: \begin{rProjectWithTech}{name}{date}{tech} \item description \end{rProjectWithTech}
+- rSubsection: \begin{rSubsection}{company}{date}{job}{location} \item description \end{rSubsection}
+
+Formatting:
+- Use template commands and environments
+- Make URLs clickable with \href
+- Escape % as \%
+- Use empty {} for missing data
+- When user requests margin changes, add \geometry{margin=X} after \documentclass
+- When user requests name size changes, use \name{\Size Name} format
+- Available name sizes: \tiny, \scriptsize, \footnotesize, \small, \normalsize, \large, \Large, \LARGE, \huge, \Huge
+- Header commands (\name, \address) go BEFORE \begin{document}
+
+Trust your expertise to apply these principles intelligently.

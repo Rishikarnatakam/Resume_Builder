@@ -18,7 +18,7 @@ backend_dir = Path(__file__).parent
 if str(backend_dir) not in sys.path:
     sys.path.insert(0, str(backend_dir))
 
-from routes import auth, resumes, latex, users, templates, ai_chat, subscriptions
+from routes import auth, resumes, latex, users, templates, ai_chat, subscriptions, pricing
 from database import init_db, engine
 from utils.config import config
 from utils.rate_limiter import rate_limit_middleware
@@ -71,6 +71,11 @@ async def rate_limit(request: Request, call_next):
 allow_origins = config.CORS_ALLOWED_ORIGINS
 allow_origin_regex = config.CORS_ALLOW_ORIGIN_REGEX
 
+# DEBUG: Print CORS configuration
+print("🔍 DEBUG: CORS Origins:", allow_origins)
+print("🔍 DEBUG: CORS Regex:", allow_origin_regex)
+print("🔍 DEBUG: Environment:", config.ENVIRONMENT)
+
 # Add CORS middleware to the application
 app.add_middleware(
     CORSMiddleware,
@@ -93,6 +98,7 @@ app.include_router(latex.router, prefix="/api", tags=["LaTeX"])  # latex router 
 app.include_router(templates.router, prefix="/api/templates", tags=["Templates"])
 app.include_router(ai_chat.router, prefix="/api/ai", tags=["AI Chat (Session-based)"])
 app.include_router(subscriptions.router, prefix="/api/subscriptions", tags=["Subscriptions"])
+app.include_router(pricing.router, prefix="/api/pricing", tags=["Pricing"])
 
 @app.get("/api/health")
 async def health_check():

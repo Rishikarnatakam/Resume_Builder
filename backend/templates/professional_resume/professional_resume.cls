@@ -2,12 +2,12 @@
 
 \ProvidesClass{professional_resume}[2010/07/10 v0.9 Professional Resume class]
 
-\LoadClass[11pt,letterpaper]{article} % Font size and paper type
+\LoadClass[12pt,letterpaper]{article} % Font size and paper type
 
 \usepackage[parfill]{parskip} % Remove paragraph indentation
 \usepackage{array} % Required for boldface (\bf and \bfseries) tabular columns
 \usepackage{geometry}
-\geometry{margin=0.75in} % Default margin - can be overridden
+\geometry{margin=0.5in} % Default margin - can be overridden
 \usepackage{ifthen} % Required for ifthenelse statements
 
 \usepackage{hyperref}
@@ -27,14 +27,15 @@
 \def \name#1{\def\@name{#1}} % Defines the \name command to set name
 \def \@name {} % Sets \@name to empty by default
 
-\def \addressSep {$\diamond$} % Set default address separator to a diamond
-
-% One, two or three address lines can be specified 
+% Support for up to 6 links in 3 lines (2 per line)
 \let \@addressone \relax
 \let \@addresstwo \relax
 \let \@addressthree \relax
+\let \@addressfour \relax
+\let \@addressfive \relax
+\let \@addresssix \relax
 
-% \address command can be used to set the first, second, and third address (last 2 optional)
+% \address command can be used to set addresses (supports up to 6)
 \def \address #1{
   \@ifundefined{@addresstwo}{
     \def \@addresstwo {#1}
@@ -42,15 +43,32 @@
   \@ifundefined{@addressthree}{
   \def \@addressthree {#1}
   }{
+  \@ifundefined{@addressfour}{
+  \def \@addressfour {#1}
+  }{
+  \@ifundefined{@addressfive}{
+  \def \@addressfive {#1}
+  }{
+  \@ifundefined{@addresssix}{
+  \def \@addresssix {#1}
+  }{
      \def \@addressone {#1}
-  }}
+  }}}}}
 }
 
 % \printaddress is used to style an address line (given as input)
 \def \printaddress #1{
   \begingroup
-    \def \\ {\addressSep\ }
     \centerline{#1}
+  \endgroup
+  \par
+  \addressskip
+}
+
+% \printaddresspair is used to style two addresses on the same line
+\def \printaddresspair #1#2{
+  \begingroup
+    \centerline{#1 \hspace{2em} $\diamond$ \hspace{2em} #2}
   \endgroup
   \par
   \addressskip
@@ -76,29 +94,15 @@
     \printaddress{\@addressone}}
   \@ifundefined{@addresstwo}{}{ % Print the second address if specified
     \printaddress{\@addresstwo}}
-     \@ifundefined{@addressthree}{}{ % Print the third address if specified
+  \@ifundefined{@addressthree}{}{ % Print the third address if specified
     \printaddress{\@addressthree}}
+  \@ifundefined{@addressfour}{}{ % Print the fourth address if specified
+    \printaddress{\@addressfour}}
+  \@ifundefined{@addressfive}{}{ % Print the fifth address if specified
+    \printaddress{\@addressfive}}
+  \@ifundefined{@addresssix}{}{ % Print the sixth address if specified
+    \printaddress{\@addresssix}}
 }
-
-%----------------------------------------------------------------------------------------
-%	PROJECTS FORMATTING
-%----------------------------------------------------------------------------------------
-
-% New environment for projects with technologies line
-\newenvironment{rProjectWithTech}[4]{ % 4 input arguments - project name, link, technologies, and date
- {\bf\textcolor{black}{#1}} \ifthenelse{\equal{#2}{}}{}{\ \url{#2}} \hfill {#4} % Bold black project name, URL beside title, and date on the right
- \ifthenelse{\equal{#3}{}}{}{ % If technologies are provided, show them
-  \\
-  {\bf Technologies:} {\em #3} % Bold "Technologies:" with italic tech list
-  }\vspace{-0.3em}
-  \begin{list}{$\cdot$}{\leftmargin=0em} % \cdot used for bullets, no indentation
-   \setlength{\itemsep}{-0.3em} % Consistent spacing between bullet points
-   \setlength{\parsep}{0em} % No extra paragraph spacing
-  }{
-  \end{list}
-  \vspace{0.5em} % Some space after the list of bullet points
-}
-
 
 %----------------------------------------------------------------------------------------
 %	SECTION FORMATTING
@@ -107,14 +111,15 @@
 % Defines the rSection environment for the large sections within the CV
 \newenvironment{rSection}[1]{ % 1 input argument - section name
   \sectionskip
-  \MakeUppercase{{\bf #1}} % Section title
+  \textcolor{black}{\MakeUppercase{{\bf #1}}} % Section title - black color
   \sectionlineskip
-  \hrule % Horizontal line
+  \textcolor{black}{\hrule} % Horizontal line - black color
   \begin{list}{}{ % List for each individual item in the section
     \setlength{\leftmargin}{0em} % Margin within the section
-    \setlength{\itemsep}{-0.1em}
+    \setlength{\itemsep}{0.25em} % Consistent spacing between items
+    \setlength{\parsep}{0em} % No extra paragraph spacing
   }
-  %\item[]
+  \item[]
 }{
   \end{list}
 }
@@ -124,16 +129,32 @@
 %----------------------------------------------------------------------------------------
 
 \newenvironment{rSubsection}[4]{ % 4 input arguments - company name, year(s) employed, job title and location
- {\bf #1} \hfill {#2} % Bold company name and date on the right
+ {\bf\textcolor{black}{#1}} \hfill {#2} % Bold black company name and date on the right
  \ifthenelse{\equal{#3}{}}{}{ % If the third argument is not specified, don't print the job title and location line
   \\
   {\em #3} \hfill {\em #4} % Italic job title and location
-  }\smallskip
-  \begin{list}{$\cdot$}{\leftmargin=0em} % \cdot used for bullets, no indentation
-   \itemsep -0.5em \vspace{-0.5em} % Compress items in list together for aesthetics
+  }\medskip
+  \begin{list}{$\cdot$}{\leftmargin=0.8em} % \cdot used for bullets, no indentation
+   \setlength{\itemsep}{0.3em} % Consistent spacing between bullet points
+   \setlength{\parsep}{0em} % No extra paragraph spacing
   }{
   \end{list}
-  %\vspace{0.5em} % Some space after the list of bullet points
+  \vspace{1.2em} % Some space after the list of bullet points
+}
+
+%----------------------------------------------------------------------------------------
+%	SKILLS FORMATTING
+%----------------------------------------------------------------------------------------
+
+% New environment for skills with bulleted categories
+\newenvironment{rSkills}{
+  \begin{list}{$\bullet$}{ % List for skill categories with bold bullet points
+    \setlength{\leftmargin}{1.5em} % No indentation
+    \setlength{\itemsep}{0.4em} % Consistent spacing between skill categories
+    \setlength{\parsep}{0em} % No extra paragraph spacing
+  }
+}{
+  \end{list}
 }
 
 %----------------------------------------------------------------------------------------
@@ -141,13 +162,14 @@
 %----------------------------------------------------------------------------------------
 
 \newenvironment{rAward}[3]{ % 3 input arguments - award title, organization, and date
- {\bf #1}, #2 \hfill {#3} % Bold award title, organization, and date on the right
+ {\bf\textcolor{black}{#1}} \hfill {#3} % Bold black award title and date on the right
  \smallskip
- \begin{list}{$\cdot$}{\leftmargin=0em} % \cdot used for bullets, no indentation
-  \itemsep -0.5em \vspace{-0.5em} % Compress items in list together for aesthetics
+ \begin{list}{$\cdot$}{\leftmargin=0.8em} % \cdot used for bullets, no indentation
+  \setlength{\itemsep}{0.3em} % Consistent spacing between bullet points
+  \setlength{\parsep}{0em} % No extra paragraph spacing
  }{
  \end{list}
- \vspace{0.2em} % Some space after the list of bullet points
+ \vspace{0.5em} % Some space after the list of bullet points
 }
 
 %----------------------------------------------------------------------------------------
@@ -155,10 +177,46 @@
 %----------------------------------------------------------------------------------------
 
 \newenvironment{rCertification}[3]{ % 3 input arguments - certification name, issuer, and date
- {\bf #1}, #2 \hfill {#3} % Bold certification name, issuer, and date on the right
+ {\bf\textcolor{black}{#1}}, #2 \hfill {#3} % Bold black certification name, issuer, and date on the right
  \smallskip
- \begin{list}{$\cdot$}{\leftmargin=0em} % \cdot used for bullets, no indentation
-  \itemsep -0.5em \vspace{-0.5em} % Compress items in list together for aesthetics
+ \begin{list}{$\cdot$}{\leftmargin=0.8em} % \cdot used for bullets, no indentation
+  \setlength{\itemsep}{0.3em} % Consistent spacing between bullet points
+  \setlength{\parsep}{0em} % No extra paragraph spacing
+ }{
+ \end{list}
+ \vspace{0.5em} % Some space after the list of bullet points
+}
+
+%----------------------------------------------------------------------------------------
+%	PROJECTS FORMATTING
+%----------------------------------------------------------------------------------------
+
+\newenvironment{rProjectWithTech}[3]{ % 3 input arguments - project name with link, date, technologies
+ {\bf\textcolor{black}{#1}} \hfill {#2} % Bold black project name (with link) and date on the right
+ \ifthenelse{\equal{#3}{}}{}{ % If technologies are specified, print them
+  \\
+  {\bf\em Technologies:} {\em #3} % Bold and italic "Technologies:", italic tech list
+  }\smallskip
+  \begin{list}{$\cdot$}{\leftmargin=0.8em} % \cdot used for bullets, no indentation
+   \setlength{\itemsep}{0.3em} % Consistent spacing between bullet points
+   \setlength{\parsep}{0em} % No extra paragraph spacing
+  }{
+  \end{list}
+  \vspace{0.8em} % Some space after the list of bullet points
+}
+
+%----------------------------------------------------------------------------------------
+%	EDUCATION FORMATTING
+%----------------------------------------------------------------------------------------
+
+\newenvironment{rEducation}[4]{ % 4 input arguments - institution, degree/course, dates, and GPA/percentage
+ {\bf\textcolor{black}{#1}} \hfill {#3}\smallskip % Bold black institution name and dates on the right
+ \\
+ {\em #2}\smallskip % Italic degree/course on next line
+ \begin{list}{$\bullet$}{\leftmargin=1.2em} % \cdot used for bullets, no indentation
+  \setlength{\itemsep}{0.25em} % Consistent spacing between bullet points
+  \setlength{\parsep}{0em} % No extra paragraph spacing
+  \item #4 % GPA/Percentage as bullet point
  }{
  \end{list}
  \vspace{0.5em} % Some space after the list of bullet points
@@ -169,8 +227,10 @@
 %----------------------------------------------------------------------------------------
 
 % The below commands define the whitespace after certain things in the document - they can be \smallskip, \medskip or \bigskip
-\def\namesize{\Huge} % Size of the name at the top of the document
+
+% Font size for the name at the top of the document (user-overridable)
+\providecommand{\namesize}{\Huge} % Size of the name at the top of the document (user-overridable)
 \def\addressskip{\smallskip} % The space between the two address (or phone/email) lines
-\def\sectionlineskip{\medskip} % The space above the horizontal line for each section 
-\def\nameskip{\medskip} % The space after your name at the top
-\def\sectionskip{\medskip} % The space after the heading section 
+\def\sectionlineskip{\smallskip} % The space above the horizontal line for each section 
+\def\nameskip{\smallskip} % The space after your name at the top
+\def\sectionskip{\smallskip} % The space after the heading section 

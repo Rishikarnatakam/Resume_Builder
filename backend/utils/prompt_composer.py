@@ -1,5 +1,5 @@
 """
-Prompt Composer - Builds clean, modular prompts for AI interactions
+Prompt Composer - Simplified trust-based prompts for AI interactions
 """
 
 import json
@@ -77,62 +77,110 @@ class PromptComposer:
             logger.error(f"❌ Error reading template content {template_name}: {str(e)}")
             return f"% Error loading template {template_name}: {str(e)}"
 
-
     def build_improved_generation_prompt(self, template_name: str, user_data: dict, job_description: Optional[str] = None) -> str:
+        """Build generation prompt - simplified for initial resume creation"""
         template_content = self.read_template_content(template_name)
         instructions = self.read_template_instructions(template_name)
         ats_guidelines = self.read_ats_guidelines()
         job_tailoring = self.read_job_tailoring_guidelines()
         
-        prompt = f"""TEMPLATE:\n```latex\n{template_content}\n```\n\nFORM DATA (Current user input):\n{json.dumps(user_data, indent=2)}"""
+        prompt = f"""You are a professional ATS-optimized LaTeX resume expert.
+
+TEMPLATE CODE:
+```latex
+{template_content}
+```
+
+USER DATA:
+{json.dumps(user_data, indent=2)}
+
+TEMPLATE INSTRUCTIONS:
+{instructions}
+
+ATS GUIDELINES:
+{ats_guidelines}
+
+JOB TAILORING GUIDELINES:
+{job_tailoring}"""
+
         if job_description:
-            prompt += f"\n\nJOB DESCRIPTION: {job_description}"
-        if instructions:
-            prompt += f"\n\nTEMPLATE-SPECIFIC INSTRUCTIONS:\n{instructions}\n"
-        if ats_guidelines:
-            prompt += f"\n\nATS-FRIENDLY CONTENT GUIDELINES:\n{ats_guidelines}\n"
-        if job_description and job_tailoring:
-            prompt += f"\n\nJOB-SPECIFIC TAILORING GUIDELINES:\n{job_tailoring}\n"
-        prompt += """\n\nINSTRUCTIONS:\n
-        1. Use the FORM DATA as the primary source - this is what the user has entered/edited\n
-        2. Output a LaTeX .tex document that uses the template\n
-        3. Start with \\documentclass{template_name} (not \\ProvidesClass)\n
-        4. CRITICAL: Only include sections that have actual data in FORM DATA. If a section is empty or missing, DO NOT include it\n
-        5. Use the template's custom commands and environments to format the user's data\n
-        6. Double-escape backslashes in the new_latex field (use \\\\\\\\ for \\\\)\n
-        7. Ensure proper JSON escaping for LaTeX commands\n
-        8. OPTIMIZE CONTENT FOR ATS: Follow the ATS guidelines to create keyword-rich, achievement-focused content that mirrors job description language\n
-        9. JOB-SPECIFIC TAILORING: When job description is provided, apply job-specific optimization to prioritize relevant experience, skills, and achievements\n
-        10. DO NOT add placeholders like [INSERT], [ADD], or [FILL] - provide actual content\
-        """
+            prompt += f"\n\nJOB DESCRIPTION:\n{job_description}"
+
+        prompt += """
+
+TASK: Create a complete LaTeX .tex document using the template and user data.
+
+RULES:
+- Start with \\documentclass{{{template_name}}}
+- Use template commands and environments
+- Follow template instructions exactly
+- Apply ATS guidelines for optimization
+- Use job tailoring guidelines when job description provided
+- Include only sections with actual data
+- Make URLs clickable with \\href
+- Return complete LaTeX from \\documentclass to \\end{document}
+- Do not edit it as third person
+"""
+
         return prompt
 
-
     def build_improved_conversation_prompt(self, template_name: str, user_data: Optional[dict] = None, job_description: Optional[str] = None) -> str:
+        """Build conversation prompt for session initialization - simplified and trust-based"""
         template_content = self.read_template_content(template_name)
         instructions = self.read_template_instructions(template_name)
         ats_guidelines = self.read_ats_guidelines()
         job_tailoring = self.read_job_tailoring_guidelines()
         
-        prompt = f"""TEMPLATE:\n```latex\n{template_content}\n```\n\nFORM DATA (Current user input):\n{json.dumps(user_data, indent=2)}"""
+        prompt = f"""You are a professional ATS-optimized LaTeX resume expert. I'm giving you all the knowledge you need upfront - read, understand, and use these guidelines throughout our conversation.
+
+TEMPLATE CODE:
+```latex
+{template_content}
+```
+
+TEMPLATE INSTRUCTIONS:
+{instructions}
+
+ATS GUIDELINES:
+{ats_guidelines}
+
+JOB TAILORING GUIDELINES:
+{job_tailoring}"""
+
+        if user_data:
+            prompt += f"\n\nCURRENT USER DATA:\n{json.dumps(user_data, indent=2)}"
+
         if job_description:
-            prompt += f"\n\nJOB DESCRIPTION: {job_description}"
-        if instructions:
-            prompt += f"\n\nTEMPLATE-SPECIFIC INSTRUCTIONS:\n{instructions}\n"
-        if ats_guidelines:
-            prompt += f"\n\nATS-FRIENDLY CONTENT GUIDELINES:\n{ats_guidelines}\n"
-        if job_description and job_tailoring:
-            prompt += f"\n\nJOB-SPECIFIC TAILORING GUIDELINES:\n{job_tailoring}\n"
-        prompt += """\n\nINSTRUCTIONS: 
-        1. You are an expert LaTeX resume editor with ATS optimization expertise. You have access to the template structure and the user's current form data. Help the user edit their resume by making precise LaTeX changes.\n
-        2. Use the FORM DATA provided above (current user input), not parsed data. This represents what the user has actually entered/edited in the form\n
-        3. Focus on accuracy and proper LaTeX formatting\n
-        4. Consider the template structure and commands\n
-        5. OPTIMIZE CONTENT FOR ATS: When suggesting content changes, follow ATS guidelines for keyword optimization, achievement focus, and job description alignment\n
-        6. JOB-SPECIFIC TAILORING: When job description is provided, apply job-specific optimization to prioritize relevant experience, skills, and achievements\n
-        7. DO NOT add placeholders like [INSERT], [ADD], or [FILL] - provide actual content\n
-        8. When job description is provided, tailor the resume specifically for that job - prioritize relevant experience, skills, and achievements that match the job requirements\n
-        9. Be helpful and conversational while maintaining ATS-friendly content standards"""
+            prompt += f"\n\nJOB DESCRIPTION:\n{job_description}"
+
+        prompt += """
+
+YOUR ROLE: You are a professional resume writer and LaTeX expert. You understand:
+- The template structure and commands
+- ATS optimization principles
+- Job tailoring techniques
+- LaTeX best practices
+- Do not edit it as third person
+
+WHAT YOU CAN DO:
+- Edit user's .tex files (create/modify resumes)
+- Apply template instructions automatically
+- Use ATS guidelines for optimization
+- Apply job tailoring when relevant
+- Maintain user preferences and customizations
+- Make intelligent formatting decisions
+
+BE CONVERSATIONAL: Be friendly and human-like in your responses. You are helping the user edit their own resume - write as if you're helping you build your own resume.
+
+TRUST YOURSELF: You have all the knowledge needed. Use these guidelines appropriately without being asked. Think like a professional resume writer who knows exactly what to do.
+
+CRITICAL VERIFICATION: When making changes to LaTeX code, always verify that your output actually contains the requested modifications. Compare before/after code to ensure changes were implemented. Never claim changes were made if the LaTeX code is identical.
+
+IMPLEMENTATION REQUIREMENT: When you plan a change, you MUST also implement it in the LaTeX code. Do not just describe what you plan to do - actually do it and show the updated LaTeX. Your response should contain BOTH the explanation AND the modified code.
+
+
+Ready to help you edit your resume!"""
+
         return prompt
 
 # Global instance

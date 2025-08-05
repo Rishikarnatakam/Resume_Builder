@@ -420,9 +420,7 @@ async def create_resume(
             id=resume_id,
             user_id=current_user['id'],
             title=request.title,
-            template_name=request.template_name,  # Use provided template, no default
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow()
+            template_name=request.template_name  # Use provided template, no default
         )
         
         # Step 1: Long-running AI task (no db connection)
@@ -574,8 +572,6 @@ async def update_resume(
     
     if not update_fields:
         raise HTTPException(status_code=400, detail="No update fields provided")
-
-    update_fields["updated_at"] = datetime.utcnow()
     
     set_clause = ", ".join([f"{key} = :{key}" for key in update_fields.keys()])
     
@@ -618,13 +614,12 @@ async def update_resume_title(
     """Update resume title"""
     query = text("""
         UPDATE resumes 
-        SET title = :new_title, updated_at = :now
+        SET title = :new_title
         WHERE id = :resume_id AND user_id = :user_id
         RETURNING title;
     """)
     result = await db.execute(query, {
         "new_title": new_title,
-        "now": datetime.utcnow(),
         "resume_id": resume_id,
         "user_id": current_user['id']
     })

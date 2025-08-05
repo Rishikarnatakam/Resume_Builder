@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
+import { InformationCircleIcon } from '@heroicons/react/24/outline';
 import { apiConfig, supabase } from '../config/api';
 import { useEditorState } from '../hooks/useEditorState';
 
@@ -61,6 +62,13 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ resumeId }, ref) => {
   // Add state flags to prevent double loading
   const [formDataLoaded, setFormDataLoaded] = useState(false);
   const [templateLoaded, setTemplateLoaded] = useState(false);
+
+  // Tips and tricks data
+  const tips = [
+    "💡 Ask me to help write professional descriptions and improve your resume sections",
+    "🎯 Share job descriptions and I'll help incorporate relevant keywords for ATS",
+    "📄 I can help customize templates and ensure they're ATS-friendly"
+  ];
 
   // Image compression function
   const compressImage = (file: File): Promise<File> => {
@@ -638,6 +646,29 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ resumeId }, ref) => {
               'bg-red-500'
             }`}></div>
             <h3 className="text-sm font-medium text-white">ResumeCraft AI</h3>
+            <div className="relative group">
+              <button
+                className="text-gray-400 hover:text-white transition-colors p-1 rounded-full"
+                title="Tips and Tricks"
+              >
+                <InformationCircleIcon className="w-4 h-4" />
+              </button>
+              
+              {/* Hover Tooltip */}
+              <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50 w-64">
+                <div className="rounded-lg p-3 shadow-xl border border-gray-600/50" style={{ backgroundColor: 'rgba(21, 21, 21, 0.9)' }}>
+                  <div className="space-y-2">
+                    {tips.map((tip, index) => (
+                      <p key={index} className="text-white text-xs leading-relaxed">
+                        {tip}
+                      </p>
+                    ))}
+                  </div>
+                  {/* Arrow pointing up */}
+                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-b-4 border-transparent" style={{ borderBottomColor: 'rgba(21, 21, 21, 0.9)' }}></div>
+                </div>
+              </div>
+            </div>
           </div>
           {templateName && (
             <span className="text-xs text-gray-400">
