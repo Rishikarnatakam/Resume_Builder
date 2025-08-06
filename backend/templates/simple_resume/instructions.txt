@@ -20,5 +20,3 @@ Formatting:
 - When user requests name size changes, modify the \Huge in \makeheader command
 - Available name sizes: \tiny, \scriptsize, \footnotesize, \small, \normalsize, \large, \Large, \LARGE, \huge, \Huge
 - Header commands (\makeheader) go BEFORE \begin{document}
-
-Trust your expertise to apply these principles intelligently. 

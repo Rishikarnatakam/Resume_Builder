@@ -23,5 +23,3 @@ Formatting Rules:
 - When user requests name size changes, use \name{\Size Name} format
 - Available name sizes: \tiny, \scriptsize, \footnotesize, \small, \normalsize, \large, \Large, \LARGE, \huge, \Huge
 - Header commands (\name) go BEFORE \begin{document}
-
-Trust your expertise to apply these principles intelligently while respecting the template structure. 

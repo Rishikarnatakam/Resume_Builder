@@ -8,5 +8,4 @@ Core Guidelines:
 - Emphasize outcomes and impact over responsibilities
 - Maintain professional, consistent formatting
 - Ensure content is both ATS-parseable and human-readable
-Trust your expertise to apply these principles appropriately.
 Do not Edit it as thrid person

@@ -65,9 +65,9 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ resumeId }, ref) => {
 
   // Tips and tricks data
   const tips = [
-    "💡 Ask me to help write professional descriptions and improve your resume sections",
-    "🎯 Share job descriptions and I'll help incorporate relevant keywords for ATS",
-    "📄 I can help customize templates and ensure they're ATS-friendly"
+    "💡 Ask AI to write custom commands if your request isn't being fulfilled (use at your own risk)",
+    "🔧 If compilation fails, create a new resume instead of trying to repair the existing one to save Messages",
+    "📄 Upload PDF or include screenshots to help AI understand visual formatting and layout issues"
   ];
 
   // Image compression function

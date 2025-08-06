@@ -65,15 +65,6 @@
   \addressskip
 }
 
-% \printaddresspair is used to style two addresses on the same line
-\def \printaddresspair #1#2{
-  \begingroup
-    \centerline{#1 \hspace{2em} $\diamond$ \hspace{2em} #2}
-  \endgroup
-  \par
-  \addressskip
-}
-
 % \printname is used to print the name as a page header
 \def \printname {
   \begingroup
@@ -110,7 +101,7 @@
 
 % Defines the rSection environment for the large sections within the CV
 \newenvironment{rSection}[1]{ % 1 input argument - section name
-  \sectionskip
+  %\sectionskip
   \textcolor{black}{\MakeUppercase{{\bf #1}}} % Section title - black color
   \sectionlineskip
   \textcolor{black}{\hrule} % Horizontal line - black color
@@ -120,6 +111,21 @@
     \setlength{\parsep}{0em} % No extra paragraph spacing
   }
   \item[]
+}{
+  \end{list}
+}
+
+% Defines the rSimpleSection environment for simple sections without gap
+\newenvironment{rSimpleSection}[1]{ % 1 input argument - section name
+  %\sectionskip
+  \textcolor{black}{\MakeUppercase{{\bf #1}}} % Section title - black color
+  \sectionlineskip
+  \textcolor{black}{\hrule} % Horizontal line - black color
+  \begin{list}{}{ % List for each individual item in the section
+    \setlength{\leftmargin}{0em} % Margin within the section
+    \setlength{\itemsep}{0.25em} % Consistent spacing between items
+    \setlength{\parsep}{0em} % No extra paragraph spacing
+  }
 }{
   \end{list}
 }
@@ -139,7 +145,7 @@
    \setlength{\parsep}{0em} % No extra paragraph spacing
   }{
   \end{list}
-  \vspace{1.2em} % Some space after the list of bullet points
+  \vspace{0.5em} % Some space after the list of bullet points
 }
 
 %----------------------------------------------------------------------------------------
@@ -191,11 +197,11 @@
 %	PROJECTS FORMATTING
 %----------------------------------------------------------------------------------------
 
-\newenvironment{rProjectWithTech}[3]{ % 3 input arguments - project name with link, date, technologies
- {\bf\textcolor{black}{#1}} \hfill {#2} % Bold black project name (with link) and date on the right
- \ifthenelse{\equal{#3}{}}{}{ % If technologies are specified, print them
+\newenvironment{rProjectWithTech}[4]{ % 4 input arguments - project name, link, date, technologies
+ {\bf\textcolor{black}{#1}} \ifthenelse{\equal{#2}{}}{}{{\em \href{#2}{#2}}} \hfill {#3} % Bold black project name, link on same line, date on right
+ \ifthenelse{\equal{#4}{}}{}{ % If technologies are specified, print them
   \\
-  {\bf\em Technologies:} {\em #3} % Bold and italic "Technologies:", italic tech list
+  {\bf\em Technologies:} {\em #4} % Bold and italic "Technologies:", italic tech list
   }\smallskip
   \begin{list}{$\cdot$}{\leftmargin=0.8em} % \cdot used for bullets, no indentation
    \setlength{\itemsep}{0.3em} % Consistent spacing between bullet points

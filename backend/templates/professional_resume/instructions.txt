@@ -3,7 +3,8 @@ PROFESSIONAL RESUME TEMPLATE
 Key Commands:
 - \geometry{margin=0.5in} for margins (can be changed when user requests)
 - \name{\Huge name} for name with custom size (use \Large, \large, \normalsize, etc.)
-- \address{link1 ----- link2} for header (2 links per line)
+- \address{link1 ----- link2} for header (2 links per line, use ----- as separator)
+- Example: \address{phone_number ----- \href{website_url}{website_url}}
 - \href{url}{text} for clickable links
 
 IMPORTANT: Header information (\name, \address) must be placed BEFORE \begin{document}, not after it.
@@ -12,7 +13,7 @@ Environments:
 - rSection: \begin{rSection}{name} ... \end{rSection}
 - rEducation: \begin{rEducation}{institution}{degree}{dates}{gpa} ... \end{rEducation}
 - rSkills: \begin{rSkills} \item \textbf{Category:} items \end{rSkills}
-- rProjectWithTech: \begin{rProjectWithTech}{name}{date}{tech} \item description \end{rProjectWithTech}
+- rProjectWithTech: \begin{rProjectWithTech}{name}{link}{date}{tech} \item description \end{rProjectWithTech}
 - rSubsection: \begin{rSubsection}{company}{date}{job}{location} \item description \end{rSubsection}
 
 Formatting:
@@ -24,5 +25,5 @@ Formatting:
 - When user requests name size changes, use \name{\Size Name} format
 - Available name sizes: \tiny, \scriptsize, \footnotesize, \small, \normalsize, \large, \Large, \LARGE, \huge, \Huge
 - Header commands (\name, \address) go BEFORE \begin{document}
-
-Trust your expertise to apply these principles intelligently.
+- Use `rSimpleSection` for sections that are just a heading and a list (e.g., Relevant Coursework, Extracurricular Activities, Positions of Responsibility).
+- Use `rSection` for sections that contain structured sub-entries like jobs, projects, or education (with rSubsection, rProjectWithTech, rEducation, etc.).

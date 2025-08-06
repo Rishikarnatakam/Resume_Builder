@@ -37,6 +37,7 @@ const LaTeXEditor: React.FC = () => {
   // State for diff mode
   const [isDiffMode, setIsDiffMode] = useState(false);
   const [diffEditorInstance, setDiffEditorInstance] = useState<any>(null);
+  const [diffEditorError, setDiffEditorError] = useState(false);
 
   // Keep a ref to the latest latex content to avoid stale closures
   useEffect(() => {
@@ -304,38 +305,29 @@ Programming Languages, Frameworks, Tools, etc.
       return;
     }
 
-    // Simple prompt that leverages AI's already learned knowledge
-    const tailoringPrompt = `JOB DESCRIPTION: ${editorState.jobDescription}
+    // Create the complete prompt with job description
+    const tailoringPrompt = `
+INSTRUCTIONS: Use the job tailoring guidelines, template instructions, and ATS guidelines you already learned in this session to tailor the resume for this specific job description. DO NOT add placeholders like [INSERT], [ADD], or [FILL] - provide actual content.
 
 IMPORTANT: Before making any changes, carefully consider and apply:
 - Template instructions and formatting rules you learned
 - ATS guidelines for keyword optimization and achievement focus  
 - Job tailoring guidelines for content enhancement
 - User's formatting preferences and customizations
-- Job Tailoring Guidelines
 
-INSTRUCTIONS: Use the job tailoring guidelines, template instructions, and ATS guidelines you already learned in this session to tailor the resume for this specific job description. DO NOT add placeholders like [INSERT], [ADD], or [FILL] - provide actual content.
+OUTPUT: Return ONLY the complete LaTeX code from \\documentclass{} to \\end{document}. No explanations or commentary in between the code.
 
-OUTPUT: Return ONLY the complete LaTeX code from \\documentclass{} to \\end{document}. No explanations or commentary.`;
+JOB DESCRIPTION: ${editorState.jobDescription}`;
 
-    // Show clean message to user instead of technical prompt
-    const userFriendlyMessage = `✨ Tailoring your resume for: ${editorState.jobDescription}`;
-    aiChatRef.current?.populateInput(userFriendlyMessage);
-    aiChatRef.current?.focusInput();
-    
-    // Send the actual technical prompt behind the scenes
-    setTimeout(async () => {
-      // Replace user message with technical prompt before sending
-      const chatInput = document.querySelector('textarea[placeholder*="message"]') as HTMLTextAreaElement;
-      if (chatInput) {
-        chatInput.value = tailoringPrompt;
-        chatInput.dispatchEvent(new Event('input', { bubbles: true }));
-      }
+    // Send as normal user message
+    aiChatRef.current?.populateInput(tailoringPrompt);
+    // Add small delay to ensure input value is set before sending
+    setTimeout(() => {
       aiChatRef.current?.sendMessage();
-    }, 100);
+    }, 50);
     
     // Close the job form
-        setShowJobForm(false);
+    setShowJobForm(false);
   };
 
   const downloadPDF = async () => {
@@ -435,7 +427,7 @@ OUTPUT: Return ONLY the complete LaTeX code from \\documentclass{} to \\end{docu
           <div className="flex-1 relative">
             <div className="h-full w-full" style={{ display: isDiffMode && editorState.showInlineChanges && editorState.proposedLatex ? 'block' : 'none' }}>
               <DiffEditor
-                key="diff-editor-stable"
+                key={`diff-editor-${editorState.proposedLatex ? 'has-content' : 'empty'}`}
                 height="100%"
                 language="latex"
                 original={editorState.originalLatex}
@@ -443,6 +435,11 @@ OUTPUT: Return ONLY the complete LaTeX code from \\documentclass{} to \\end{docu
                 theme="vs-dark"
                 onMount={(editor) => {
                   setDiffEditorInstance(editor);
+                  setDiffEditorError(false);
+                  // Force layout update after mount
+                  setTimeout(() => {
+                    editor.layout();
+                  }, 100);
                 }}
                 options={{
                   minimap: { enabled: false },
@@ -452,6 +449,9 @@ OUTPUT: Return ONLY the complete LaTeX code from \\documentclass{} to \\end{docu
                   automaticLayout: true,
                   readOnly: true,
                   renderSideBySide: false,
+                  scrollBeyondLastLine: false,
+                  overviewRulerBorder: false,
+                  hideCursorInOverviewRuler: true,
                 }}
               />
             </div>

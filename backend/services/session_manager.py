@@ -232,6 +232,43 @@ class ChatSessionManager:
                             "message": "No response received.",
                             "new_latex": ""
                         }
+                elif '===LATEX===' in response_text_clean and '===END===' in response_text_clean:
+                    # Handle case where only LaTeX is provided without separate message
+                    try:
+                        import re
+                        
+                        # Extract LaTeX
+                        latex_match = re.search(r'===LATEX===\s*(.*?)\s*===END===', response_text_clean, re.DOTALL)
+                        new_latex = latex_match.group(1).strip() if latex_match else ''
+                        
+                        # Extract message from the text before LaTeX section
+                        message_match = re.search(r'(.*?)\s*===LATEX===', response_text_clean, re.DOTALL)
+                        message = message_match.group(1).strip() if message_match else 'Resume updated successfully.'
+                        
+                        # Debug logging removed for production
+                        
+                        # Create simple patch with new LaTeX
+                        patch_data = Patch(
+                            type="simple_patch",
+                            diff_text="",  # Not used in simple approach
+                            operations=[],  # Not used in simple approach
+                            message=message
+                        )
+                        
+                        # Add new_latex to the response
+                        patch_data_dict = patch_data.dict()
+                        patch_data_dict['new_latex'] = new_latex
+                        # Debug logging removed for production
+                    except Exception as e:
+                        # Debug logging removed for production
+                        # Format parsing failed - this should not count as success
+                        patch_data_dict = {
+                            "type": "parse_error_patch",
+                            "diff_text": "",
+                            "operations": [],
+                            "message": "No response received.",
+                            "new_latex": ""
+                        }
                 else:
                     # No format found in response - treat as parsing error
                     patch_data_dict = {
@@ -317,6 +354,11 @@ USER REQUEST: {user_message}"""
         prompt += """
 
 TASK: Help the user edit their own .tex file based on their request.
+
+CRITICAL LATEX SYNTAX RULES:
+- NEVER use HTML tags like <>, </>, <section>, </section>
+- NEVER use <rSection>, </rSection>, <rSimpleSection>, </rSimpleSection>
+
 
 You already have all the knowledge you need from session initialization:
 - Template structure and commands
