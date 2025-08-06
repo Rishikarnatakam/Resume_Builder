@@ -8,7 +8,7 @@ Key Commands:
 - \item for bullets in template environments
 - \href{url}{text} for clickable links
 
-IMPORTANT: Header information (\makeheader) must be placed BEFORE \begin{document}, not after it.
+IMPORTANT: Header information (\makeheader) and (\name) and adress stuff  must be placed AFTER \begin{document}, not before it.
 
 Formatting:
 - Use template commands and environments
@@ -19,4 +19,4 @@ Formatting:
 - When user requests margin changes, add \geometry{margin=X} after \documentclass
 - When user requests name size changes, modify the \Huge in \makeheader command
 - Available name sizes: \tiny, \scriptsize, \footnotesize, \small, \normalsize, \large, \Large, \LARGE, \huge, \Huge
-- Header commands (\makeheader) go BEFORE \begin{document}
+- Header commands (\makeheader) go AFTER \begin{document}

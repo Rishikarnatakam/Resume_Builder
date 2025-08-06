@@ -9,7 +9,7 @@ Key Commands (DO NOT CHANGE unless required):
 - \item for bullet points
 - \href{url}{text} for clickable links
 
-IMPORTANT: Header information (\name) must be placed BEFORE \begin{document}, not after it.
+IMPORTANT: Header information (\name) and any header info must be placed AFTER \begin{document}, not before it.
 
 Formatting Rules:
 - Use template commands and environments exactly as defined
@@ -22,4 +22,4 @@ Formatting Rules:
 - When user requests margin changes, add \geometry{margin=X} after \documentclass
 - When user requests name size changes, use \name{\Size Name} format
 - Available name sizes: \tiny, \scriptsize, \footnotesize, \small, \normalsize, \large, \Large, \LARGE, \huge, \Huge
-- Header commands (\name) go BEFORE \begin{document}
+- Header commands (\name) go AFTER \begin{document} not before it
