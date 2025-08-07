@@ -1,42 +1,46 @@
-# 1. Use an official Python runtime as a parent image
-FROM python:3.11-slim
+# Use a smaller base image for reduced size
+FROM python:3.11-alpine
 
-# 2. Set environment variables to prevent Python from writing .pyc files
+# Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
+ENV PYTHONPATH=/app
 
-# 3. Install OS-level dependencies including minimal TeX Live distribution
-# This is carefully curated to support both templates without installing the full 5GB+ TeX Live.
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    texlive-latex-base \
-    texlive-latex-recommended \
-    texlive-latex-extra \
-    texlive-fonts-recommended \
+# Install system dependencies for TeX Live and other requirements
+RUN apk add --no-cache \
+    texlive \
+    texmf-dist-latexextra \
     ghostscript \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* \
-    && rm -rf /usr/share/doc/* \
-    && rm -rf /usr/share/man/* \
-    && rm -rf /usr/share/locale/*
+    gcc \
+    musl-dev \
+    libffi-dev \
+    && rm -rf /var/cache/apk/*
 
-# 4. Set the working directory in the container
+# Set working directory
 WORKDIR /app
 
-# 5. Copy the requirements file from the project root and install dependencies
-# This is done as a separate step to leverage Docker cache.
+# Copy requirements first for better caching
 COPY requirements.txt .
+
+# Install Python dependencies with optimizations
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+    pip install --no-cache-dir -r requirements.txt && \
+    rm -rf ~/.cache/pip
 
-# 6. Copy the backend application code into the container
-COPY ./backend /app/backend
+# Copy only backend code (frontend will be built separately)
+COPY ./backend ./backend
 
-# 7. Set the working directory to the backend folder
-WORKDIR /app/backend
+# Create non-root user for security
+RUN adduser -D -s /bin/sh app && \
+    chown -R app:app /app
+USER app
 
-# 8. Expose the port the app runs on
+# Expose port
 EXPOSE 8000
 
-# 9. Define the command to run the application
-# Use --host 0.0.0.0 to make it accessible from outside the container
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"] 
+# Health check
+HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:8000/api/health || exit 1
+
+# Run with default workers for handling multiple users
+CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"] 

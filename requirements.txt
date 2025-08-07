@@ -3,8 +3,6 @@ fastapi==0.115.13
 uvicorn[standard]==0.34.3
 
 # == Data Validation & File Uploads ==
-# pydantic[email] includes email-validator for email validation.
-# python-multipart is required by FastAPI for file uploads.
 pydantic[email]==2.10.3
 python-multipart==0.0.12
 
@@ -13,22 +11,18 @@ sqlalchemy[asyncio]==2.0.36
 asyncpg==0.30.0
 
 # == Authentication & Security ==
-# PyJWT is used for Supabase token verification.
 PyJWT
 
 # == AI & Machine Learning ==
-# NOTE: Using v0.3.1 to match the 'from google import genai' statement in the code.
 google-generativeai==0.3.1
-google-genai==1.23.0
 
 # == PDF & Document Processing ==
 python-docx==1.1.2
 Pillow==11.0.0
 
-
 # == Utilities ==
 python-dotenv==1.0.1
 httpx==0.25.2
 
+# == Payment Processing ==
 razorpay
-setuptools

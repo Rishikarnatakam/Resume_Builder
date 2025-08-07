@@ -1,12 +1,11 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { getCurrentSubscription, apiRequest } from '../config/api';
-import { formatCurrency } from '../lib/utils';
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
 import { UserIcon, CheckCircleIcon, XMarkIcon, GlobeAltIcon } from '@heroicons/react/24/outline';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '../hooks/useAuth';
-import { usePricing, PackInfo } from '../hooks/usePricing';
+import { usePricing } from '../hooks/usePricing';
 import Logo from '../components/Logo';
 
 interface UserSubscription {
@@ -24,7 +23,7 @@ const Billing: React.FC = () => {
   const [paymentRestriction, setPaymentRestriction] = useState<boolean>(true);
   
   // Use the new pricing hook
-  const { countryInfo, packs, loading: pricingLoading, error: pricingError, getPackPricing } = usePricing();
+  const { countryInfo, packs, loading: pricingLoading, error: pricingError } = usePricing();
 
   const fetchSubscriptionData = useCallback(async () => {
     try {

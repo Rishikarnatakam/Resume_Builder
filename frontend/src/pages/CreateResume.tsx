@@ -6,9 +6,7 @@ import {
   DocumentTextIcon, 
   ArrowRightIcon,
   ArrowLeftIcon,
-  CheckIcon,
-  UserIcon,
-  StarIcon
+  UserIcon
 } from '@heroicons/react/24/outline';
 
 import { useAuth } from '../hooks/useAuth';

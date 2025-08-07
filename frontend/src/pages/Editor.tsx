@@ -37,7 +37,7 @@ const LaTeXEditor: React.FC = () => {
   // State for diff mode
   const [isDiffMode, setIsDiffMode] = useState(false);
   const [diffEditorInstance, setDiffEditorInstance] = useState<any>(null);
-  const [diffEditorError, setDiffEditorError] = useState(false);
+  // const [diffEditorError, setDiffEditorError] = useState(false);
 
   // Keep a ref to the latest latex content to avoid stale closures
   useEffect(() => {
@@ -443,7 +443,7 @@ JOB DESCRIPTION: ${editorState.jobDescription}`;
                 theme="vs-dark"
                 onMount={(editor) => {
                   setDiffEditorInstance(editor);
-                  setDiffEditorError(false);
+                  // setDiffEditorError(false);
                   // Force layout update after mount
                   setTimeout(() => {
                     editor.layout();
