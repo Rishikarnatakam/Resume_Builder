@@ -71,11 +71,6 @@ async def rate_limit(request: Request, call_next):
 allow_origins = config.CORS_ALLOWED_ORIGINS
 allow_origin_regex = config.CORS_ALLOW_ORIGIN_REGEX
 
-# DEBUG: Print CORS configuration
-print("🔍 DEBUG: CORS Origins:", allow_origins)
-print("🔍 DEBUG: CORS Regex:", allow_origin_regex)
-print("🔍 DEBUG: Environment:", config.ENVIRONMENT)
-
 # Add CORS middleware to the application
 app.add_middleware(
     CORSMiddleware,

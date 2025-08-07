@@ -240,7 +240,7 @@ Programming Languages, Frameworks, Tools, etc.
         }),
       });
 
-      // Response status and headers logged for debugging
+      // Response processing
       
       // Check compilation status from headers
       const success = response.headers.get('X-Success') === 'true';
@@ -307,13 +307,21 @@ Programming Languages, Frameworks, Tools, etc.
 
     // Create the complete prompt with job description
     const tailoringPrompt = `
-INSTRUCTIONS: Use the job tailoring guidelines, template instructions, and ATS guidelines you already learned in this session to tailor the resume for this specific job description. DO NOT add placeholders like [INSERT], [ADD], or [FILL] - provide actual content.
+INSTRUCTIONS: You’re tailoring a resume for the job the user wants to apply for.
 
-IMPORTANT: Before making any changes, carefully consider and apply:
-- Template instructions and formatting rules you learned
-- ATS guidelines for keyword optimization and achievement focus  
-- Job tailoring guidelines for content enhancement
-- User's formatting preferences and customizations
+Start by understanding the job description fully — the responsibilities, skills, and what kind of person the role needs.
+Then, rewrite or adjust the resume so it fits this specific job naturally. You can change any section — summary, skills, experience, projects — to make the resume a strong match.
+Don’t force keywords or copy-paste things directly. Instead, blend relevant skills, tools, or phrases into the content where they make sense.
+Make sure everything still follows good formatting, ATS rules, and the user’s preferred style.
+Make sure to include the already present skills and experiences in the resume.
+Make sure to include Tailored Summary section unless user specifies to not include it.
+
+
+GOAL: Help the user land this job. Make the resume feel like it was always meant for this role.
+Make sure the final resume reads like it was written by a real person. 
+Avoid robotic or generic phrasing. Everything should sound natural, confident, and purposeful — as if the user wrote it themselves with the job in mind.
+
+Focus on real achievements and experiences. Don’t overuse keywords or make the tailoring feel obvious. Subtlety and clarity are key.
 
 OUTPUT: Return ONLY the complete LaTeX code from \\documentclass{} to \\end{document}. No explanations or commentary in between the code.
 

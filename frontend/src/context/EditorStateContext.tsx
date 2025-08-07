@@ -204,7 +204,7 @@ export const EditorStateProvider: React.FC<EditorStateProviderProps> = ({ childr
 
     try {
       logger.info('SIMPLE LATEX: Received new LaTeX');
-      // LaTeX length logging for debugging
+      // Process LaTeX content
       
       if (!newLatex || newLatex === state.originalLatex) {
         logger.info('SIMPLE LATEX: No changes detected, completing operation');

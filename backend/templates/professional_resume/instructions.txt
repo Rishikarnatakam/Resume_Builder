@@ -3,7 +3,8 @@ PROFESSIONAL RESUME TEMPLATE
 Key Commands:
 - \geometry{margin=0.5in} for margins (can be changed when user requests)
 - \name{\Huge name} for name with custom size (use \Large, \large, \normalsize, etc.)
-- \address{link1 ----- link2} for header (2 links per line, use ----- as separator)
+- \address{link1 ----- link2} for header 
+- Only 2 links per line are allowed. You can include any number of address commands as needed with 2 links in one line.
 - Example: \address{phone_number ----- \href{website_url}{website_url}}
 - \href{url}{text} for clickable links
 

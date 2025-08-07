@@ -12,7 +12,7 @@ load_dotenv()
 
 # Configure production logging
 logging.basicConfig(
-    level=logging.INFO if os.getenv("ENVIRONMENT") == "production" else logging.DEBUG,
+    level=logging.CRITICAL if os.getenv("ENVIRONMENT") == "production" else logging.DEBUG,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 

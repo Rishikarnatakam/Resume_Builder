@@ -168,23 +168,7 @@ async def clear_pricing_cache() -> Dict[str, str]:
         logger.error(f"Error clearing pricing cache: {e}")
         raise HTTPException(status_code=500, detail="Failed to clear pricing cache")
 
-@router.get("/debug-config")
-async def debug_config() -> Dict[str, Any]:
-    """
-    Debug endpoint to check current configuration
-    """
-    try:
-        import os
-        from services.pricing_service import load_ppp_data
-        ppp_data = load_ppp_data()
-        return {
-            "india_only_payments": os.getenv("INDIA_ONLY_PAYMENTS", "false"),
-            "total_countries": len(ppp_data),
-            "environment": os.getenv("ENVIRONMENT", "development")
-        }
-    except Exception as e:
-        logger.error(f"Error getting debug config: {e}")
-        raise HTTPException(status_code=500, detail="Failed to get debug config")
+# Debug endpoint removed for production
 
 @router.post("/pack/{pack_id}/pricing")
 async def get_pack_pricing_with_request(

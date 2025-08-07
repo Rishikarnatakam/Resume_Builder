@@ -64,8 +64,6 @@ class ChatSessionManager:
             form_data=form_data,
             job_description=job_description
         )
-        # Debug logging removed for production
-        
         # Create Gemini model and start chat
         model = genai.GenerativeModel(self.model_name)
         
@@ -74,7 +72,6 @@ class ChatSessionManager:
             {"role": "user", "parts": [initial_context]},
             {"role": "model", "parts": ["Perfect! I have all the knowledge I need - template structure, ATS guidelines, job tailoring principles, and your data. I'm ready to help you create and edit your LaTeX resume professionally. What would you like to work on?"]}
         ])
-        # Debug logging removed for production
         
         # Generate session ID
         session_id = f"chat_session_{datetime.utcnow().timestamp()}_{resume_id}"
@@ -142,13 +139,6 @@ class ChatSessionManager:
         prompt_str = self._build_simple_prompt(session_id, current_latex, user_message)
         message_parts = [prompt_str]
         
-        # DEBUG: Print what we're sending to AI
-        print("\n" + "="*80)
-        print("🚀 SENDING TO AI:")
-        print("="*80)
-        print(prompt_str)
-        print("="*80)
-        
         try:
             if image_data:
                 # Process image
@@ -164,17 +154,9 @@ class ChatSessionManager:
                 # logger.info("📄 SESSION: Added PDF to message")
             
             # Print the exact prompt sent to Gemini for chat messages
-                    # Debug logging removed for production
             # For Gemini Flash models, do NOT pass response_mime_type, response_schema, or system_instruction
             response = chat.send_message(message_parts)
             response_text = response.text.strip()
-            
-            # DEBUG: Print raw AI response
-            print("\n" + "="*80)
-            print("🤖 RAW AI RESPONSE:")
-            print("="*80)
-            print(response_text)
-            print("="*80)
             
             # --- Token/Word Count Logging ---
             def simple_token_word_count(text):
@@ -182,7 +164,6 @@ class ChatSessionManager:
                 words = cleaned.split()
                 word_count = len(words)
                 token_estimate = int(word_count * 1.3)  # 1 word ≈ 1.3 tokens for code/text
-                        # Debug logging removed for production
                 return word_count, token_estimate
 
             simple_token_word_count(response_text)
@@ -208,8 +189,6 @@ class ChatSessionManager:
                         latex_match = re.search(r'===LATEX===\s*(.*?)\s*===END===', response_text_clean, re.DOTALL)
                         new_latex = latex_match.group(1).strip() if latex_match else ''
                         
-                        # Debug logging removed for production
-                        
                         # Create simple patch with new LaTeX
                         patch_data = Patch(
                             type="simple_patch",
@@ -221,9 +200,7 @@ class ChatSessionManager:
                         # Add new_latex to the response
                         patch_data_dict = patch_data.dict()
                         patch_data_dict['new_latex'] = new_latex
-                        # Debug logging removed for production
                     except Exception as e:
-                        # Debug logging removed for production
                         # Format parsing failed - this should not count as success
                         patch_data_dict = {
                             "type": "parse_error_patch",
@@ -245,8 +222,6 @@ class ChatSessionManager:
                         message_match = re.search(r'(.*?)\s*===LATEX===', response_text_clean, re.DOTALL)
                         message = message_match.group(1).strip() if message_match else 'Resume updated successfully.'
                         
-                        # Debug logging removed for production
-                        
                         # Create simple patch with new LaTeX
                         patch_data = Patch(
                             type="simple_patch",
@@ -258,9 +233,7 @@ class ChatSessionManager:
                         # Add new_latex to the response
                         patch_data_dict = patch_data.dict()
                         patch_data_dict['new_latex'] = new_latex
-                        # Debug logging removed for production
                     except Exception as e:
-                        # Debug logging removed for production
                         # Format parsing failed - this should not count as success
                         patch_data_dict = {
                             "type": "parse_error_patch",
@@ -279,7 +252,6 @@ class ChatSessionManager:
                         "new_latex": ""
                     }
             except Exception as e:
-                # Debug logging removed for production
                 patch_data_dict = {
                     "type": "parse_error_patch", 
                     "diff_text": "", 
@@ -353,7 +325,10 @@ USER REQUEST: {user_message}"""
         
         prompt += """
 
-TASK: Help the user edit their own .tex file based on their request.
+TASK: Focus ONLY on the current user request. Ignore any previous conversations. 
+Read the USER REQUEST carefully and respond to ONLY what is being asked right now.
+
+Understand the user's request and think about it and then make the required changes to the resume.
 
 CRITICAL LATEX SYNTAX RULES:
 - NEVER use HTML tags like <>, </>, <section>, </section>
@@ -363,11 +338,9 @@ CRITICAL LATEX SYNTAX RULES:
 You already have all the knowledge you need from session initialization:
 - Template structure and commands
 - ATS optimization guidelines  
-- Job tailoring principles
 - Template-specific instructions
 
-Use your expertise to make the requested changes intelligently.
-
+Use your expertise to make the requested changes intelligently.refer to the instructions.txt and the template code to make the required changes.
 CRITICAL VERIFICATION: Before claiming you made changes, DOUBLE-CHECK that your LaTeX output actually contains the requested modifications. Compare the "before" and "after" code to ensure changes were implemented. If you say you made changes but the LaTeX code is identical, you have failed.
 
 IMPLEMENTATION REQUIREMENT: When you plan a change, you MUST also implement it in the LaTeX code. Do not just describe what you plan to do - actually do it and show the updated LaTeX. Your response should contain BOTH the explanation AND the modified code.

@@ -46,7 +46,7 @@ const Billing: React.FC = () => {
         setPaymentRestriction(data.india_only);
       }
     } catch (err) {
-      console.error('Failed to fetch payment restriction status:', err);
+      // Error handling without console output
     }
   }, []);
 

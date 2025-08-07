@@ -82,7 +82,7 @@ class PromptComposer:
         template_content = self.read_template_content(template_name)
         instructions = self.read_template_instructions(template_name)
         ats_guidelines = self.read_ats_guidelines()
-        job_tailoring = self.read_job_tailoring_guidelines()
+        #job_tailoring = self.read_job_tailoring_guidelines()
         
         prompt = f"""You are a professional ATS-optimized LaTeX resume expert.
 
@@ -98,10 +98,7 @@ TEMPLATE INSTRUCTIONS:
 {instructions}
 
 ATS GUIDELINES:
-{ats_guidelines}
-
-JOB TAILORING GUIDELINES:
-{job_tailoring}"""
+{ats_guidelines}"""
 
         if job_description:
             prompt += f"\n\nJOB DESCRIPTION:\n{job_description}"
@@ -129,7 +126,7 @@ RULES:
         template_content = self.read_template_content(template_name)
         instructions = self.read_template_instructions(template_name)
         ats_guidelines = self.read_ats_guidelines()
-        job_tailoring = self.read_job_tailoring_guidelines()
+        #job_tailoring = self.read_job_tailoring_guidelines()
         
         prompt = f"""You are a professional ATS-optimized LaTeX resume expert. I'm giving you all the knowledge you need upfront - read, understand, and use these guidelines throughout our conversation.
 
@@ -142,10 +139,7 @@ TEMPLATE INSTRUCTIONS:
 {instructions}
 
 ATS GUIDELINES:
-{ats_guidelines}
-
-JOB TAILORING GUIDELINES:
-{job_tailoring}"""
+{ats_guidelines}"""
 
         if user_data:
             prompt += f"\n\nCURRENT USER DATA:\n{json.dumps(user_data, indent=2)}"

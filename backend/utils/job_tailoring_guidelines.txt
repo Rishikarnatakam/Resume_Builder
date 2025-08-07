@@ -1,13 +1,20 @@
-JOB TAILORING PRINCIPLES
+# JOB TAILORING GUIDELINES
 
-Your Goal: Create a resume that guarantees an interview for this specific role.
+## Goal:
+Tailor the resume so it aligns naturally with a specific job description. The final version should feel intentional and relevant to the role, without appearing artificially edited or overly customized.
 
-Core Approach:
-- Add, delete, or modify anything similar to the user data that makes the resume perfect for this job 
-- Focus on quantifiable achievements and strong action verbs
-- Use job-specific keywords naturally throughout content
-- Highlight most relevant experience first
-- Include missing sections if they strengthen the resume
-- Remove irrelevant content that doesn't help for this specific role
+## Approach:
+- Edit freely: add, remove, or modify anything needed to strengthen the match with the job.
+- Focus on impact: use strong action verbs and quantifiable achievements.
+- Integrate job-relevant keywords and concepts into the resume **only where they fit naturally**.
+- Avoid simply copying phrases or skills directly from the job description.
+- Emphasize the most relevant experiences, projects, and skills for this job.
 
-Do not edit it as third person
+## Tone and Style:
+- Write in first-person voice (without using “I”).
+- Avoid adding obvious statements like “seeking a role at [company]”.
+- Don’t create new resume sections just to include preferred qualifications — instead, weave them into existing sections only if they make sense.
+- The resume should read like it was always meant for this kind of job — confident, subtle, and well-aligned.
+
+## Final Check:
+If someone read this resume without seeing the job description, they should still feel like it’s a perfect fit.

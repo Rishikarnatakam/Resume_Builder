@@ -9,8 +9,11 @@
 \usepackage{geometry}
 \geometry{margin=0.5in} % Default margin - can be overridden
 \usepackage{ifthen} % Required for ifthenelse statements
-
+\usepackage{etoolbox} 
 \usepackage{hyperref}
+\usepackage{xcolor} % Required for textcolor
+
+
 \hypersetup{
     colorlinks=true,
     linkcolor=blue,
@@ -197,19 +200,27 @@
 %	PROJECTS FORMATTING
 %----------------------------------------------------------------------------------------
 
+\usepackage{etoolbox} % Add this near your other \usepackage calls if not already
+
 \newenvironment{rProjectWithTech}[4]{ % 4 input arguments - project name, link, date, technologies
- {\bf\textcolor{black}{#1}} \ifthenelse{\equal{#2}{}}{}{{\em \href{#2}{#2}}} \hfill {#3} % Bold black project name, link on same line, date on right
- \ifthenelse{\equal{#4}{}}{}{ % If technologies are specified, print them
-  \\
-  {\bf\em Technologies:} {\em #4} % Bold and italic "Technologies:", italic tech list
+  {\bf\textcolor{black}{#1}}%
+  \ifstrempty{#2}{}{
+    \hspace{0.5em}
+    {\em #2} % Allow raw \href or plain text
+  }
+  \hfill {#3}%
+  \ifstrempty{#4}{}{
+    \\
+    {\bf\em Technologies:} {\em #4}
   }\smallskip
-  \begin{list}{$\cdot$}{\leftmargin=0.8em} % \cdot used for bullets, no indentation
-   \setlength{\itemsep}{0.3em} % Consistent spacing between bullet points
-   \setlength{\parsep}{0em} % No extra paragraph spacing
+  \begin{list}{$\cdot$}{\leftmargin=0.8em}
+    \setlength{\itemsep}{0.3em}
+    \setlength{\parsep}{0em}
   }{
   \end{list}
-  \vspace{0.8em} % Some space after the list of bullet points
+  \vspace{0.8em}
 }
+
 
 %----------------------------------------------------------------------------------------
 %	EDUCATION FORMATTING
