@@ -1,4 +1,4 @@
-# Use a smaller base image for reduced size
+# Use Alpine for smallest possible size
 FROM python:3.11-alpine
 
 # Set environment variables
@@ -6,10 +6,13 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH=/app
 
-# Install system dependencies for TeX Live and other requirements
+# Install TeX Live binaries and only the needed LaTeX/font packages (includes opensans and fontawesome)
 RUN apk add --no-cache \
     texlive \
+    texmf-dist-latexrecommended \
     texmf-dist-latexextra \
+    texmf-dist-fontsrecommended \
+    texmf-dist-fontsextra \
     ghostscript \
     gcc \
     musl-dev \
