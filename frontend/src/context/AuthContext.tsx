@@ -103,15 +103,31 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const logout = async () => {
-    await supabase.auth.signOut();
+    try {
+      // Sign out globally to invalidate refresh tokens as well
+      await supabase.auth.signOut({ scope: 'global' as any });
+    } catch (e) {
+      // ignore
+    }
+
+    // Aggressively clear any persisted Supabase auth state
+    try {
+      Object.keys(localStorage)
+        .filter((k) => k.startsWith('sb-') || k.startsWith('supabase.'))
+        .forEach((k) => localStorage.removeItem(k));
+      Object.keys(sessionStorage)
+        .filter((k) => k.startsWith('sb-') || k.startsWith('supabase.'))
+        .forEach((k) => sessionStorage.removeItem(k));
+    } catch (_) {}
+
     setToken(null);
     setUser(null);
     setIsAuthenticated(false);
     setLoading(false);
-    
-    // Only redirect if we're not already on login/register pages
+
+    // Hard redirect to login to avoid any stale in-memory auth
     if (!window.location.pathname.includes('/login') && !window.location.pathname.includes('/register')) {
-      window.location.href = '/';
+      window.location.replace('/login');
     }
   };
 

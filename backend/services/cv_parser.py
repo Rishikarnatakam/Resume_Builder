@@ -286,9 +286,11 @@ CRITICAL INSTRUCTIONS:
             )
         ]
 
-        # Count input tokens before generation
-        client = genai.Client()
-        input_token_count = client.models.count_tokens(model=f'models/{get_gemini_model()}', contents=contents).total_tokens
+        # Count input tokens before generation using the authenticated client
+        input_token_count = parser.client.models.count_tokens(
+            model=f'models/{get_gemini_model()}',
+            contents=contents
+        ).total_tokens
         # Debug logging removed for production
         # Call Gemini with the configured model for PDF processing
         response = parser.client.models.generate_content(
@@ -306,9 +308,11 @@ CRITICAL INSTRUCTIONS:
         
         response_text = response.text.strip()
         # Debug logging removed for production
-        # Count tokens in the output using the low-level, future-proof API
-        client = genai.Client()
-        token_count = client.models.count_tokens(model=f'models/{get_gemini_model()}', contents=response_text).total_tokens
+        # Count tokens in the output using the same authenticated client
+        token_count = parser.client.models.count_tokens(
+            model=f'models/{get_gemini_model()}',
+            contents=response_text
+        ).total_tokens
         # Debug logging removed for production
         
         # Clean and parse JSON response
@@ -501,9 +505,11 @@ CRITICAL ATS-FRIENDLY INSTRUCTIONS:
 11. Always prioritize content over section names for maximum ATS compatibility"""
 
         # Use AI with optimal settings for comprehensive extraction
-        # Count input tokens before generation
-        client = genai.Client()
-        input_token_count = client.models.count_tokens(model=f'models/{get_gemini_model()}', contents=prompt).total_tokens
+        # Count input tokens before generation using the authenticated client
+        input_token_count = parser.client.models.count_tokens(
+            model=f'models/{get_gemini_model()}',
+            contents=prompt
+        ).total_tokens
         # Debug logging removed for production
         response = parser.client.models.generate_content(
             model=f'models/{get_gemini_model()}',  # Use .env configured model
@@ -520,9 +526,11 @@ CRITICAL ATS-FRIENDLY INSTRUCTIONS:
         
         response_text = response.text.strip()
         # Debug logging removed for production
-        # Count tokens in the output using the low-level, future-proof API
-        client = genai.Client()
-        token_count = client.models.count_tokens(model=f'models/{get_gemini_model()}', contents=response_text).total_tokens
+        # Count tokens in the output using the same authenticated client
+        token_count = parser.client.models.count_tokens(
+            model=f'models/{get_gemini_model()}',
+            contents=response_text
+        ).total_tokens
         # Debug logging removed for production
         
         # Clean and parse JSON response

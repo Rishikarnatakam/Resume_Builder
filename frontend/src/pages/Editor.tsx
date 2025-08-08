@@ -305,27 +305,38 @@ Programming Languages, Frameworks, Tools, etc.
       return;
     }
 
-    // Create the complete prompt with job description
+    // Create concise, constraint-driven tailoring prompt with JD
     const tailoringPrompt = `
-INSTRUCTIONS: You’re tailoring a resume for the job the user wants to apply for.
+You are tailoring the resume for the provided job description.
+First, carefully understand the JOB DESCRIPTION: responsibilities, required skills, and the type of person the role needs; then tailor the resume accordingly.
 
-Start by understanding the job description fully — the responsibilities, skills, and what kind of person the role needs.
-Then, rewrite or adjust the resume so it fits this specific job naturally. You can change any section — summary, skills, experience, projects — to make the resume a strong match.
-Don’t force keywords or copy-paste things directly. Instead, blend relevant skills, tools, or phrases into the content where they make sense.
-Make sure everything still follows good formatting, ATS rules, and the user’s preferred style.
-Make sure to include the already present skills and experiences in the resume.
-Make sure to include Tailored Summary section unless user specifies to not include it.
+CONSTRAINTS:
+- Do NOT fabricate content. Use ONLY information already in the current resume and user data.
+- SKILLS must be a subset of existing skills. Reorder/group allowed; do NOT add new skills just because JD mentions them.
+- EXPERIENCE bullets may be rephrased for emphasis, but do NOT introduce tools/tech not already present.
+- JD is for prioritization/wording only; do NOT copy JD text or inject missing requirements.
+- Avoid meta language (e.g., “demonstrating/showcasing”). Keep phrasing natural and human.
+- Keep your explanation (MESSAGE) brief if any: max 5–6 sentences, ~100 words.
+
+TASK:
+- Tailor the resume naturally to the JD by adjusting SUMMARY, SKILLS order, EXPERIENCE phrasing, and PROJECT emphasis.
 
 
-GOAL: Help the user land this job. Make the resume feel like it was always meant for this role.
-Make sure the final resume reads like it was written by a real person. 
-Avoid robotic or generic phrasing. Everything should sound natural, confident, and purposeful — as if the user wrote it themselves with the job in mind.
+TONE:
+- Natural and human, confident but not overblown. Avoid robotic or generic phrasing.
 
-Focus on real achievements and experiences. Don’t overuse keywords or make the tailoring feel obvious. Subtlety and clarity are key.
+FORMAT:
+Return ONLY this format:
+===MESSAGE===
+One short paragraph (<=6 sentences, <=100 words) explaining what changed and why.
+===LATEX===
+\\documentclass{...}
+... full LaTeX document ...
+\\end{document}
+===END===
 
-OUTPUT: Return ONLY the complete LaTeX code from \\documentclass{} to \\end{document}. No explanations or commentary in between the code.
-
-JOB DESCRIPTION: ${editorState.jobDescription}`;
+JOB DESCRIPTION:
+${editorState.jobDescription}`;
 
     // Send as normal user message
     aiChatRef.current?.populateInput(tailoringPrompt);

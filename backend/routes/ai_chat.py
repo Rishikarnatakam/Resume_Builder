@@ -231,12 +231,16 @@ async def send_chat_message(
             updated_sub = await get_user_subscription(user_id, db)
             logger.info(f"Incremented message count for user {user_id}. Used: {updated_sub.messages_used}/{updated_sub.message_quota}")
 
+        # Coerce booleans to avoid Pydantic validation issues
+        success_flag = bool(response.get("success", False))
+        credits_flag = bool(response.get("credits_deducted", True))
+
         return ChatMessageResponse(
-            success=response["success"],
-            response=response["response"],
+            success=success_flag,
+            response=response.get("response", ""),
             patch_data=response.get("patch_data"),
             session_info=updated_session_info,
-            credits_deducted=response.get("credits_deducted", True)  # Default to True for backward compatibility
+            credits_deducted=credits_flag
         )
         
     except HTTPException:
@@ -246,7 +250,8 @@ async def send_chat_message(
         return ChatMessageResponse(
             success=False,
             response="I encountered an error processing your message. Please try again.",
-            error=str(e)
+            error=str(e),
+            credits_deducted=False
         )
 
 @router.get("/session/{session_id}/info", response_model=SessionInfoResponse)

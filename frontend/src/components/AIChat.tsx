@@ -561,6 +561,20 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ resumeId }, ref) => {
         if (result.patch_data && result.patch_data.new_latex) {
           editorState.receiveAILatex(result.patch_data.new_latex);}
       } else {
+        // If it's a message-only or informational response, show it as a normal assistant message (not an error)
+        if (result.patch_data && (result.patch_data.type === 'message_only' || result.patch_data.type === 'empty_latex')) {
+          const infoMessage: Message = {
+            id: (Date.now() + 1).toString(),
+            type: 'assistant',
+            content: result.response || 'Okay.',
+            timestamp: new Date()
+          };
+          setMessages(prev => [...prev, infoMessage]);
+          // No credits deducted on these paths per backend
+          editorState.completeAIOperation();
+          return;
+        }
+
         // Check if credits were deducted
         const creditsMessage = result.credits_deducted === false ? ' (No message credit deducted)' : '';
         

@@ -18,7 +18,7 @@ import base64
 
 
 from database import AIChatSession
-from utils.config import get_gemini_model
+from utils.config import get_gemini_model, config
 from utils.prompt_composer import prompt_composer
 from pydantic import BaseModel
 
@@ -156,7 +156,20 @@ class ChatSessionManager:
             # Print the exact prompt sent to Gemini for chat messages
             # For Gemini Flash models, do NOT pass response_mime_type, response_schema, or system_instruction
             response = chat.send_message(message_parts)
-            response_text = response.text.strip()
+            response_text = (response.text or "").strip()
+            # Development-only: print full AI response to local terminal
+            try:
+                if getattr(config, "ENVIRONMENT", "development") != "production":
+                    print("\n===== AI RAW RESPONSE START =====\n")
+                    print(response_text)
+                    print("\n===== AI RAW RESPONSE END =====\n")
+            except Exception:
+                pass
+            try:
+                preview = response_text[:1000]
+                logger.info(f"AI_CHAT raw response length={len(response_text)} preview=\n{preview}")
+            except Exception:
+                pass
             
             # --- Token/Word Count Logging ---
             def simple_token_word_count(text):
@@ -171,6 +184,23 @@ class ChatSessionManager:
 
             # --- Robust Format Parsing ---
             patch_data = None
+            # Early guard: empty or whitespace-only response
+            if not response_text:
+                logger.info("AI_CHAT branch: empty_response")
+                patch_data_dict = {
+                    "type": "empty_response",
+                    "diff_text": "",
+                    "operations": [],
+                    "message": "I didn't receive any response. Please try again.",
+                    "new_latex": ""
+                }
+                await self._update_conversation_history(db, session, user_message, patch_data_dict['message'])
+                return {
+                    "success": False,
+                    "response": patch_data_dict['message'],
+                    "patch_data": patch_data_dict,
+                    "credits_deducted": False
+                }
             try:
                 # Extract message and LaTeX from response using simple delimiters
                 response_text_clean = response_text.strip()
@@ -188,8 +218,26 @@ class ChatSessionManager:
                         # Extract LaTeX
                         latex_match = re.search(r'===LATEX===\s*(.*?)\s*===END===', response_text_clean, re.DOTALL)
                         new_latex = latex_match.group(1).strip() if latex_match else ''
+                        if not new_latex:
+                            logger.info("AI_CHAT branch: message_only (empty LATEX section)")
+                            # Treat as message-only if LATEX section is empty
+                            patch_data_dict = {
+                                "type": "message_only",
+                                "diff_text": "",
+                                "operations": [],
+                                "message": message or "Got it.",
+                                "new_latex": ""
+                            }
+                            await self._update_conversation_history(db, session, user_message, patch_data_dict['message'])
+                            return {
+                                "success": False,
+                                "response": patch_data_dict['message'],
+                                "patch_data": patch_data_dict,
+                                "credits_deducted": False
+                            }
                         
                         # Create simple patch with new LaTeX
+                        logger.info(f"AI_CHAT branch: message+latex (message_len={len(message)}, latex_len={len(new_latex)})")
                         patch_data = Patch(
                             type="simple_patch",
                             diff_text="",  # Not used in simple approach
@@ -217,12 +265,29 @@ class ChatSessionManager:
                         # Extract LaTeX
                         latex_match = re.search(r'===LATEX===\s*(.*?)\s*===END===', response_text_clean, re.DOTALL)
                         new_latex = latex_match.group(1).strip() if latex_match else ''
+                        if not new_latex:
+                            logger.info("AI_CHAT branch: empty_latex (LATEX markers present but empty content)")
+                            patch_data_dict = {
+                                "type": "empty_latex",
+                                "diff_text": "",
+                                "operations": [],
+                                "message": "No LaTeX changes provided.",
+                                "new_latex": ""
+                            }
+                            await self._update_conversation_history(db, session, user_message, patch_data_dict['message'])
+                            return {
+                                "success": False,
+                                "response": patch_data_dict['message'],
+                                "patch_data": patch_data_dict,
+                                "credits_deducted": False
+                            }
                         
                         # Extract message from the text before LaTeX section
                         message_match = re.search(r'(.*?)\s*===LATEX===', response_text_clean, re.DOTALL)
                         message = message_match.group(1).strip() if message_match else 'Resume updated successfully.'
                         
                         # Create simple patch with new LaTeX
+                        logger.info(f"AI_CHAT branch: latex_only (latex_len={len(new_latex)})")
                         patch_data = Patch(
                             type="simple_patch",
                             diff_text="",  # Not used in simple approach
@@ -243,14 +308,32 @@ class ChatSessionManager:
                             "new_latex": ""
                         }
                 else:
-                    # No format found in response - treat as parsing error
-                    patch_data_dict = {
-                        "type": "parse_error_patch",
-                        "diff_text": "",
-                        "operations": [],
-                        "message": "No response received.",
-                        "new_latex": ""
-                    }
+                    # No format found in response
+                    # If there is plain text, treat as message-only (greetings/acknowledgements)
+                    if response_text_clean:
+                        logger.info("AI_CHAT branch: message_only (no markers)")
+                        patch_data_dict = {
+                            "type": "message_only",
+                            "diff_text": "",
+                            "operations": [],
+                            "message": response_text_clean,
+                            "new_latex": ""
+                        }
+                        await self._update_conversation_history(db, session, user_message, patch_data_dict['message'])
+                        return {
+                            "success": False,
+                            "response": patch_data_dict['message'],
+                            "patch_data": patch_data_dict,
+                            "credits_deducted": False
+                        }
+                    else:
+                        patch_data_dict = {
+                            "type": "parse_error_patch",
+                            "diff_text": "",
+                            "operations": [],
+                            "message": "No response received.",
+                            "new_latex": ""
+                        }
             except Exception as e:
                 patch_data_dict = {
                     "type": "parse_error_patch", 
@@ -262,24 +345,19 @@ class ChatSessionManager:
             
             await self._update_conversation_history(db, session, user_message, patch_data_dict['message'])
             
-            # Success should be true only when we got a valid parsed response with actual content
-            # Check if we have meaningful content (not just error messages)
+            # Success true only when there is meaningful LaTeX content to apply
             has_valid_content = (
                 patch_data_dict['type'] == "simple_patch" and
-                patch_data_dict.get('new_latex', '').strip() and
-                not patch_data_dict['message'].startswith('Sorry, I couldn\'t process') and
-                not patch_data_dict['message'].startswith('No response received')
+                bool(patch_data_dict.get('new_latex', '').strip())
             )
-            
-            # Explicitly mark parsing errors as failures
-            if patch_data_dict['type'] in ["parse_error_patch", "error_patch"]:
-                has_valid_content = False
+            logger.info(f"AI_CHAT result: success={has_valid_content} type={patch_data_dict.get('type')} latex_len={len(patch_data_dict.get('new_latex',''))}")
+            # Everything else counts as no-change (no credits)
             
             return {
-                "success": has_valid_content,
+                "success": bool(has_valid_content),
                 "response": patch_data_dict['message'],
                 "patch_data": patch_data_dict,
-                "credits_deducted": has_valid_content  # Add flag to indicate if credits were deducted
+                "credits_deducted": bool(has_valid_content)  # Deduct only on valid content
             }
             
         except Exception as e:
@@ -303,7 +381,11 @@ class ChatSessionManager:
         """Build the initial context using improved prompt composer"""
         
         # Use improved prompt composer with form data emphasis
-        prompt = prompt_composer.build_improved_conversation_prompt(template_name, user_data=form_data, job_description=job_description)
+        prompt = prompt_composer.build_improved_conversation_prompt(
+            template_name,
+            user_data=form_data,
+            job_description=job_description
+        )
         return prompt
 
 
@@ -372,6 +454,16 @@ RULES:
 - ALWAYS use this format, even for greetings or casual chat
 - VERIFY: If you claim to make changes, ensure they appear in the LaTeX output
 - IMPLEMENT: Don't just plan changes - actually implement them in the LaTeX code
+
+CONSTRAINTS:
+- Do NOT fabricate content. Use ONLY information present in CURRENT LATEX or USER DATA; do not invent new skills/projects/tools.
+- SKILLS: Do NOT add skills simply because the JD mentions them. Only retain/reorder existing skills.
+- EXPERIENCE: You may rephrase to emphasize JD-relevant strengths, but do NOT introduce tools/tech not already present.
+- JD is for prioritization/wording only; do NOT copy JD text or inject missing requirements.
+
+MESSAGE LENGTH:
+- Keep the MESSAGE concise: maximum 5–6 sentences and under ~100 words.
+- No long summaries, no bullet/numbered lists in MESSAGE; be brief and direct.
 """
         
         return prompt

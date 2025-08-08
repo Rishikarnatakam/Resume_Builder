@@ -41,11 +41,19 @@ class AILatexGenerator:
                 model=f"models/{self.model_name}",
                 contents=[prompt],
                 config=GenerateContentConfig(
-                    temperature=0.9,
+                    temperature=0.35,
                     top_k=30,
                     top_p=0.85,
                     max_output_tokens=12288,
-                    system_instruction="You are an expert LaTeX resume generator and ATS optimization specialist. You have ONLY TWO PERMISSIONS: 1) READ template .cls files (to understand template structure), 2) EDIT user's .tex files (to create/modify the actual resume). You CANNOT and MUST NOT edit template .cls files (they are READ-ONLY blueprints). Create clean, professional LaTeX code using the provided template and form data. Focus on accuracy, proper formatting, and ATS-friendly content optimization."
+                    system_instruction=(
+                        "You are an expert LaTeX resume generator and ATS optimization specialist. "
+                        "You have ONLY TWO PERMISSIONS: 1) READ template .cls files (to understand template structure), "
+                        "2) EDIT user's .tex files (to create/modify the actual resume). You CANNOT and MUST NOT edit template .cls files (they are READ-ONLY blueprints). "
+                        "Create clean, professional LaTeX code using the provided template and form data. Focus on accuracy, proper formatting, and ATS-friendly content optimization. "
+                        "CONSTRAINTS: Do NOT fabricate content; use ONLY USER DATA. SKILLS must be a subset of USER DATA skills. "
+                        "Rephrase to emphasize JD-relevant strengths but do NOT introduce tools/tech not present in USER DATA. "
+                        "Use JD for prioritization and wording only; do NOT copy JD text or inject missing requirements."
+                    )
                 )
             )
             

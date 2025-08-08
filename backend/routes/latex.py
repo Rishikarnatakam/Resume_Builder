@@ -68,7 +68,9 @@ async def compile_latex(
                 f.write(request.latex_content)
             
             # Copy all template files to temp directory
-            templates_dir = "templates"
+            # Resolve the templates directory relative to the backend package
+            backend_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            templates_dir = os.path.join(backend_root, "templates")
             if os.path.exists(templates_dir):
                 for template_name in os.listdir(templates_dir):
                     template_path = os.path.join(templates_dir, template_name)
@@ -296,7 +298,9 @@ async def compile_latex_for_analysis(
             f.write(request.latex_content)
         
         # Copy all template files to temp directory
-        templates_dir = "templates"
+        # Resolve the templates directory relative to the backend package
+        backend_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        templates_dir = os.path.join(backend_root, "templates")
         if os.path.exists(templates_dir):
             for template_name in os.listdir(templates_dir):
                 template_path = os.path.join(templates_dir, template_name)
