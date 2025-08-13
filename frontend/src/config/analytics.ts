@@ -1,7 +1,7 @@
 // Google Analytics Configuration
 export const ANALYTICS_CONFIG = {
   // Replace with your actual Measurement ID from Google Analytics
-  MEASUREMENT_ID: 'G-1LD7PC8S87',
+  MEASUREMENT_ID: 'G-BPJKH49REP',
   
   // Custom dimensions and metrics
   CUSTOM_DIMENSIONS: {

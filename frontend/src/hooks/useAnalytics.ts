@@ -13,26 +13,35 @@ export const useAnalytics = () => {
     value?: number
   ) => {
     if (typeof window !== 'undefined' && window.gtag) {
+      console.log('🔍 Analytics Event:', { action, category, label, value });
       window.gtag('event', action, {
         event_category: category,
         event_label: label,
         value: value,
       });
+    } else {
+      console.warn('⚠️ Analytics not available:', { action, category, label, value });
     }
   };
 
   const trackPageView = (page_title: string, page_location?: string) => {
     if (typeof window !== 'undefined' && window.gtag) {
+      console.log('🔍 Analytics Page View:', { page_title, page_location });
       window.gtag('event', 'page_view', {
         page_title: page_title,
         page_location: page_location || window.location.href,
       });
+    } else {
+      console.warn('⚠️ Analytics not available for page view:', { page_title, page_location });
     }
   };
 
   const trackUserAction = (action: string, parameters?: Record<string, any>) => {
     if (typeof window !== 'undefined' && window.gtag) {
+      console.log('🔍 Analytics User Action:', { action, parameters });
       window.gtag('event', action, parameters);
+    } else {
+      console.warn('⚠️ Analytics not available for user action:', { action, parameters });
     }
   };
 

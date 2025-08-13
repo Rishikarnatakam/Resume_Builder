@@ -9,12 +9,15 @@ interface AnalyticsTrackerProps {
 
 export const AnalyticsTracker: React.FC<AnalyticsTrackerProps> = ({ children }) => {
   const location = useLocation();
-  const { trackPageView } = useAnalytics();
+  const { trackPageView, trackEvent } = useAnalytics();
 
   useEffect(() => {
     // Track page view when route changes
     const pageTitle = getPageTitle(location.pathname);
     trackPageView(pageTitle, location.pathname);
+    
+    // Log for debugging
+    console.log('📍 Page changed:', { pathname: location.pathname, pageTitle });
   }, [location, trackPageView]);
 
   const getPageTitle = (pathname: string): string => {
@@ -33,10 +36,43 @@ export const AnalyticsTracker: React.FC<AnalyticsTrackerProps> = ({ children }) 
         return ANALYTICS_CONFIG.PAGE_TITLES.LOGIN;
       case '/register':
         return ANALYTICS_CONFIG.PAGE_TITLES.REGISTER;
+      case '/demo':
+        return 'Demo Page';
       default:
         return 'Unknown Page';
     }
   };
 
-  return <>{children}</>;
+  // Test function for debugging
+  const testAnalytics = () => {
+    console.log('🧪 Testing Analytics...');
+    trackEvent('test_event', 'debug', 'manual_test', 1);
+    trackPageView('Test Page', '/test');
+  };
+
+  return (
+    <>
+      {children}
+      {/* Debug button - only show in development */}
+      {process.env.NODE_ENV === 'development' && (
+        <button
+          onClick={testAnalytics}
+          style={{
+            position: 'fixed',
+            bottom: '20px',
+            right: '20px',
+            zIndex: 9999,
+            background: 'red',
+            color: 'white',
+            border: 'none',
+            padding: '10px',
+            borderRadius: '5px',
+            cursor: 'pointer'
+          }}
+        >
+          Test Analytics
+        </button>
+      )}
+    </>
+  );
 };
