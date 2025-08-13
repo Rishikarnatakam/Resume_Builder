@@ -1,6 +1,7 @@
 import React, { createContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '../config/api';
 import type { Session } from '@supabase/supabase-js';
+import { useAnalytics } from '../hooks/useAnalytics';
 
 interface User {
   id: string; // Changed from number to string for UUID
@@ -30,6 +31,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [token, setToken] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const { trackEvent } = useAnalytics();
 
   // Initialize auth state from Supabase session
   useEffect(() => {
@@ -48,6 +50,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // Handle different auth events
         if (event === 'SIGNED_OUT') {
           // User has logged out, clear everything
+          trackEvent('user_logout', 'authentication');
           setIsAuthenticated(false);
           setToken(null);
           setUser(null);

@@ -6,6 +6,8 @@ import {
   ArrowRightIcon
 } from "@heroicons/react/24/outline";
 import Logo from '../components/Logo';
+import SEOHead from '../components/SEOHead';
+import DemoVideo from '../components/DemoVideo';
 
 const Landing: React.FC = () => {
   const { user } = useAuth();
@@ -27,7 +29,13 @@ const Landing: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen text-white" style={{ backgroundColor: '#000000' }}>
+    <>
+      <SEOHead 
+        title="ResumeCraft - AI-Powered Professional Resume Builder"
+        description="Create professional, ATS-friendly resumes with AI assistance. Real-time LaTeX editing, PDF preview, and AI-powered resume optimization. Free templates and expert guidance."
+        keywords="resume builder, AI resume, professional resume, ATS friendly resume, LaTeX resume, CV builder, job application, career tools, resume templates"
+      />
+      <div className="min-h-screen text-white" style={{ backgroundColor: '#000000' }}>
       {/* Navigation */}
       <nav className="relative z-50 px-6 py-4" style={{ backgroundColor: '#000000' }}>
         <div className="max-w-7xl mx-auto flex items-center justify-between">
@@ -44,6 +52,12 @@ const Landing: React.FC = () => {
             animate={{ opacity: 1, x: 0 }}
             className="flex items-center space-x-6"
           >
+            <Link
+              to="/demo"
+              className="text-gray-300 hover:text-white transition-colors"
+            >
+              Demo
+            </Link>
             <Link
               to="/login"
               className="text-gray-300 hover:text-white transition-colors"
@@ -123,6 +137,37 @@ const Landing: React.FC = () => {
         </div>
       </section>
 
+      {/* Demo Video Section */}
+      <section className="py-16" style={{ backgroundColor: '#000000' }}>
+        <div className="max-w-6xl mx-auto px-6">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            viewport={{ once: true }}
+            className="text-center mb-12"
+          >
+            <h2 className="text-4xl lg:text-5xl font-bold text-white mb-6">
+              See ResumeCraft in Action
+            </h2>
+            <p className="text-lg text-gray-400 max-w-2xl mx-auto">
+              Watch how AI-powered resume building works in just 16 seconds
+            </p>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+            viewport={{ once: true }}
+            className="relative max-w-4xl mx-auto"
+          >
+            {/* Video Container */}
+            <DemoVideo />
+          </motion.div>
+        </div>
+      </section>
+
       {/* Footer */}
       <footer className="border-t border-gray-600/20" style={{ backgroundColor: '#000000' }}>
         <div className="max-w-7xl mx-auto px-6 py-8">
@@ -176,6 +221,7 @@ const Landing: React.FC = () => {
         </div>
       </footer>
     </div>
+    </>
   );
 };
 

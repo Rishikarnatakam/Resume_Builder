@@ -1,3 +1,61 @@
+# OS / Editor artifacts
+.DS_Store
+Thumbs.db
+*.log
+.idea/
+.vscode/
+
+# Python (backend)
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.coverage
+coverage.xml
+.venv/
+venv/
+env/
+
+# Node (frontend)
+node_modules/
+dist/
+build/
+.parcel-cache/
+.turbo/
+.next/
+*.tsbuildinfo
+
+# Vite cache
+frontend/node_modules/
+frontend/dist/
+
+# Environment files and secrets
+.env
+.env.*
+!env.example
+frontend/.env
+frontend/.env.*
+
+# Local data / caches
+*.sqlite3
+*.db
+*.db-journal
+
+# Compiled LaTeX artifacts (if any)
+*.aux
+*.out
+*.toc
+*.log
+*.pdf
+*.synctex.gz
+
+# OS temp files
+~$*
+*.swp
+*.swo
+*$~
 # Resume Builder - Single Comprehensive .gitignore
 # This file handles ALL ignore patterns for the entire project
 

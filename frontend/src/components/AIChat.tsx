@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { InformationCircleIcon } from '@heroicons/react/24/outline';
 import { apiConfig, supabase } from '../config/api';
 import { useEditorState } from '../hooks/useEditorState';
+import { useAnalytics } from '../hooks/useAnalytics';
 
 interface Message {
   id: string;
@@ -37,6 +38,7 @@ export interface AIChatRef {
 const AIChat = forwardRef<AIChatRef, AIChatProps>(({ resumeId }, ref) => {
   // Use editor state context instead of props
   const editorState = useEditorState();
+  const { trackAIChatUsage } = useAnalytics();
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -475,6 +477,10 @@ const AIChat = forwardRef<AIChatRef, AIChatProps>(({ resumeId }, ref) => {
 
     try {
       editorState.startAIOperation();
+      
+      // Track AI chat usage
+      trackAIChatUsage('message_sent', 1);
+      
       const requestBody: any = {
         session_id: sessionId,
         message: userMessage.content,

@@ -11,11 +11,13 @@ import ThreePanelSplitter from '../components/ThreePanelSplitter';
 import { apiConfig, supabase } from '../config/api';
 import Logo from '../components/Logo';
 import { UserIcon } from '@heroicons/react/24/outline';
+import { useAnalytics } from '../hooks/useAnalytics';
 
 const LaTeXEditor: React.FC = () => {
   const { resumeId } = useParams<{ resumeId?: string }>();
   const { user, logout } = useAuth();
   const { setCurrentResume } = useResume();
+  const { trackResumeDownload } = useAnalytics();
   
   // Use editor state context instead of local state
   const editorState = useEditorState();
@@ -315,7 +317,8 @@ CONSTRAINTS:
 - SKILLS must be a subset of existing skills. Reorder/group allowed; do NOT add new skills just because JD mentions them.
 - EXPERIENCE bullets may be rephrased for emphasis, but do NOT introduce tools/tech not already present.
 - JD is for prioritization/wording only; do NOT copy JD text or inject missing requirements.
-- Avoid meta language (e.g., “demonstrating/showcasing”). Keep phrasing natural and human.
+- Avoid meta language; do not use words like "demonstrating/showcasing/highlighting" or explanatory "by <doing X>" clauses. Write direct action→result bullets.
+- Do not explain why or how a bullet proves a skill; keep content factual and outcome-focused. No tailoring commentary inside the LaTeX.
 - Keep your explanation (MESSAGE) brief if any: max 5–6 sentences, ~100 words.
 
 TASK:
@@ -389,6 +392,9 @@ ${editorState.jobDescription}`;
       
       // Clean up
       URL.revokeObjectURL(downloadUrl);
+      
+      // Track PDF download
+      trackResumeDownload(editorState.resumeTitle || 'Untitled', 'PDF');
       
       logger.success('PDF downloaded', { filename });
       

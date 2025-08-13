@@ -30,3 +30,6 @@ httpx==0.25.2
 
 # == Payment Processing ==
 razorpay
+
+# == Packaging runtime (needed by razorpay -> pkg_resources)
+setuptools>=68.0.0

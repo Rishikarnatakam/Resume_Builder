@@ -204,20 +204,45 @@ class ChatSessionManager:
             try:
                 # Extract message and LaTeX from response using simple delimiters
                 response_text_clean = response_text.strip()
-                
+
+                # Helper: fallback extraction using LaTeX document boundaries
+                def extract_latex_fallback(text: str):
+                    import re as _re
+                    doc_start = _re.search(r"\\documentclass[\s\S]*?$", text, _re.MULTILINE)
+                    if not doc_start:
+                        return None, None
+                    start_index = doc_start.start()
+                    # Try to find the last \end{document}
+                    end_match = list(_re.finditer(r"\\end\{document\}", text))
+                    if not end_match:
+                        # If no explicit end, take till end of string
+                        end_index = len(text)
+                    else:
+                        end_index = end_match[-1].end()
+                    latex_body = text[start_index:end_index].strip()
+                    message_part = text[:start_index].strip()
+                    return message_part, latex_body
+
                 # Check if response contains our format
                 if '===MESSAGE===' in response_text_clean and '===LATEX===' in response_text_clean:
                     try:
                         # Extract message and LaTeX using regex
                         import re
-                        
+
                         # Extract message
                         message_match = re.search(r'===MESSAGE===\s*(.*?)\s*===LATEX===', response_text_clean, re.DOTALL)
                         message = message_match.group(1).strip() if message_match else 'No message provided'
-                        
-                        # Extract LaTeX
+
+                        # Extract LaTeX — tolerate missing ===END=== by falling back to end of string
                         latex_match = re.search(r'===LATEX===\s*(.*?)\s*===END===', response_text_clean, re.DOTALL)
                         new_latex = latex_match.group(1).strip() if latex_match else ''
+                        if not new_latex:
+                            # Try fallback: from \documentclass to \end{document}
+                            fb_msg, fb_latex = extract_latex_fallback(response_text_clean)
+                            if fb_latex:
+                                # Prefer explicit MESSAGE if available, else fallback msg
+                                message = message or (fb_msg or 'Resume updated successfully.')
+                                new_latex = fb_latex
                         if not new_latex:
                             logger.info("AI_CHAT branch: message_only (empty LATEX section)")
                             # Treat as message-only if LATEX section is empty
@@ -235,7 +260,7 @@ class ChatSessionManager:
                                 "patch_data": patch_data_dict,
                                 "credits_deducted": False
                             }
-                        
+
                         # Create simple patch with new LaTeX
                         logger.info(f"AI_CHAT branch: message+latex (message_len={len(message)}, latex_len={len(new_latex)})")
                         patch_data = Patch(
@@ -244,7 +269,7 @@ class ChatSessionManager:
                             operations=[],  # Not used in simple approach
                             message=message
                         )
-                        
+
                         # Add new_latex to the response
                         patch_data_dict = patch_data.dict()
                         patch_data_dict['new_latex'] = new_latex
@@ -257,16 +282,22 @@ class ChatSessionManager:
                             "message": "No response received.",
                             "new_latex": ""
                         }
-                elif '===LATEX===' in response_text_clean and '===END===' in response_text_clean:
-                    # Handle case where only LaTeX is provided without separate message
+                elif '===LATEX===' in response_text_clean:
+                    # Handle case where LaTeX marker is present but ===END=== may be missing
                     try:
                         import re
-                        
-                        # Extract LaTeX
+                        # Try standard extraction first
                         latex_match = re.search(r'===LATEX===\s*(.*?)\s*===END===', response_text_clean, re.DOTALL)
                         new_latex = latex_match.group(1).strip() if latex_match else ''
+                        message = ''
                         if not new_latex:
-                            logger.info("AI_CHAT branch: empty_latex (LATEX markers present but empty content)")
+                            # Fallback to document boundary extraction
+                            msg_fb, latex_fb = extract_latex_fallback(response_text_clean)
+                            if latex_fb:
+                                new_latex = latex_fb
+                                message = (msg_fb or 'Resume updated successfully.').strip()
+                        if not new_latex:
+                            logger.info("AI_CHAT branch: empty_latex (LATEX marker present but no extractable content)")
                             patch_data_dict = {
                                 "type": "empty_latex",
                                 "diff_text": "",
@@ -281,25 +312,22 @@ class ChatSessionManager:
                                 "patch_data": patch_data_dict,
                                 "credits_deducted": False
                             }
-                        
-                        # Extract message from the text before LaTeX section
-                        message_match = re.search(r'(.*?)\s*===LATEX===', response_text_clean, re.DOTALL)
-                        message = message_match.group(1).strip() if message_match else 'Resume updated successfully.'
-                        
-                        # Create simple patch with new LaTeX
-                        logger.info(f"AI_CHAT branch: latex_only (latex_len={len(new_latex)})")
+
+                        # If we got here, we have latex; extract message preceding the marker if any
+                        if not message:
+                            pre_match = re.search(r'^(.*?)\s*===LATEX===', response_text_clean, re.DOTALL)
+                            message = pre_match.group(1).strip() if pre_match else 'Resume updated successfully.'
+
+                        logger.info(f"AI_CHAT branch: latex_only (marker present, latex_len={len(new_latex)})")
                         patch_data = Patch(
                             type="simple_patch",
-                            diff_text="",  # Not used in simple approach
-                            operations=[],  # Not used in simple approach
+                            diff_text="",
+                            operations=[],
                             message=message
                         )
-                        
-                        # Add new_latex to the response
                         patch_data_dict = patch_data.dict()
                         patch_data_dict['new_latex'] = new_latex
-                    except Exception as e:
-                        # Format parsing failed - this should not count as success
+                    except Exception:
                         patch_data_dict = {
                             "type": "parse_error_patch",
                             "diff_text": "",
@@ -308,32 +336,44 @@ class ChatSessionManager:
                             "new_latex": ""
                         }
                 else:
-                    # No format found in response
-                    # If there is plain text, treat as message-only (greetings/acknowledgements)
-                    if response_text_clean:
-                        logger.info("AI_CHAT branch: message_only (no markers)")
-                        patch_data_dict = {
-                            "type": "message_only",
-                            "diff_text": "",
-                            "operations": [],
-                            "message": response_text_clean,
-                            "new_latex": ""
-                        }
-                        await self._update_conversation_history(db, session, user_message, patch_data_dict['message'])
-                        return {
-                            "success": False,
-                            "response": patch_data_dict['message'],
-                            "patch_data": patch_data_dict,
-                            "credits_deducted": False
-                        }
+                    # No markers found — try to detect raw LaTeX document and split
+                    fb_message, fb_latex = extract_latex_fallback(response_text_clean)
+                    if fb_latex:
+                        logger.info("AI_CHAT branch: raw_latex_detected (no markers)")
+                        patch_data = Patch(
+                            type="simple_patch",
+                            diff_text="",
+                            operations=[],
+                            message=(fb_message or 'Resume updated successfully.')
+                        )
+                        patch_data_dict = patch_data.dict()
+                        patch_data_dict['new_latex'] = fb_latex
                     else:
-                        patch_data_dict = {
-                            "type": "parse_error_patch",
-                            "diff_text": "",
-                            "operations": [],
-                            "message": "No response received.",
-                            "new_latex": ""
-                        }
+                        # If there is plain text, treat as message-only (greetings/acknowledgements)
+                        if response_text_clean:
+                            logger.info("AI_CHAT branch: message_only (no markers, no latex)")
+                            patch_data_dict = {
+                                "type": "message_only",
+                                "diff_text": "",
+                                "operations": [],
+                                "message": response_text_clean,
+                                "new_latex": ""
+                            }
+                            await self._update_conversation_history(db, session, user_message, patch_data_dict['message'])
+                            return {
+                                "success": False,
+                                "response": patch_data_dict['message'],
+                                "patch_data": patch_data_dict,
+                                "credits_deducted": False
+                            }
+                        else:
+                            patch_data_dict = {
+                                "type": "parse_error_patch",
+                                "diff_text": "",
+                                "operations": [],
+                                "message": "No response received.",
+                                "new_latex": ""
+                            }
             except Exception as e:
                 patch_data_dict = {
                     "type": "parse_error_patch", 
@@ -459,7 +499,7 @@ CONSTRAINTS:
 - Do NOT fabricate content. Use ONLY information present in CURRENT LATEX or USER DATA; do not invent new skills/projects/tools.
 - SKILLS: Do NOT add skills simply because the JD mentions them. Only retain/reorder existing skills.
 - EXPERIENCE: You may rephrase to emphasize JD-relevant strengths, but do NOT introduce tools/tech not already present.
-- JD is for prioritization/wording only; do NOT copy JD text or inject missing requirements.
+- JD is for prioritization/wording only; you MAY include the job title from JD in summaries, but do NOT copy other JD text or inject missing requirements.
 
 MESSAGE LENGTH:
 - Keep the MESSAGE concise: maximum 5–6 sentences and under ~100 words.

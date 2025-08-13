@@ -12,6 +12,7 @@ import {
 import { useAuth } from '../hooks/useAuth';
 import { apiConfig, supabase } from '../config/api';
 import Logo from '../components/Logo';
+import { useAnalytics } from '../hooks/useAnalytics';
 
 interface Template {
   id: string;
@@ -54,6 +55,7 @@ const CreateResume: React.FC = () => {
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [resumeData, setResumeData] = useState<any>(null);
   const [jobDescription, setJobDescription] = useState<string>('');
+  const { trackTemplateSelection, trackResumeCreation } = useAnalytics();
 
   useEffect(() => {
     // Load resume data from localStorage
@@ -99,6 +101,7 @@ const CreateResume: React.FC = () => {
   const handleSelectTemplate = (templateId: string) => {
     // Just select the template, don't navigate
     setSelectedTemplate(templateId);
+    trackTemplateSelection(templateId);
     logger.info('Selected template', { templateId });
   };
 
@@ -145,6 +148,9 @@ const CreateResume: React.FC = () => {
       if (response.ok) {
         const newResume = await response.json();
         logger.success('Resume created successfully', { newResume });
+        
+        // Track resume creation
+        trackResumeCreation(selectedTemplate);
         
         // Clean up localStorage
         localStorage.removeItem('resumeData');

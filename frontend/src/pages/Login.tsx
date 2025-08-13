@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
 import { supabase } from '../config/api';
 import Logo from '../components/Logo';
+import { useAnalytics } from '../hooks/useAnalytics';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -13,6 +14,7 @@ const Login: React.FC = () => {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const { trackLogin } = useAnalytics();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,13 +29,19 @@ const Login: React.FC = () => {
 
       if (error) {
         setError('Invalid email or password');
+        // Track failed login attempt
+        trackLogin('failed');
       } else if (data.session) {
+        // Track successful login
+        trackLogin('email_password');
         // AuthContext will handle the session automatically
-          navigate('/dashboard', { replace: true });
+        navigate('/dashboard', { replace: true });
       }
     } catch (err) {
       setError('Invalid credentials. Please try again.');
       logger.error('Login error:', err);
+      // Track login error
+      trackLogin('error');
     } finally {
       setIsLoading(false);
     }

@@ -7,6 +7,7 @@ import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '../hooks/useAuth';
 import { usePricing } from '../hooks/usePricing';
 import Logo from '../components/Logo';
+import { useAnalytics } from '../hooks/useAnalytics';
 
 interface UserSubscription {
   messages_used: number;
@@ -15,6 +16,7 @@ interface UserSubscription {
 
 const Billing: React.FC = () => {
   const { user, logout } = useAuth();
+  const { trackSubscription } = useAnalytics();
   const [currentSubscription, setCurrentSubscription] = useState<UserSubscription | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -85,6 +87,12 @@ const Billing: React.FC = () => {
         handler: async (_response: any) => {
           setShowToast(true);
           await fetchSubscriptionData();
+          
+          // Track successful subscription purchase
+          if (pack) {
+            trackSubscription(`Pack ${pack.id}`, pack.price);
+          }
+          
           // Auto-hide toast after 3 seconds
           setTimeout(() => setShowToast(false), 3000);
         },

@@ -14,7 +14,10 @@ import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfService from './pages/TermsOfService';
 import RefundPolicy from './pages/RefundPolicy';
 import Contact from './pages/Contact';
+import Demo from './pages/Demo';
 import ProtectedRoute from './components/ProtectedRoute';
+import { AnalyticsTracker } from './components/AnalyticsTracker';
+import SEOHead from './components/SEOHead';
 
 function App() {
   return (
@@ -22,10 +25,13 @@ function App() {
       <ResumeProvider>
         <EditorStateProvider>
         <Router>
-          <div className="min-h-screen bg-black">
-            <Routes>
+          <SEOHead />
+          <AnalyticsTracker>
+            <div className="min-h-screen bg-black">
+              <Routes>
               {/* Public routes */}
               <Route path="/" element={<Landing />} />
+              <Route path="/demo" element={<Demo />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               
@@ -80,7 +86,8 @@ function App() {
               {/* Redirect any unmatched routes */}
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
-          </div>
+            </div>
+          </AnalyticsTracker>
         </Router>
         </EditorStateProvider>
       </ResumeProvider>

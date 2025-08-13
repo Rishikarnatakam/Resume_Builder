@@ -16,6 +16,7 @@ import {
 import { useAuth } from '../hooks/useAuth';
 import { apiConfig, apiRequest, getCurrentSubscription } from '../config/api';
 import Logo from '../components/Logo';
+import { useAnalytics } from '../hooks/useAnalytics';
 
 interface Resume {
   id: string;
@@ -27,6 +28,7 @@ interface Resume {
 
 const Dashboard: React.FC = () => {
   const { user, logout } = useAuth();
+  const { trackEvent } = useAnalytics();
   const [resumes, setResumes] = useState<Resume[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -86,6 +88,7 @@ const Dashboard: React.FC = () => {
       
       if (response.ok) {
         setResumes(resumes.filter(resume => resume.id !== resumeId));
+        trackEvent('resume_deleted', 'resume_builder', resumeId);
       }
     } catch (error) {
       logger.error('Error deleting resume:', error);

@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
 import { supabase } from '../config/api';
 import Logo from '../components/Logo';
+import { useAnalytics } from '../hooks/useAnalytics';
 
 const Register: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -20,6 +21,7 @@ const Register: React.FC = () => {
   const [successMessage, setSuccessMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const { trackRegistration } = useAnalytics();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -71,6 +73,7 @@ const Register: React.FC = () => {
         }
       } else if (data.session) {
         // User is automatically logged in (email confirmation disabled)
+        trackRegistration('email');
         navigate('/dashboard');
       } else if (data.user) {
         // Check if this is a genuine new signup or Supabase's anti-enumeration response
