@@ -117,10 +117,13 @@ async def handle_razorpay_webhook(
 
             subscription = await get_user_subscription(user_id, db)
             if subscription:
+                # Persist latest order_id as well as updated quota so we always
+                # have a reference to the most recent successful purchase.
                 await update_user_subscription(
                     db,
                     subscription.id,
-                    message_quota=subscription.message_quota + messages_purchased
+                    message_quota=subscription.message_quota + messages_purchased,
+                    razorpay_order_id=payment_entity["order_id"]
                 )
                 logger.info(f"Added {messages_purchased} messages to user {user_id} (now {subscription.message_quota + messages_purchased})")
             else:

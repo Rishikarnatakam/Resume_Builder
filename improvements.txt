@@ -1,0 +1,22 @@
+ai is always trying to improve resume for every message
+
+to change  the template instruction ai can use this 
+this is an example which is given by ai which worked (\patchcmd is key i think)
+% Adjust spacing between certifications
+\makeatletter
+\patchcmd{\endrCertification}{\vspace{0.5em}}{\vspace{0.2em}}{}{}
+\makeatother
+
+add some spacing after the section name please 
+
+\begin{rSection}{Education}
+    \let\olditem\item % Save original item command
+    \renewcommand{\item}{} % Make item do nothing
+    \begin{rEducation}{Indian Institute of Information Technology (IIIT), Bhopal}{Bachelor of Technology in Computer Science}{Nov 2022 -- June 2026}{}
+        % GPA/Percentage is empty in user data, so this bullet will be empty.
+    \end{rEducation}
+    \let\item\olditem % Restore original item command
+\end{rSection}
+
+order id when purchased  currenlty no order is  only messages updates 
+
