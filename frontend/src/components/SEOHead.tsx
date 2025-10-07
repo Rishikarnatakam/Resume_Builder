@@ -16,12 +16,13 @@ const SEOHead: React.FC<SEOHeadProps> = ({
   description = 'Create professional, ATS-friendly resumes with AI assistance. Real-time LaTeX editing, PDF preview, and AI-powered resume optimization.',
   keywords = 'resume builder, AI resume, professional resume, ATS friendly resume, LaTeX resume, CV builder, job application',
   image = 'https://craftairesume.netlify.app/og-image-v2.png',
-  url = 'https://craftairesume.netlify.app/',
+  url = 'https://craftairesume.netlify.app',
   type = 'website',
   twitterHandle = '@craftairesume'
 }) => {
   const fullTitle = title.includes('ResumeCraft') ? title : `${title} | ResumeCraft`;
   const fullUrl = url.startsWith('http') ? url : `https://craftairesume.netlify.app${url}`;
+  const canonicalUrl = fullUrl.replace(/\/+$/, '');
 
   return (
     <Helmet>
@@ -32,11 +33,11 @@ const SEOHead: React.FC<SEOHeadProps> = ({
       <meta name="keywords" content={keywords} />
       
       {/* Canonical URL */}
-      <link rel="canonical" href={fullUrl} />
+      <link rel="canonical" href={canonicalUrl} />
       
       {/* Open Graph / Facebook */}
       <meta property="og:type" content={type} />
-      <meta property="og:url" content={fullUrl} />
+      <meta property="og:url" content={canonicalUrl} />
       <meta property="og:title" content={fullTitle} />
       <meta property="og:description" content={description} />
       <meta property="og:image" content={image} />
@@ -47,7 +48,7 @@ const SEOHead: React.FC<SEOHeadProps> = ({
       
       {/* Twitter */}
       <meta property="twitter:card" content="summary_large_image" />
-      <meta property="twitter:url" content={fullUrl} />
+      <meta property="twitter:url" content={canonicalUrl} />
       <meta property="twitter:title" content={fullTitle} />
       <meta property="twitter:description" content={description} />
       <meta property="twitter:image" content={image} />
