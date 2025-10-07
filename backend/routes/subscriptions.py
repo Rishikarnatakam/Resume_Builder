@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Header
 from typing import Dict, Any, List
 from pydantic import BaseModel
 from services.razorpay_service import create_razorpay_order, verify_razorpay_webhook_signature, RAZORPAY_MOCK_MODE
-from services.pricing_service import get_pack_pricing, is_payment_restricted_to_india
+from services.pricing_service import get_pack_pricing, is_payment_restricted_to_india, get_all_packs_for_country
 from services.geolocation_service import detect_country
 # Removed old topup_packs import - now using pricing_service
 from database import get_db, create_user_subscription, update_user_subscription, get_user_subscription, AsyncSession, UserSubscription
@@ -117,13 +117,13 @@ async def handle_razorpay_webhook(
 
             subscription = await get_user_subscription(user_id, db)
             if subscription:
-                # Persist latest order_id as well as updated quota so we always
-                # have a reference to the most recent successful purchase.
+                # Persist latest order_id, update quota, and update plan_id to the latest purchased pack
                 await update_user_subscription(
                     db,
                     subscription.id,
                     message_quota=subscription.message_quota + messages_purchased,
-                    razorpay_order_id=payment_entity["order_id"]
+                    razorpay_order_id=payment_entity["order_id"],
+                    plan_id=pack_id
                 )
                 logger.info(f"Added {messages_purchased} messages to user {user_id} (now {subscription.message_quota + messages_purchased})")
             else:
@@ -150,15 +150,20 @@ async def get_current_user_subscription(
     user_id = current_user['id']
     subscription = await get_user_subscription(user_id, db)
     if not subscription:
-        return {"messages_used": 0, "message_quota": 0, "plan_name": "Free Trial"}
-    # The original code had get_plan_by_id here, which is removed.
-    # Assuming the intent was to return a placeholder or remove this endpoint
-    # if no plan details are available.
-    # For now, returning a placeholder as per the original file's structure.
+        return {"messages_used": 0, "message_quota": 0, "plan_name": "Free"}
+
+    # Map pack ids to human-friendly names
+    plan_map = {
+        "basic": "Basic",
+        "pro": "Pro",
+        "ultra": "Ultra"
+    }
+    plan_name = plan_map.get((subscription.plan_id or "").lower(), "Free")
+
     return {
         "plan_id": subscription.plan_id,
-        "plan_name": "Unknown Plan", # Placeholder as get_plan_by_id is removed
+        "plan_name": plan_name,
         "messages_used": subscription.messages_used,
         "message_quota": subscription.message_quota,
         "razorpay_order_id": subscription.razorpay_order_id
-    } 
+    }
