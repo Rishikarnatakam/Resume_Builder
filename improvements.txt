@@ -18,5 +18,4 @@ add some spacing after the section name please
     \let\item\olditem % Restore original item command
 \end{rSection}
 
-order id when purchased  currenlty no order is  only messages updates 
 

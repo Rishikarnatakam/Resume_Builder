@@ -1,0 +1,451 @@
+import os
+import re
+import json
+import time
+import logging
+from datetime import datetime
+from typing import Dict
+from concurrent.futures import ThreadPoolExecutor
+
+import pandas as pd
+from docx import Document as DocxDocument
+from docx.shared import Pt
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+import google.generativeai as genai
+from dotenv import load_dotenv
+
+load_dotenv()
+
+# Constants
+MAX_WORKERS = 4
+MIN_JD_LENGTH = 50
+RETRY_DELAY = 2  # seconds
+MAX_RETRIES = 3
+
+# Required JSON keys for validation
+REQUIRED_PLACEHOLDER_KEYS = [
+    'summary_bullet_1', 'summary_bullet_2', 'summary_bullet_3',
+    'summary_bullet_4', 'summary_bullet_5', 'summary_bullet_6', 'summary_bullet_7',
+    'exp1_bullet_1', 'exp1_bullet_2', 'exp1_bullet_3',
+    'exp1_bullet_4', 'exp1_bullet_5', 'exp1_bullet_6',
+    'exp1_achievement_1', 'exp1_achievement_2',
+    'exp2_bullet_1', 'exp2_bullet_2', 'exp2_bullet_3',
+    'exp2_bullet_4', 'exp2_bullet_5', 'exp2_bullet_6',
+    'exp2_achievement_1', 'exp2_achievement_2'
+]
+
+# ============================================================================
+# LOGGING SETUP
+# ============================================================================
+os.makedirs('logs', exist_ok=True)
+log_file = os.path.join('logs', f"resume_script_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log")
+
+formatter = logging.Formatter('%(asctime)s | %(levelname)-8s | %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+
+file_handler = logging.FileHandler(log_file)
+file_handler.setLevel(logging.INFO)
+file_handler.setFormatter(formatter)
+
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.WARNING)
+console_handler.setFormatter(formatter)
+
+logging.basicConfig(level=logging.INFO, handlers=[file_handler, console_handler])
+
+# ============================================================================
+# API CONFIGURATION
+# ============================================================================
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
+if not GEMINI_API_KEY:
+    logging.error("GEMINI_API_KEY not found in .env file - script cannot continue")
+    raise ValueError("Please set GEMINI_API_KEY in .env file")
+
+genai.configure(api_key=GEMINI_API_KEY)
+logging.info("Gemini API configured successfully")
+
+
+# ============================================================================
+# GEMINI AI RESUME GENERATOR CLASS
+# ============================================================================
+
+class GeminiResumeGenerator:
+    """Handles resume content generation using Gemini AI API."""
+
+    def __init__(self, model_name: str = "gemini-2.0-flash"):
+        self.model = genai.GenerativeModel(model_name)
+        self.max_retries = MAX_RETRIES
+        self.retry_delay = RETRY_DELAY
+    
+    def generate_ats_optimized_content(self, jd_text: str, job_title: str,
+                                     company: str) -> Dict[str, str]:
+        """Generate ATS-optimized resume content using Gemini API."""
+
+        prompt = f"""
+You are an expert ATS-optimized resume writer with 15+ years of experience. Your goal is to create resume content that achieves 95+ ATS score by strategically incorporating **ALL** relevant keywords and using proven ATS formatting.
+
+CRITICAL ATS OPTIMIZATION REQUIREMENTS:
+1. Use **EXACT KEYWORDS** from the job description naturally within context — include ALL listed below.
+2. Include industry-standard tools, platforms, frameworks, and methodologies.
+3. Use strong action verbs recognized by ATS systems (e.g., Led, Developed, Implemented).
+4. When adding achievements, always include measurable details such as numbers, percentages, or timeframes. Do not include money-related metrics (like revenue, profit, or cost savings).
+5. Ensure every bullet point contains at least 2-3 relevant keywords.
+6. Match the job requirements with specific examples from the candidate's background.
+7. Maintain professional language while ensuring keyword density.
+8. **NEVER mention specific company names or job roles in ANY generated content.**
+9. Quantifiable results should be expressed in general percentage or relative terms (e.g., ‘increased efficiency by 20%’) instead of using specific monetary values or very large exact numbers (e.g., ‘increased sales by $1M’ or ‘handled 100,000+ users’).
+10. Do not include any references to years, numbers related to time, education details, or degree names in any of the points.
+
+JOB TITLE: {job_title}
+COMPANY: {company}
+
+BASED ON THE FOLLOWING JOB DESCRIPTION:
+{jd_text}
+
+Generate ATS-friendly resume content in this EXACT format:
+
+<SUMMARY>
+• [25-30 words, max two lines (~80 chars per line)] Technical skills showcase featuring specific tools, platforms, and methodologies mentioned in the job description
+• [25-30 words, max two lines (~80 chars per line)] Leadership and collaboration experience emphasizing team management and cross-functional project delivery
+• [25-30 words, max two lines (~80 chars per line)] Quantifiable achievements demonstrating impact on business outcomes, efficiency improvements, or cost savings
+• [25-30 words, max two lines (~80 chars per line)] Process optimization and automation expertise relevant to target role responsibilities
+• [25-30 words, max two lines (~80 chars per line)] Innovation and problem-solving capabilities with examples of complex technical challenges resolved
+• [25-30 words, max two lines (~80 chars per line)] Industry knowledge and best practices implementation aligned with business objectives
+• [25-30 words, max two lines (~80 chars per line)] Professional development and continuous learning commitment showcasing relevant certifications or advanced skills
+</SUMMARY>
+
+<EXPERIENCE_1>
+• [25-30 words, max two lines (~80 chars per line)] Led major project or initiative using key technologies from job description with quantifiable business impact
+• [25-30 words, max two lines (~80 chars per line)] Collaborated with cross-functional teams to deliver solutions addressing specific requirements mentioned in the JD
+• [25-30 words, max two lines (~80 chars per line)] Implemented automation, optimization, or innovative solutions resulting in measurable improvements
+• [25-30 words, max two lines (~80 chars per line)] Managed or mentored team members while utilizing specific tools and platforms required for target role
+• [25-30 words, max two lines (~80 chars per line)] Achieved significant cost savings, efficiency gains, or performance improvements through strategic initiatives
+• [25-30 words, max two lines (~80 chars per line)] Developed or enhanced processes, systems, or workflows directly relevant to the target role responsibilities
+</EXPERIENCE_1>
+
+<ACHIEVEMENTS_1>
+• [25-30 words, max two lines (~80 chars per line)] Quantifiable achievement showcasing measurable business impact using relevant technologies and methodologies from job description
+• [25-30 words, max two lines (~80 chars per line)] Recognition or award received for exceptional performance in key areas mentioned in target role requirements
+</ACHIEVEMENTS_1>
+
+<EXPERIENCE_2>
+• [25-30 words, max two lines (~80 chars per line)] Delivered complex technical project showcasing expertise in key areas mentioned in the job requirements
+• [25-30 words, max two lines (~80 chars per line)] Partnered with stakeholders to implement solutions addressing business challenges similar to target needs
+• [25-30 words, max two lines (~80 chars per line)] Optimized existing systems or processes using technologies and methodologies specified in the job description
+• [25-30 words, max two lines (~80 chars per line)] Provided technical leadership and guidance while working with relevant tools and platforms
+• [25-30 words, max two lines (~80 chars per line)] Achieved measurable results in performance, quality, or operational efficiency improvements
+• [25-30 words, max two lines (~80 chars per line)] Contributed to strategic initiatives that align with the responsibilities and goals of the target position
+</EXPERIENCE_2>
+
+<ACHIEVEMENTS_2>
+• [25-30 words, max two lines (~80 chars per line)] Outstanding accomplishment demonstrating expertise in technologies and skills relevant to target role requirements
+• [25-30 words, max two lines (~80 chars per line)] Significant milestone achieved through application of methodologies and tools mentioned in job description
+</ACHIEVEMENTS_2>
+
+MANDATORY REQUIREMENTS:
+- Each bullet point must be exactly 25-30 words
+- Naturally incorporate **ALL** provided keywords from the job description
+- Include specific numbers, percentages, or quantifiable results in experience and achievement points and business impact statements.
+- Avoid using any monetary values or specific time-related numbers
+- Use industry-standard terminology and acronyms where applicable
+- Use strong action verbs (Led, Implemented, Developed, Optimized, Achieved, etc.)
+- Ensure content is relevant to target role requirements
+- Maintain professional tone and ATS-friendly language
+- Avoid buzzwords without substance
+- Each bullet must fit on **no more than two lines** in a standard 11 pt Times New Roman Word document (wrap at ~80 characters).
+- **NEVER mention specific company names or job roles in generated content**
+
+Generate ONLY the formatted content above with no additional commentary or explanations. Return the content in JSON format with the following structure:
+{{
+  "summary_bullet_1": "content here",
+  "summary_bullet_2": "content here",
+  "summary_bullet_3": "content here",
+  "summary_bullet_4": "content here",
+  "summary_bullet_5": "content here",
+  "summary_bullet_6": "content here",
+  "summary_bullet_7": "content here",
+  "exp1_bullet_1": "content here",
+  "exp1_bullet_2": "content here",
+  "exp1_bullet_3": "content here",
+  "exp1_bullet_4": "content here",
+  "exp1_bullet_5": "content here",
+  "exp1_bullet_6": "content here",
+  "exp1_achievement_1": "content here",
+  "exp1_achievement_2": "content here",
+  "exp2_bullet_1": "content here",
+  "exp2_bullet_2": "content here",
+  "exp2_bullet_3": "content here",
+  "exp2_bullet_4": "content here",
+  "exp2_bullet_5": "content here",
+  "exp2_bullet_6": "content here",
+  "exp2_achievement_1": "content here",
+  "exp2_achievement_2": "content here"
+}}
+
+Return ONLY the JSON object, no additional text."""
+
+        for attempt in range(self.max_retries):
+            try:
+                logging.info(f"Generating content for {job_title} at {company} (attempt {attempt + 1})")
+                response = self.model.generate_content(prompt)
+
+                if not response.text:
+                    logging.warning(f"Empty response from Gemini API - retrying in {self.retry_delay}s")
+                    time.sleep(self.retry_delay)
+                    continue
+
+                text = response.text.strip()
+
+                # Clean response (sometimes Gemini adds markdown)
+                text = text.replace('```json', '').replace('```', '').strip()
+
+                # Extract JSON (sometimes there's text before/after)
+                json_match = re.search(r'\{[\s\S]*\}', text)
+                if not json_match:
+                    logging.warning("No JSON found in response - retrying")
+                    time.sleep(self.retry_delay)
+                    continue
+
+                # Parse JSON
+                content = json.loads(json_match.group(0))
+
+                # Validate all required keys exist
+                missing_keys = [key for key in REQUIRED_PLACEHOLDER_KEYS if key not in content]
+                if missing_keys:
+                    logging.warning(f"Missing keys in JSON: {missing_keys[:5]}")
+                    time.sleep(self.retry_delay)
+                    continue
+
+                logging.info(f"Successfully generated JSON content with all {len(REQUIRED_PLACEHOLDER_KEYS)} keys")
+                return content
+
+            except json.JSONDecodeError as e:
+                logging.error(f"JSON decode error (attempt {attempt + 1}): {str(e)}")
+                time.sleep(self.retry_delay)
+            except Exception as e:
+                logging.error(f"Gemini API error (attempt {attempt + 1}): {str(e)}")
+                time.sleep(self.retry_delay)
+        
+        # Fallback content
+        logging.error(f"All Gemini attempts failed for {job_title} at {company} - using fallback content")
+        return self._generate_fallback_content(job_title, company)
+
+    def _generate_fallback_content(self, job_title: str, company: str) -> Dict[str, str]:
+        """Generate simple fallback content when API fails."""
+        logging.warning(f"Using fallback content generation for {job_title} at {company}")
+
+        return {
+            "summary_bullet_1": "Technical professional with strong background in project management, team leadership, and cross-functional collaboration.",
+            "summary_bullet_2": "Results-driven specialist with experience in process optimization, automation, and delivering solutions for enterprise organizations.",
+            "summary_bullet_3": "Strategic thinker with expertise in implementing industry best practices and commitment to continuous improvement and innovation.",
+            "summary_bullet_4": "Accomplished professional with proven ability to deliver measurable business results through technical excellence and stakeholder management.",
+            "summary_bullet_5": "Dedicated team member with strong analytical skills, problem-solving capabilities, and experience in implementing scalable solutions.",
+            "summary_bullet_6": "Team leader with expertise in mentoring, training, and driving organizational success through effective communication and project delivery.",
+            "summary_bullet_7": "Innovation-focused professional committed to staying current with industry trends and leveraging emerging technologies to achieve objectives.",
+            "exp1_bullet_1": "Led cross-functional projects utilizing modern technologies and methodologies resulting in improved operational efficiency and measurable business impact.",
+            "exp1_bullet_2": "Collaborated with stakeholders to implement solutions addressing business requirements while maintaining high quality standards and meeting project deadlines.",
+            "exp1_bullet_3": "Developed and optimized processes using industry-standard tools achieving measurable improvements in performance metrics and operational excellence.",
+            "exp1_bullet_4": "Provided technical leadership and mentorship to team members while ensuring adherence to best practices and organizational standards.",
+            "exp1_bullet_5": "Achieved significant results in system optimization, automation implementation, and operational excellence through strategic planning and execution.",
+            "exp1_bullet_6": "Contributed to organizational success by delivering innovative solutions that align with business objectives and drive continuous improvement.",
+            "exp1_achievement_1": "Delivered 25% improvement in operational efficiency through strategic implementation of optimization initiatives and process improvements.",
+            "exp1_achievement_2": "Recognized for exceptional performance in project delivery, achieving 100% on-time completion rate while maintaining high quality standards.",
+            "exp2_bullet_1": "Led cross-functional projects utilizing modern technologies and methodologies resulting in improved operational efficiency and measurable business impact.",
+            "exp2_bullet_2": "Collaborated with stakeholders to implement solutions addressing business requirements while maintaining high quality standards and meeting project deadlines.",
+            "exp2_bullet_3": "Developed and optimized processes using industry-standard tools achieving measurable improvements in performance metrics and operational excellence.",
+            "exp2_bullet_4": "Provided technical leadership and mentorship to team members while ensuring adherence to best practices and organizational standards.",
+            "exp2_bullet_5": "Achieved significant results in system optimization, automation implementation, and operational excellence through strategic planning and execution.",
+            "exp2_bullet_6": "Contributed to organizational success by delivering innovative solutions that align with business objectives and drive continuous improvement.",
+            "exp2_achievement_1": "Delivered 25% improvement in operational efficiency through strategic implementation of optimization initiatives and process improvements.",
+            "exp2_achievement_2": "Recognized for exceptional performance in project delivery, achieving 100% on-time completion rate while maintaining high quality standards."
+        }
+
+
+# ============================================================================
+# RESUME GENERATION HELPER FUNCTIONS
+# ============================================================================
+
+def generate_word_resume(template_path: str, content: Dict[str, str], output_path: str):
+    """Generate Word resume by replacing placeholders with JSON content."""
+    try:
+        doc = DocxDocument(template_path)
+
+        # Replace placeholders in paragraphs
+        for para in doc.paragraphs:
+            original_text = para.text
+
+            # Check if paragraph contains a placeholder
+            if '{{' in original_text and '}}' in original_text:
+                # Find which placeholder this paragraph contains
+                for placeholder_key, placeholder_value in content.items():
+                    placeholder = f"{{{{{placeholder_key}}}}}"
+
+                    if placeholder in original_text:
+                        # Clear and replace with formatted content
+                        para.clear()
+                        para.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+
+                        # Add content with proper formatting
+                        for word in placeholder_value.split():
+                            run = para.add_run(word + " ")
+                            run.font.name = "Times New Roman"
+                            run.font.size = Pt(10.5)
+
+                        break  # Move to next paragraph after replacement
+
+        doc.save(output_path)
+        logging.info(f"Resume generated successfully: {os.path.basename(output_path)}")
+
+    except Exception as e:
+        logging.error(f"Failed to generate Word resume {output_path}: {str(e)}")
+
+def process_job(job: Dict, user: str, domain: str, template_path: str,
+               output_base: str, generator: GeminiResumeGenerator):
+    """Process a single job application - generate and save tailored resume."""
+    try:
+        job_title = job.get('job_title', 'Unknown')
+        company = job.get('company_name', 'Unknown')
+        jd_text = job.get('job_description', '')
+
+        # Validate job description
+        if not jd_text or len(jd_text.strip()) < MIN_JD_LENGTH:
+            logging.warning(f"Skipping {job_title} at {company} - insufficient job description (length: {len(jd_text)})")
+            return
+
+        # Generate tailored content using Gemini (returns JSON dict)
+        try:
+            content = generator.generate_ats_optimized_content(
+                jd_text, job_title, company
+            )
+        except Exception as e:
+            logging.error(f"Content generation failed for {job_title} at {company}: {str(e)}")
+            return
+
+        # Create output directory
+        output_dir = os.path.join(output_base, domain, user)
+        os.makedirs(output_dir, exist_ok=True)
+
+        # Generate safe filename
+        safe_company = re.sub(r'[^\w\s-]', '', company).replace(' ', '_')
+        safe_job_title = re.sub(r'[^\w\s-]', '', job_title).replace(' ', '_')
+        word_output = os.path.join(output_dir, f'{user}_{safe_company}_{safe_job_title}.docx')
+
+        # Generate Word resume
+        generate_word_resume(template_path, content, word_output)
+
+        logging.info(f"Job processed successfully: {job_title} at {company} for {user}")
+
+    except Exception as e:
+        logging.error(f"Failed to process {job_title} at {company} for {user}: {str(e)}")
+
+
+# ============================================================================
+# MAIN EXECUTION
+# ============================================================================
+
+def main():
+    """Main function with enhanced error handling and progress tracking."""
+    job_links_dir = 'job_links'
+    template_dir = 'base_templates'
+    output_base = 'tailored_resume_outputs'
+    current_date = datetime.now().strftime('%Y-%m-%d')
+    
+    logging.info(f"Starting resume generation process for {current_date}")
+    
+    # Initialize Gemini generator
+    try:
+        generator = GeminiResumeGenerator()
+        logging.info("Gemini API initialized successfully")
+    except Exception as e:
+        logging.error(f"Failed to initialize Gemini API: {str(e)}")
+        return
+    
+    # Check for job links directory
+    date_path = os.path.join(job_links_dir, current_date)
+    if not os.path.isdir(date_path):
+        logging.error(f"Job links directory not found: {date_path}")
+        return
+    
+    output_date_path = os.path.join(output_base, current_date)
+    os.makedirs(output_date_path, exist_ok=True)
+    
+    total_jobs_processed = 0
+    successful_jobs = 0
+    failed_jobs = []
+    
+    # Process each domain
+    for domain in os.listdir(date_path):
+        domain_path = os.path.join(date_path, domain)
+        if not os.path.isdir(domain_path):
+            continue
+        
+        logging.info(f"Processing domain: {domain}")
+        
+        # Check for domain templates
+        template_domain_path = os.path.join(template_dir, domain)
+        if not os.path.isdir(template_domain_path):
+            logging.error(f"No templates directory found for domain: {domain}")
+            continue
+        
+        # Process Excel files in domain
+        for excel_file in os.listdir(domain_path):
+            if not excel_file.endswith('.xlsx'):
+                continue
+            
+            excel_path = os.path.join(domain_path, excel_file)
+            
+            try:
+                df = pd.read_excel(excel_path)
+                logging.info(f"Processing {excel_file} - {len(df)} jobs found")
+            except Exception as e:
+                logging.error(f"Failed to read Excel file {excel_file}: {str(e)}")
+                continue
+            
+            # Process each template for this domain
+            for template_file in os.listdir(template_domain_path):
+                if not template_file.endswith('.docx'):
+                    continue
+                
+                user = template_file.split('_')[0]  # Extract user from filename
+                template_path = os.path.join(template_domain_path, template_file)
+                
+                logging.info(f"Processing template for user: {user}")
+                
+                # Process jobs with controlled concurrency for API rate limiting
+                with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+                    futures = []
+                    
+                    for _, row in df.iterrows():
+                        future = executor.submit(
+                            process_job, row, user, domain, template_path, 
+                            output_date_path, generator
+                        )
+                        futures.append((future, row.get('job_title', 'Unknown'), row.get('company_name', 'Unknown')))
+                        total_jobs_processed += 1
+                    
+                    # Wait for completion and count successes
+                    for future, job_title, company in futures:
+                        try:
+                            future.result()
+                            successful_jobs += 1
+                        except Exception as e:
+                            failed_jobs.append(f"{job_title} at {company}: {str(e)}")
+                            logging.error(f"Job processing failed: {job_title} at {company}")
+    
+    # Final summary
+    success_rate = (successful_jobs / total_jobs_processed * 100) if total_jobs_processed > 0 else 0
+    
+    logging.info(f"Process completed - Total: {total_jobs_processed}, Successful: {successful_jobs}, Failed: {len(failed_jobs)}")
+    logging.info(f"Success rate: {success_rate:.1f}%")
+    
+    if failed_jobs:
+        logging.warning(f"Failed jobs summary:")
+        for failed_job in failed_jobs[:10]:  # Log first 10 failures
+            logging.warning(f"  - {failed_job}")
+        if len(failed_jobs) > 10:
+            logging.warning(f"  ... and {len(failed_jobs) - 10} more failures")
+    
+    logging.info(f"All outputs saved to: {output_date_path}")
+    logging.info("Resume generation process completed")
+
+if __name__ == '__main__':
+    main()2
